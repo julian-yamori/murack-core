@@ -1,0 +1,16 @@
+[package]
+name = "walk_base_2"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.44"
+derive-getters = "0.2.0"
+paste = "1.0.5"
+pretty_assertions = "0.7.2"
+walk_base_2_domain = { path = "../domain" }
+walk_base_2_app = { path = "../app" }
+walk_base_2_data_db = { path = "../data_db" }
+walk_base_2_data_file = { path = "../data_file" }

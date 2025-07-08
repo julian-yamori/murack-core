@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "infra",
+    "app",
+    "data_db",
+    "data_file",
+    "domain",
+    "media",
+]

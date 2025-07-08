@@ -1,0 +1,61 @@
+{
+    // IntelliSense を使用して利用可能な属性を学べます。
+    // 既存の属性の説明をホバーして表示します。
+    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "config",
+            "description": "config.tomlパス",
+        },
+        {
+            "type": "promptString",
+            "id": "subcommand",
+            "description": "サブコマンド・引数"
+        },
+    ],
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'walk_base_2'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=walk_base_2",
+                    "--package=walk_base_2"
+                ],
+                "filter": {
+                    "name": "walk_base_2",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-c",
+                "${input:config}",
+                "${input:subcommand}"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'walk_base_2'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=walk_base_2",
+                    "--package=walk_base_2"
+                ],
+                "filter": {
+                    "name": "walk_base_2",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
