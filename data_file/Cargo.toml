@@ -7,8 +7,8 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.44"
-thiserror = "1.0.26"
-trash = "2.0.2"
+thiserror = "2.0.12"
+trash = "5.2.2"
 
 domain = { path = "../domain", package = "walk_base_2_domain" }
 media = { path = "../media", package = "walk_base_2_media" }

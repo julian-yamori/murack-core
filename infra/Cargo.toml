@@ -7,9 +7,9 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.44"
-derive-getters = "0.2.0"
+derive-getters = "0.5.0"
 paste = "1.0.5"
-pretty_assertions = "0.7.2"
+pretty_assertions = "1.4.1"
 walk_base_2_domain = { path = "../domain" }
 walk_base_2_app = { path = "../app" }
 walk_base_2_data_db = { path = "../data_db" }
