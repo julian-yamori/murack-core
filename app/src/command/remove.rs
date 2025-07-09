@@ -71,7 +71,7 @@ impl CommandRemove {
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
                 Some(domain::Error::FilePathStrNotFound { .. }) => {
-                    self.cui.err(format_args!("{}\n", e));
+                    self.cui.err(format_args!("{e}\n"));
                     Ok(())
                 }
                 _ => Err(e),
@@ -91,7 +91,7 @@ impl CommandRemove {
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
                 Some(domain::Error::FilePathStrNotFound { .. }) => {
-                    self.cui.err(format_args!("{}\n", e));
+                    self.cui.err(format_args!("{e}\n"));
                     Ok(())
                 }
                 _ => Err(e),

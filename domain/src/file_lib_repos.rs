@@ -32,10 +32,10 @@ pub trait FileLibraryRepository {
     /// # Arguments
     /// - lib_root: ライブラリルートの絶対パス
     /// - target: 検索対象のライブラリ内パス
-    fn search_by_lib_path<'a>(
+    fn search_by_lib_path(
         &self,
         lib_root: &Path,
-        target: &'a LibPathStr,
+        target: &LibPathStr,
     ) -> Result<Vec<LibSongPath>>;
 
     /// ライブラリ外で、指定パスに該当する曲のパスを列挙

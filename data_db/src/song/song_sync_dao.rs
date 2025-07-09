@@ -34,7 +34,7 @@ impl SongSyncDao for SongSyncDaoImpl {
         tx: &TransactionWrapper<'c>,
         path: &LibSongPath,
     ) -> Result<Option<SongSyncRow>> {
-        let sql = format!("select {} from [song] where [path] = ?", ALL_COLUMNS);
+        let sql = format!("select {ALL_COLUMNS} from [song] where [path] = ?");
         sql_func::select_opt(tx, &sql, params![DbLibSongPathRef::from(path)], map_all)
     }
 

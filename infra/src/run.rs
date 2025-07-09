@@ -47,7 +47,7 @@ pub fn run(args: impl Iterator<Item = String>, cui: Rc<dyn Cui>) -> Result<()> {
             }
             _ => {
                 return Err(walk_base_2_app::Error::InvalidCommandArgument {
-                    msg: format!("sub command '{}' is invalid.", sub_command),
+                    msg: format!("sub command '{sub_command}' is invalid."),
                 }
                 .into());
             }

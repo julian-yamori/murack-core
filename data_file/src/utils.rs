@@ -13,7 +13,7 @@ pub fn is_audio_ext(path: &Path) -> bool {
         None => return false,
     };
 
-    return AUDIO_FILE_EXTS.iter().any(|x| *x == ext);
+    AUDIO_FILE_EXTS.contains(&ext)
 }
 
 /// オーディオファイルに対応する.lrcファイルのパスを取得

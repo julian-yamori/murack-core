@@ -33,7 +33,7 @@ impl SongListerFilter for SongListerFilterImpl {
         //フィルタから条件を取得して追加
         let query_where = get_query_filter_where(filter)?;
         if !query_where.is_empty() {
-            query_base = format!("{} where {}", query_base, query_where);
+            query_base = format!("{query_base} where {query_where}");
         }
 
         sql_func::select_list(tx, &query_base, [], |row| row.get(0))
@@ -82,7 +82,7 @@ fn get_query_filter_where_group(filter: &Filter) -> Result<String> {
     let combined_query = filter
         .children
         .iter()
-        .map(|c| get_query_filter_where(c))
+        .map(get_query_filter_where)
         .collect::<Result<Vec<String>>>()?
         .join(ope);
 
@@ -91,7 +91,7 @@ fn get_query_filter_where_group(filter: &Filter) -> Result<String> {
     }
 
     //クエリ文字列は()で囲む
-    Ok(format!("({})", combined_query))
+    Ok(format!("({combined_query})"))
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得(文字列用)
@@ -122,7 +122,7 @@ fn get_query_filter_where_str(filter: &Filter) -> Result<String> {
 
     //必要ならlike文のエスケープ処理
     let cmp_value = if use_like && like_esc::is_need(&filter.str_value) {
-        r_string = format!("{} escape '$'", r_string);
+        r_string = format!("{r_string} escape '$'");
         like_esc::escape(&filter.str_value)
     } else {
         filter.str_value.to_owned()
@@ -150,9 +150,9 @@ fn get_query_filter_where_int(filter: &Filter) -> Result<String> {
         //一部範囲は、nullであるかどうかでフィルタリングする
         return Ok(match filter.range {
             //nullと等しい
-            FilterValueRange::IntEqual => format!("{} is null", clm_name),
+            FilterValueRange::IntEqual => format!("{clm_name} is null"),
             //nullと等しくない
-            FilterValueRange::IntNotEqual => format!("{} is not null", clm_name),
+            FilterValueRange::IntNotEqual => format!("{clm_name} is not null"),
             //それ以外は必ずfalse
             _ => FALSE_QUERY.to_owned(),
         });
@@ -174,7 +174,7 @@ fn get_query_filter_where_int(filter: &Filter) -> Result<String> {
                 FALSE_QUERY.to_owned()
             } else {
                 let (small, large) = get_ordered_int(filter)?;
-                format!("({} >= {} and {} <= {})", clm_name, small, clm_name, large)
+                format!("({clm_name} >= {small} and {clm_name} <= {large})")
             }
         }
         //指定範囲外
@@ -184,7 +184,7 @@ fn get_query_filter_where_int(filter: &Filter) -> Result<String> {
                 FALSE_QUERY.to_owned()
             } else {
                 let (small, large) = get_ordered_int(filter)?;
-                format!("({} < {} or {} > {})", clm_name, small, clm_name, large)
+                format!("({clm_name} < {small} or {clm_name} > {large})")
             }
         }
         _ => return Err(invalid_filter_range_for_target(filter)),
@@ -201,9 +201,9 @@ fn get_query_filter_where_id(filter: &Filter) -> Result<String> {
 
     Ok(match filter.range {
         //有効(null以外)
-        FilterValueRange::IdValid => format!("{} is not null", clm_name),
+        FilterValueRange::IdValid => format!("{clm_name} is not null"),
         //無効(null)
-        FilterValueRange::IdInvalid => format!("{} is null", clm_name),
+        FilterValueRange::IdInvalid => format!("{clm_name} is null"),
         _ => return Err(invalid_filter_range_for_target(filter)),
     })
 }
@@ -222,8 +222,7 @@ fn get_query_filter_where_tag(filter: &Filter) -> Result<String> {
     //タグで検索するクエリを取得する関数
     fn get_query_where_by_tag(tag_id: &str) -> String {
         format!(
-            "exists(select * from [song_tags] AS t where t.[song_id] = song.[rowid] and t.[tag_id] = {})",
-            tag_id
+            "exists(select * from [song_tags] AS t where t.[song_id] = song.[rowid] and t.[tag_id] = {tag_id})"
         )
     }
 
@@ -252,9 +251,9 @@ fn get_query_filter_where_bool(filter: &Filter) -> Result<String> {
 
     Ok(match filter.range {
         //true
-        FilterValueRange::BoolTrue => format!("{} <> 0", clm_name),
+        FilterValueRange::BoolTrue => format!("{clm_name} <> 0"),
         //false
-        FilterValueRange::BoolFalse => format!("{} = 0", clm_name),
+        FilterValueRange::BoolFalse => format!("{clm_name} = 0"),
         _ => return Err(invalid_filter_range_for_target(filter)),
     })
 }
@@ -272,7 +271,7 @@ fn get_query_filter_where_artwork(filter: &Filter) -> Result<String> {
         //アートワーク：ある
         FilterValueRange::ArtworkHas => base_sql.to_owned(),
         //アートワーク：ない
-        FilterValueRange::ArtworkNone => format!("not {}", base_sql),
+        FilterValueRange::ArtworkNone => format!("not {base_sql}"),
         _ => return Err(invalid_filter_range_for_target(filter)),
     })
 }
@@ -291,7 +290,7 @@ fn get_query_filter_where_date(filter: &Filter) -> Result<String> {
             if !filter.str_value.is_empty() {
                 format!("{} = {}", clm_name, escs(&filter.str_value))
             } else {
-                format!("{} is null", clm_name)
+                format!("{clm_name} is null")
             }
         }
         //指定値と等しくない
@@ -300,7 +299,7 @@ fn get_query_filter_where_date(filter: &Filter) -> Result<String> {
             if !filter.str_value.is_empty() {
                 format!("{} <> {}", clm_name, escs(&filter.str_value))
             } else {
-                format!("{} is not null", clm_name)
+                format!("{clm_name} is not null")
             }
         }
         //指定値以前
@@ -320,7 +319,7 @@ fn get_query_filter_where_date(filter: &Filter) -> Result<String> {
             }
         }
         //なし
-        FilterValueRange::DateNone => format!("{} is null", clm_name),
+        FilterValueRange::DateNone => format!("{clm_name} is null"),
         _ => return Err(invalid_filter_range_for_target(filter)),
     })
 }

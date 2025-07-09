@@ -71,7 +71,7 @@ impl FolderPathDao for FolderPathDaoImpl {
         tx: &TransactionWrapper<'c>,
         folder_id: i32,
     ) -> Result<Option<FolderPathRow>> {
-        let sql = format!("select {} from [folder_path] where [id] = ?", ALL_COLUMNS);
+        let sql = format!("select {ALL_COLUMNS} from [folder_path] where [id] = ?");
         sql_func::select_opt(tx, &sql, params![folder_id], map_all)
     }
 
@@ -81,7 +81,7 @@ impl FolderPathDao for FolderPathDaoImpl {
         tx: &TransactionWrapper<'c>,
         path: &LibDirPath,
     ) -> Result<Option<FolderPathRow>> {
-        let sql = format!("select {} from [folder_path] where [path] = ?", ALL_COLUMNS);
+        let sql = format!("select {ALL_COLUMNS} from [folder_path] where [path] = ?");
         sql_func::select_opt(tx, &sql, params![DbLibDirPathRef::from(path)], map_all)
     }
 

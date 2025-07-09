@@ -199,9 +199,9 @@ impl ResolveExistanceImpl {
             cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
             cui_outln!(cui);
 
-            let input = cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?;
+            
 
-            input
+            cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
 
         match input {
@@ -245,9 +245,9 @@ impl ResolveExistanceImpl {
             cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
             cui_outln!(cui);
 
-            let input = cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?;
+            
 
-            input
+            cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
 
         match input {
@@ -295,9 +295,9 @@ impl ResolveExistanceImpl {
             cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
             cui_outln!(cui);
 
-            let input = cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?;
+            
 
-            input
+            cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
 
         match input {
@@ -345,9 +345,9 @@ impl ResolveExistanceImpl {
             cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
             cui_outln!(cui);
 
-            let input = cui.input_case(&['2', '0', '-'], messages::MSG_SELECT_OPERATION)?;
+            
 
-            input
+            cui.input_case(&['2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
 
         match input {

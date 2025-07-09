@@ -46,8 +46,7 @@ impl SongFinder for SongFinderImpl {
         //プレイリスト順なら、取得カラムを一つ追加
         if plist.sort_type == SortType::Playlist {
             clms_query = format!(
-                "{}, [playlist_song].[order] as [{}]",
-                clms_query, PLIST_SONG_IDX_COLUMN
+                "{clms_query}, [playlist_song].[order] as [{PLIST_SONG_IDX_COLUMN}]"
             );
         }
 
@@ -219,7 +218,7 @@ fn get_order_query(sort_type: SortType, is_desc: bool) -> String {
     if is_desc {
         format!(" order by {}", order.replace("asc", "desc"))
     } else {
-        format!(" order by {}", order)
+        format!(" order by {order}")
     }
 }
 
@@ -234,7 +233,7 @@ fn get_sort_column_query(sort_type: SortType) -> String {
 	SortType::Artist => "[artist_order] asc, [album_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
 	SortType::Album => "[album_order] asc, [artist_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
 	SortType::Genre => "[genre] asc, [artist_order] asc, [album_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::Playlist => format!("[{}] asc", PLIST_SONG_IDX_COLUMN),
+	SortType::Playlist => format!("[{PLIST_SONG_IDX_COLUMN}] asc"),
 	SortType::Composer => "[composer_order] asc, [artist_order] asc, [album_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
 	SortType::Duration => "[duration] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
 	SortType::TrackIndex => "[track_number] asc, [artist_order] asc, [album_order] asc, [disc_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),

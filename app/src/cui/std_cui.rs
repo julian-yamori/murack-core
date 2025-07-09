@@ -36,7 +36,7 @@ impl Cui for StdCui {
     /// 入力された文字(casesのうちのいずれか)
     fn input_case(&self, cases: &[char], message: &str) -> Result<char> {
         loop {
-            print!("{}", message);
+            print!("{message}");
             io::stdout().flush()?;
 
             let mut input = String::new();
@@ -47,7 +47,7 @@ impl Cui for StdCui {
                 let input_lower = chars[0];
 
                 //入力成功し、選択肢内の文字ならループを抜ける
-                if cases.iter().any(|c| *c == input_lower) {
+                if cases.contains(&input_lower) {
                     return Ok(input_lower);
                 }
             }

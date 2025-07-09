@@ -85,7 +85,7 @@ impl SongDao for SongDaoImpl {
         tx: &TransactionWrapper<'c>,
         song_id: i32,
     ) -> Result<Option<SongRow>> {
-        let sql = format!("select {} from [song] where [rowid] = ?", ALL_COLUMNS);
+        let sql = format!("select {ALL_COLUMNS} from [song] where [rowid] = ?");
         sql_func::select_opt(tx, &sql, params![song_id], map_all)
     }
 
@@ -128,7 +128,7 @@ impl SongDao for SongDaoImpl {
             ("like ? || '%'", path_str)
         };
 
-        let sql = format!("select [path] from [song] where [path] {}", like_query);
+        let sql = format!("select [path] from [song] where [path] {like_query}");
         sql_func::select_list(tx, &sql, params![cmp_value], |row| {
             let path: DbLibSongPath = row.get(0)?;
             Ok(path.into())
@@ -493,11 +493,9 @@ mod tests {
 
     #[test]
     fn test_count_all_3() {
-        let song_paths = vec![
-            LibSongPath::new("test/hoge.flac"),
+        let song_paths = [LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
-            LibSongPath::new("piyo.mp3"),
-        ];
+            LibSongPath::new("piyo.mp3")];
 
         let mut db = ConnectionFactory::Memory.open().unwrap();
         let tx = db.transaction().unwrap();
@@ -565,11 +563,9 @@ mod tests {
 
     #[test]
     fn test_exists_path() {
-        let song_paths = vec![
-            LibSongPath::new("test/hoge.flac"),
+        let song_paths = [LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
-            LibSongPath::new("piyo.mp3"),
-        ];
+            LibSongPath::new("piyo.mp3")];
 
         let mut db = ConnectionFactory::Memory.open().unwrap();
         let tx = db.transaction().unwrap();
@@ -594,11 +590,9 @@ mod tests {
 
     #[test]
     fn test_delete() {
-        let song_paths = vec![
-            LibSongPath::new("test/hoge.flac"),
+        let song_paths = [LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
-            LibSongPath::new("piyo.mp3"),
-        ];
+            LibSongPath::new("piyo.mp3")];
 
         let mut db = ConnectionFactory::Memory.open().unwrap();
         let tx = db.transaction().unwrap();

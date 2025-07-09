@@ -43,21 +43,20 @@ impl PlaylistDao for PlaylistDaoImpl {
         tx: &TransactionWrapper<'c>,
         plist_id: i32,
     ) -> Result<Option<PlaylistRow>> {
-        let sql = format!("select {} from [playlist] where [rowid] = ?", ALL_COLUMNS);
+        let sql = format!("select {ALL_COLUMNS} from [playlist] where [rowid] = ?");
         sql_func::select_opt(tx, &sql, params![plist_id], map_all)
     }
 
     /// 全レコードを取得
     fn select_all<'c>(&self, tx: &TransactionWrapper<'c>) -> Result<Vec<PlaylistRow>> {
-        let sql = format!("select {} from [playlist]", ALL_COLUMNS);
+        let sql = format!("select {ALL_COLUMNS} from [playlist]");
         sql_func::select_list(tx, &sql, [], map_all)
     }
 
     /// 全レコードを取得(in_folder_order順)
     fn select_all_order_folder<'c>(&self, tx: &TransactionWrapper<'c>) -> Result<Vec<PlaylistRow>> {
         let sql = format!(
-            "select {} from [playlist] order by [in_folder_order]",
-            ALL_COLUMNS
+            "select {ALL_COLUMNS} from [playlist] order by [in_folder_order]"
         );
         sql_func::select_list(tx, &sql, [], map_all)
     }
@@ -73,8 +72,7 @@ impl PlaylistDao for PlaylistDaoImpl {
         parent_id: Option<i32>,
     ) -> Result<Vec<PlaylistRow>> {
         let sql = format!(
-            "select {} from [playlist] where [parent_id] is ? order by [in_folder_order]",
-            ALL_COLUMNS
+            "select {ALL_COLUMNS} from [playlist] where [parent_id] is ? order by [in_folder_order]"
         );
 
         sql_func::select_list(tx, &sql, params![parent_id], map_all)

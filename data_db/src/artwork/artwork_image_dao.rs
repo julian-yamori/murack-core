@@ -25,7 +25,7 @@ impl ArtworkImageDao for ArtworkImageDaoImpl {
         tx: &TransactionWrapper<'c>,
         hash: &[u8],
     ) -> Result<Vec<ArtworkImageRow>> {
-        let sql = format!("select {} from [artwork] where [hash] = ?", ALL_COLUMNS);
+        let sql = format!("select {ALL_COLUMNS} from [artwork] where [hash] = ?");
         sql_func::select_list(tx, &sql, params![hash], map_all)
     }
 }

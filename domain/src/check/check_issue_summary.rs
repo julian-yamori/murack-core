@@ -24,7 +24,7 @@ impl fmt::Display for CheckIssueSummary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::PcNotExists => f.write_str("PCにファイルが存在しません。"),
-            Self::PcReadFailed { e } => write!(f, "PCからのデータの読み込みに失敗しました: {}", e),
+            Self::PcReadFailed { e } => write!(f, "PCからのデータの読み込みに失敗しました: {e}"),
             Self::DbNotExists => f.write_str("DBにデータが存在しません。"),
             Self::DapNotExists => f.write_str("DAPにデータが存在しません。"),
             Self::PcDbNotEqualsEditable => f.write_str("PCとDBでデータが異なります。"),

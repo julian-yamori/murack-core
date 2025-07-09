@@ -29,8 +29,7 @@ impl FilterDao for FilterDaoImpl {
         root_id: i32,
     ) -> Result<Vec<FilterRow>> {
         let sql = format!(
-            "select {} from [filter] where [root_id] = ? order by [in_parent_order]",
-            ALL_COLUMNS
+            "select {ALL_COLUMNS} from [filter] where [root_id] = ? order by [in_parent_order]"
         );
         sql_func::select_list(tx, &sql, params![root_id], map_all)
     }

@@ -100,9 +100,9 @@ fn make_output_path(
 
     //総数が2個以上なら連番付け
     let new_name = if all_count > 1 {
-        format!("{}_{}.{}", old_stem, current_idx, ext)
+        format!("{old_stem}_{current_idx}.{ext}")
     } else {
-        format!("{}.{}", old_stem, ext)
+        format!("{old_stem}.{ext}")
     };
 
     Ok(dest.with_file_name(new_name))

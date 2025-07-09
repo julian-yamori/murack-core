@@ -69,7 +69,7 @@ pub fn overwrite(
     song: &AudioMetaDataEntry,
     artworks: &[AudioPictureEntry],
 ) -> Result<()> {
-    let mut tag = Tag::read_from_path(&path)?;
+    let mut tag = Tag::read_from_path(path)?;
 
     match song.title {
         Some(v) => tag.set_title(v),
@@ -156,7 +156,7 @@ fn read_duration(reader: &mut BufReader<File>, path: &Path) -> Result<u32> {
         Err(mut e) => {
             e.offset += offset as usize;
             Err(Error::InvalidDuration {
-                msg: format!("* MP3 Duration Error: \n{}", e),
+                msg: format!("* MP3 Duration Error: \n{e}"),
             }
             .into())
         }
@@ -183,13 +183,13 @@ fn id3_get_release_date(tag: &Tag) -> Result<Option<NaiveDate>> {
         Some(year) => match opt_date {
             Some(date_str) => year_date_to_release_date(year, date_str),
             None => Err(Error::InvalidReleaseDate {
-                value_info: format!("TYER: {}, TDAT: None", year),
+                value_info: format!("TYER: {year}, TDAT: None"),
             }
             .into()),
         },
         None => match opt_date {
             Some(date_str) => Err(Error::InvalidReleaseDate {
-                value_info: format!("TYER: None, TDAT: {}", date_str),
+                value_info: format!("TYER: None, TDAT: {date_str}"),
             }
             .into()),
             None => Ok(None),
@@ -241,16 +241,16 @@ fn trim_null(s: &str) -> &str {
 fn year_date_to_release_date(year: i32, date: &str) -> Result<Option<NaiveDate>> {
     if date.len() != 4 {
         return Err(Error::InvalidReleaseDate {
-            value_info: format!("TYER: {}, TDAT: {}", year, date),
+            value_info: format!("TYER: {year}, TDAT: {date}"),
         }
         .into());
     }
 
-    let s = format!("{}/{}", year, date);
+    let s = format!("{year}/{date}");
     match NaiveDate::parse_from_str(&s, "%Y/%d%m") {
         Ok(date) => Ok(Some(date)),
         Err(_) => Err(Error::InvalidReleaseDate {
-            value_info: format!("TYER: {}, TDAT: {}", year, date),
+            value_info: format!("TYER: {year}, TDAT: {date}"),
         }
         .into()),
     }

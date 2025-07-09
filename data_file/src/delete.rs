@@ -60,7 +60,7 @@ pub fn delete_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
 /// # Arguments
 /// - abs_path: 削除対象曲ファイルの絶対パス
 fn delete_song_checked(abs_path: &Path) -> Result<()> {
-    fs::remove_file(&abs_path).map_err(|e| domain::Error::FileIoError(abs_path.to_owned(), e))?;
+    fs::remove_file(abs_path).map_err(|e| domain::Error::FileIoError(abs_path.to_owned(), e))?;
 
     let lrc_path = utils::get_lrc_path(abs_path);
 
@@ -126,7 +126,7 @@ pub fn trash_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
 /// # Arguments
 /// - abs_path: 削除対象曲ファイルの絶対パス
 fn trash_song_checked(abs_path: &Path) -> Result<()> {
-    trash::delete(&abs_path)?;
+    trash::delete(abs_path)?;
 
     let lrc_path = utils::get_lrc_path(abs_path);
 

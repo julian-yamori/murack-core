@@ -59,7 +59,7 @@ impl CommandAdd {
             self.write_console_progress(song_idx, file_count, song_lib_path);
 
             if let Err(e) = self.unit_add(&mut db, song_lib_path, entry_date) {
-                self.cui.err(format_args!("{}\n", e));
+                self.cui.err(format_args!("{e}\n"));
             }
         }
 
