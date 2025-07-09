@@ -88,7 +88,7 @@ fn dummy_song() -> SongEntry<'static> {
         album_order: "",
         genre_order: "",
         composer_order: "",
-        entry_date: NaiveDate::from_ymd(2000, 1, 1).into(),
+        entry_date: NaiveDate::from_ymd_opt(2000, 1, 1).unwrap().into(),
     }
 }
 
@@ -123,14 +123,14 @@ fn test_group() {
         "jiro",
         &[45, 58],
         4,
-        Some(NaiveDate::from_ymd(2021, 9, 25)),
+        Some(NaiveDate::from_ymd_opt(2021, 9, 25).unwrap()),
     );
     let hit_2 = insert_song(
         &test_db,
         "taro",
         &[],
         5,
-        Some(NaiveDate::from_ymd(1999, 9, 9)),
+        Some(NaiveDate::from_ymd_opt(1999, 9, 9).unwrap()),
     );
     insert_song(&test_db, "taro", &[8, 9, 10], 0, None);
     insert_song(
@@ -138,21 +138,21 @@ fn test_group() {
         "3bro",
         &[],
         2,
-        Some(NaiveDate::from_ymd(1999, 9, 9)),
+        Some(NaiveDate::from_ymd_opt(1999, 9, 9).unwrap()),
     );
     let hit_3 = insert_song(
         &test_db,
         "taro",
         &[999],
         0,
-        Some(NaiveDate::from_ymd(2021, 9, 25)),
+        Some(NaiveDate::from_ymd_opt(2021, 9, 25).unwrap()),
     );
     let hit_4 = insert_song(
         &test_db,
         "taro",
         &[8, 9, 10],
         4,
-        Some(NaiveDate::from_ymd(2021, 9, 25)),
+        Some(NaiveDate::from_ymd_opt(2021, 9, 25).unwrap()),
     );
 
     let filter = Filter {
@@ -603,9 +603,15 @@ fn test_date() {
     let test_db = TestDb::new(&mut db);
 
     let song_0 = insert_song(&test_db, None);
-    let song_1 = insert_song(&test_db, Some(NaiveDate::from_ymd(1998, 12, 10)));
-    let song_2 = insert_song(&test_db, Some(NaiveDate::from_ymd(2012, 4, 5)));
-    let song_3 = insert_song(&test_db, Some(NaiveDate::from_ymd(2021, 9, 26)));
+    let song_1 = insert_song(
+        &test_db,
+        Some(NaiveDate::from_ymd_opt(1998, 12, 10).unwrap()),
+    );
+    let song_2 = insert_song(&test_db, Some(NaiveDate::from_ymd_opt(2012, 4, 5).unwrap()));
+    let song_3 = insert_song(
+        &test_db,
+        Some(NaiveDate::from_ymd_opt(2021, 9, 26).unwrap()),
+    );
 
     let mut mocks = Mocks::new();
     mocks.run_target(|t| {

@@ -335,12 +335,12 @@ mod tests {
         comm_valid(
             Some("2021"),
             Some("2403"),
-            Some(NaiveDate::from_ymd(2021, 3, 24)),
+            Some(NaiveDate::from_ymd_opt(2021, 3, 24).unwrap()),
         );
         comm_valid(
             Some("123"),
             Some("0706"),
-            Some(NaiveDate::from_ymd(123, 6, 7)),
+            Some(NaiveDate::from_ymd_opt(123, 6, 7).unwrap()),
         );
         comm_invalid(Some("350"), Some("219"), "TYER: 350, TDAT: 219");
         comm_invalid(Some("2001"), Some("211"), "TYER: 2001, TDAT: 211");
@@ -356,11 +356,17 @@ mod tests {
     fn test_id3_set_release_date() {
         let mut tag = Tag::new();
 
-        id3_set_release_date(&mut tag, &Some(NaiveDate::from_ymd(2021, 3, 16)));
+        id3_set_release_date(
+            &mut tag,
+            &Some(NaiveDate::from_ymd_opt(2021, 3, 16).unwrap()),
+        );
         assert_eq!(tag.year(), Some(2021));
         assert_eq!(tag.get(KEY_DATE).unwrap().content().text(), Some("1603"));
 
-        id3_set_release_date(&mut tag, &Some(NaiveDate::from_ymd(198, 11, 3)));
+        id3_set_release_date(
+            &mut tag,
+            &Some(NaiveDate::from_ymd_opt(198, 11, 3).unwrap()),
+        );
         assert_eq!(tag.year(), Some(198));
         assert_eq!(tag.get(KEY_DATE).unwrap().content().text(), Some("0311"));
 

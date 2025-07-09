@@ -305,7 +305,7 @@ mod tests {
             track_max: Some(34),
             disc_number: Some(56),
             disc_max: Some(789),
-            release_date: Some(NaiveDate::from_ymd(1998, 8, 31).into()),
+            release_date: Some(NaiveDate::from_ymd_opt(1998, 8, 31).unwrap().into()),
             rating: 5,
             original_song: "原曲",
             suggest_target: true,
@@ -318,7 +318,7 @@ mod tests {
             album_artist_order: "あるばむあーてぃすと",
             composer_order: "さっきょくしゃ",
             genre_order: "じゃんる",
-            entry_date: NaiveDate::from_ymd(2021, 9, 20).into(),
+            entry_date: NaiveDate::from_ymd_opt(2021, 9, 20).unwrap().into(),
         }
     }
     fn entry_empty(song_path: &LibSongPath) -> SongEntry {
@@ -349,7 +349,7 @@ mod tests {
             album_artist_order: "",
             composer_order: "",
             genre_order: "",
-            entry_date: NaiveDate::from_ymd(2021, 9, 20).into(),
+            entry_date: NaiveDate::from_ymd_opt(2021, 9, 20).unwrap().into(),
         }
     }
 
@@ -493,9 +493,11 @@ mod tests {
 
     #[test]
     fn test_count_all_3() {
-        let song_paths = [LibSongPath::new("test/hoge.flac"),
+        let song_paths = [
+            LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
-            LibSongPath::new("piyo.mp3")];
+            LibSongPath::new("piyo.mp3"),
+        ];
 
         let mut db = ConnectionFactory::Memory.open().unwrap();
         let tx = db.transaction().unwrap();
@@ -563,9 +565,11 @@ mod tests {
 
     #[test]
     fn test_exists_path() {
-        let song_paths = [LibSongPath::new("test/hoge.flac"),
+        let song_paths = [
+            LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
-            LibSongPath::new("piyo.mp3")];
+            LibSongPath::new("piyo.mp3"),
+        ];
 
         let mut db = ConnectionFactory::Memory.open().unwrap();
         let tx = db.transaction().unwrap();
@@ -590,9 +594,11 @@ mod tests {
 
     #[test]
     fn test_delete() {
-        let song_paths = [LibSongPath::new("test/hoge.flac"),
+        let song_paths = [
+            LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
-            LibSongPath::new("piyo.mp3")];
+            LibSongPath::new("piyo.mp3"),
+        ];
 
         let mut db = ConnectionFactory::Memory.open().unwrap();
         let tx = db.transaction().unwrap();

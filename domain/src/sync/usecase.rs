@@ -105,7 +105,7 @@ mod tests {
             track_max: Some(2),
             disc_number: Some(3),
             disc_max: Some(4),
-            release_date: Some(NaiveDate::from_ymd(2013, 7, 14)),
+            release_date: Some(NaiveDate::from_ymd_opt(2013, 7, 14).unwrap()),
             memo: Some("メモ".to_owned()),
             lyrics: Some("歌詞".to_owned()),
             artworks: vec![SongArtwork {
@@ -125,7 +125,7 @@ mod tests {
             LibSongPath::new("song.flac")
         }
         fn entry_date() -> NaiveDate {
-            NaiveDate::from_ymd(2021, 9, 21)
+            NaiveDate::from_ymd_opt(2021, 9, 21).unwrap()
         }
 
         let mut mocks = Mocks::new();
@@ -164,7 +164,7 @@ mod tests {
             LibSongPath::new("test/hoge/fuga.mp3")
         }
         fn entry_date() -> NaiveDate {
-            NaiveDate::from_ymd(2021, 9, 21)
+            NaiveDate::from_ymd_opt(2021, 9, 21).unwrap()
         }
 
         let mut mocks = Mocks::new();
