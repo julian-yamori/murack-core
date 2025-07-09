@@ -28,7 +28,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData> {
     let file = File::open(path).map_err(|e| Error::FileIoError(path.to_owned(), e))?;
     let mut reader = BufReader::new(file);
 
-    let tag = Tag::read_from(&mut reader)?;
+    let tag = Tag::read_from2(&mut reader)?;
 
     let duration = read_duration(&mut reader, path)?;
 

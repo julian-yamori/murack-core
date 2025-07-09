@@ -428,7 +428,7 @@ impl ResolveExistanceImpl {
         song_path: &LibSongPath,
         pc_song: &mut SongSync,
     ) -> Result<()> {
-        let entry_date = Local::today().naive_local();
+        let entry_date = Local::now().naive_local().date();
 
         db.run_in_transaction(|tx| {
             self.sync_usecase

@@ -36,7 +36,7 @@ impl CommandAdd {
 
     /// このコマンドを実行
     pub fn run(&self) -> Result<()> {
-        let entry_date = Local::today().naive_local();
+        let entry_date = Local::now().naive_local().date();
 
         //指定されたパスから音声ファイルを検索
         let path_list = self
