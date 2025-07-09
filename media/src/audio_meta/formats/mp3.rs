@@ -1,14 +1,18 @@
 //! MP3フォーマット取扱
 
-use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
-use crate::Error;
-use anyhow::Result;
-use chrono::{Datelike, NaiveDate};
-use id3::Tag;
 use std::{
     fs::File,
     io::{BufReader, Seek},
     path::Path,
+};
+
+use anyhow::Result;
+use chrono::{Datelike, NaiveDate};
+use id3::{Tag, TagLike};
+
+use crate::{
+    Error,
+    audio_meta::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry},
 };
 
 const KEY_COMPOSER: &str = "TCOM";
@@ -89,7 +93,9 @@ pub fn overwrite(
     }
     match song.composer {
         Some(v) => tag.set_text(KEY_COMPOSER, v),
-        None => tag.remove(KEY_COMPOSER),
+        None => {
+            tag.remove(KEY_COMPOSER);
+        }
     }
     match song.track_number {
         Some(v) => tag.set_track(v as u32),
@@ -112,7 +118,7 @@ pub fn overwrite(
 
     tag.remove_comment(Some(""), None);
     if let Some(s) = song.memo {
-        tag.add_comment(id3::frame::Comment {
+        tag.add_frame(id3::frame::Comment {
             lang: "".to_owned(),
             description: "".to_owned(),
             text: s.to_owned(),
@@ -283,7 +289,7 @@ fn id3_set_artworks(tag: &mut Tag, artworks: &[AudioPictureEntry]) -> Result<()>
             .into());
         }
 
-        tag.add_picture(Picture {
+        tag.add_frame(Picture {
             mime_type: artwork.mime_type.to_owned(),
             picture_type: PictureType::Undefined(artwork.picture_type),
             description: artwork.description.to_owned(),
