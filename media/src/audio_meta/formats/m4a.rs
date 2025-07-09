@@ -17,7 +17,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData> {
     let tag = Tag::read_from_path(path)?;
 
     Ok(AudioMetaData {
-        duration: get_duration(&tag)?,
+        duration: get_duration(&tag),
         title: opt_str_to_owned(tag.title()),
         artist: opt_str_to_owned(tag.artist()),
         album: opt_str_to_owned(tag.album()),
@@ -164,14 +164,8 @@ pub fn overwrite(
 }
 
 /// Tagから再生時間を取得
-fn get_duration(tag: &Tag) -> Result<u32> {
-    match tag.duration() {
-        Some(d) => Ok(d.as_millis() as u32),
-        None => Err(Error::InvalidDuration {
-            msg: "Duration is None".to_owned(),
-        }
-        .into()),
-    }
+fn get_duration(tag: &Tag) -> u32 {
+    tag.duration().as_millis() as u32
 }
 
 /// Option<&str> → Option<String>
