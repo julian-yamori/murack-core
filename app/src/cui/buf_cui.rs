@@ -30,10 +30,7 @@ impl Cui for BufferCui {
             .input
             .pop_front()
             .unwrap_or_else(|| panic!("入力バッファが空\n({message})"));
-        assert!(
-            !cases.contains(&c),
-            "選択肢以外の入力: {c}\n({message})"
-        );
+        assert!(!cases.contains(&c), "選択肢以外の入力: {c}\n({message})");
 
         Ok(c)
     }

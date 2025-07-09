@@ -55,9 +55,7 @@ impl PlaylistDao for PlaylistDaoImpl {
 
     /// 全レコードを取得(in_folder_order順)
     fn select_all_order_folder<'c>(&self, tx: &TransactionWrapper<'c>) -> Result<Vec<PlaylistRow>> {
-        let sql = format!(
-            "select {ALL_COLUMNS} from [playlist] order by [in_folder_order]"
-        );
+        let sql = format!("select {ALL_COLUMNS} from [playlist] order by [in_folder_order]");
         sql_func::select_list(tx, &sql, [], map_all)
     }
 

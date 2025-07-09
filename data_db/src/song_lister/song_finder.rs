@@ -45,9 +45,8 @@ impl SongFinder for SongFinderImpl {
 
         //プレイリスト順なら、取得カラムを一つ追加
         if plist.sort_type == SortType::Playlist {
-            clms_query = format!(
-                "{clms_query}, [playlist_song].[order] as [{PLIST_SONG_IDX_COLUMN}]"
-            );
+            clms_query =
+                format!("{clms_query}, [playlist_song].[order] as [{PLIST_SONG_IDX_COLUMN}]");
         }
 
         //select句とorder byを結合

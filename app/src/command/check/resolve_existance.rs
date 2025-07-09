@@ -199,8 +199,6 @@ impl ResolveExistanceImpl {
             cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
             cui_outln!(cui);
 
-            
-
             cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
 
@@ -244,8 +242,6 @@ impl ResolveExistanceImpl {
             cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
             cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
             cui_outln!(cui);
-
-            
 
             cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
@@ -295,8 +291,6 @@ impl ResolveExistanceImpl {
             cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
             cui_outln!(cui);
 
-            
-
             cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
 
@@ -344,8 +338,6 @@ impl ResolveExistanceImpl {
             cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
             cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
             cui_outln!(cui);
-
-            
 
             cui.input_case(&['2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
