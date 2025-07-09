@@ -1,14 +1,14 @@
-use super::{messages, ResolveFileExistanceResult};
-use crate::{cui::Cui, AppComponents, Config};
+use super::{ResolveFileExistanceResult, messages};
+use crate::{AppComponents, Config, cui::Cui};
 use anyhow::Result;
 use chrono::Local;
 use domain::{
+    FileLibraryRepository,
     check::CheckIssueSummary,
     db_wrapper::ConnectionWrapper,
     path::LibSongPath,
     song::SongUsecase,
     sync::{DbSongSyncRepository, SongSync, SyncUsecase},
-    FileLibraryRepository,
 };
 use mockall::automock;
 use std::rc::Rc;

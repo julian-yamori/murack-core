@@ -1,7 +1,7 @@
 use std::{fmt, io::Cursor};
 
 use anyhow::{Context, Result};
-use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, ImageResult};
+use image::{ImageResult, codecs::jpeg::JpegEncoder, imageops::FilterType};
 
 /// 縮小版アートワークのサイズ
 const MINI_SIZE: u32 = 112;

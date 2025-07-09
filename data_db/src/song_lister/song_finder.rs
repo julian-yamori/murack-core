@@ -1,8 +1,9 @@
-use super::{esc::esci, SongListerFilter};
+use super::{SongListerFilter, esc::esci};
 use crate::{
+    Error,
     converts::DbLibSongPath,
     playlist::{PlaylistDao, PlaylistSongDao},
-    sql_func, Error,
+    sql_func,
 };
 use anyhow::Result;
 use domain::{
@@ -81,7 +82,10 @@ impl SongFinderImpl {
         }
         //プレイリストに含まれる曲の検索クエリを返す
 
-        Ok(format!(" from [playlist_song] join [song] on [playlist_song].[song_id] = [song].[rowid] where [playlist_song].[playlist_id] = {}", esci(Some(plist.rowid))))
+        Ok(format!(
+            " from [playlist_song] join [song] on [playlist_song].[song_id] = [song].[rowid] where [playlist_song].[playlist_id] = {}",
+            esci(Some(plist.rowid))
+        ))
     }
 
     /// プレイリストの曲をリストアップし、playlist_songテーブルを更新する

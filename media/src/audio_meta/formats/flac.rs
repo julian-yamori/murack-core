@@ -5,8 +5,8 @@ use crate::Error;
 use anyhow::Result;
 use chrono::NaiveDate;
 use metaflac::{
-    block::{Block, BlockType, PictureType, StreamInfo, VorbisComment},
     Tag,
+    block::{Block, BlockType, PictureType, StreamInfo, VorbisComment},
 };
 use std::path::Path;
 

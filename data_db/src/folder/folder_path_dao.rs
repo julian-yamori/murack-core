@@ -6,7 +6,7 @@ use crate::{
 use anyhow::Result;
 use domain::{db_wrapper::TransactionWrapper, folder::FolderIdMayRoot, path::LibDirPath};
 use mockall::automock;
-use rusqlite::{params, Row};
+use rusqlite::{Row, params};
 
 /// folder_pathテーブルのDAO
 #[automock]

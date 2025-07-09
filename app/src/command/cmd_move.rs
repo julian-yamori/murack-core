@@ -1,11 +1,11 @@
 use crate::{AppComponents, Config, Error};
 use anyhow::Result;
 use domain::{
+    FileLibraryRepository,
     db_wrapper::{ConnectionFactory, ConnectionWrapper},
     folder::DbFolderRepository,
     path::LibPathStr,
     song::{DbSongRepository, SongUsecase},
-    FileLibraryRepository,
 };
 use std::rc::Rc;
 

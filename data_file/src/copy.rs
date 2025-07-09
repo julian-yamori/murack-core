@@ -1,6 +1,6 @@
 //! 曲データのコピー機能
 
-use crate::{utils, Error};
+use crate::{Error, utils};
 use anyhow::{Context, Result};
 use domain::path::LibSongPath;
 use std::{fs, path::Path};

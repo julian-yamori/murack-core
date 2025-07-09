@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
     rc::Rc,
 };
-use walk_base_2_app::{command::*, cui::Cui, Config};
+use walk_base_2_app::{Config, command::*, cui::Cui};
 
 /// WalkBase2ライブラリのエントリポイント
 /// # Arguments

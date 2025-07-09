@@ -1,10 +1,10 @@
 use super::CheckIssueSummary;
 use crate::{
+    Error, FileLibraryRepository,
     db_wrapper::ConnectionWrapper,
     path::LibSongPath,
     song::SongItemKind,
     sync::{DbSongSyncRepository, SongSync},
-    Error, FileLibraryRepository,
 };
 use anyhow::Result;
 use mockall::automock;

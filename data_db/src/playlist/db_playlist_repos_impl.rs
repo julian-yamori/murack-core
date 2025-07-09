@@ -1,5 +1,5 @@
 use super::{PlaylistDao, PlaylistRow};
-use crate::{converts::DbPlaylistType, error::PlaylistNoParentsDetectedItem, sql_func, Error};
+use crate::{Error, converts::DbPlaylistType, error::PlaylistNoParentsDetectedItem, sql_func};
 use anyhow::Result;
 use domain::{
     db_wrapper::TransactionWrapper,

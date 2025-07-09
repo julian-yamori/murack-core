@@ -1,4 +1,4 @@
-use crate::{cui::Cui, AppComponents};
+use crate::{AppComponents, cui::Cui};
 use anyhow::Result;
 use std::rc::Rc;
 

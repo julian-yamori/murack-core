@@ -1,10 +1,10 @@
 use super::messages;
-use crate::{cui::Cui, AppComponents, Config};
+use crate::{AppComponents, Config, cui::Cui};
 use anyhow::Result;
 use domain::{
+    FileLibraryRepository,
     check::{CheckIssueSummary, CheckUsecase},
     path::LibSongPath,
-    FileLibraryRepository,
 };
 use mockall::automock;
 use std::rc::Rc;

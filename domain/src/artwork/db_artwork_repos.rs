@@ -38,5 +38,5 @@ pub trait DbArtworkRepository {
     /// # Arguments
     /// - song_id 紐付けを削除する曲のID
     fn unregister_song_artworks<'c>(&self, tx: &TransactionWrapper<'c>, song_id: i32)
-        -> Result<()>;
+    -> Result<()>;
 }

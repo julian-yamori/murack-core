@@ -1,4 +1,4 @@
-use crate::{cui::Cui, AppComponents, Config};
+use crate::{AppComponents, Config, cui::Cui};
 use anyhow::Result;
 use domain::{
     dap::{DapPlaylistObserver, DapPlaylistUsecase},

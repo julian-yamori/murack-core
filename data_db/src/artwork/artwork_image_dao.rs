@@ -2,7 +2,7 @@ use super::{super::sql_func, ArtworkImageRow};
 use anyhow::Result;
 use domain::db_wrapper::TransactionWrapper;
 use mockall::automock;
-use rusqlite::{params, Row};
+use rusqlite::{Row, params};
 
 /// ArtworkImageRowのDAO
 #[automock]

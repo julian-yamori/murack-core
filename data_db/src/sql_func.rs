@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use domain::db_wrapper::TransactionWrapper;
-use rusqlite::{types::FromSql, OptionalExtension, Params, Row};
+use rusqlite::{OptionalExtension, Params, Row, types::FromSql};
 
 /// selectで1行を取得し、Optionで返す
 ///

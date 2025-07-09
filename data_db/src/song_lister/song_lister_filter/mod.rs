@@ -2,7 +2,7 @@
 mod tests;
 
 use super::esc::escs;
-use crate::{like_esc, sql_func, Error};
+use crate::{Error, like_esc, sql_func};
 use anyhow::Result;
 use domain::{
     db_wrapper::TransactionWrapper,
@@ -221,7 +221,10 @@ fn get_query_filter_where_tag(filter: &Filter) -> Result<String> {
 
     //タグで検索するクエリを取得する関数
     fn get_query_where_by_tag(tag_id: &str) -> String {
-        format!("exists(select * from [song_tags] AS t where t.[song_id] = song.[rowid] and t.[tag_id] = {})", tag_id)
+        format!(
+            "exists(select * from [song_tags] AS t where t.[song_id] = song.[rowid] and t.[tag_id] = {})",
+            tag_id
+        )
     }
 
     Ok(match filter.range {

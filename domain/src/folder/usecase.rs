@@ -1,5 +1,5 @@
 use super::{DbFolderRepository, FolderIdMayRoot};
-use crate::{db_wrapper::TransactionWrapper, path::LibDirPath, song::DbSongRepository, Error};
+use crate::{Error, db_wrapper::TransactionWrapper, path::LibDirPath, song::DbSongRepository};
 use anyhow::Result;
 use mockall::automock;
 use std::rc::Rc;

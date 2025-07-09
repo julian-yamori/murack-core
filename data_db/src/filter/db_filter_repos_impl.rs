@@ -1,5 +1,5 @@
 use super::{FilterDao, FilterRow};
-use crate::{error::FilterNoParentsDetectedItem, Error};
+use crate::{Error, error::FilterNoParentsDetectedItem};
 use anyhow::Result;
 use domain::{
     db_wrapper::TransactionWrapper,

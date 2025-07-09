@@ -1,4 +1,4 @@
-use crate::{cui::Cui, AppComponents, Config, Error};
+use crate::{AppComponents, Config, Error, cui::Cui};
 use anyhow::Result;
 use domain::{db_wrapper::ConnectionFactory, path::LibPathStr, song::SongUsecase};
 use std::rc::Rc;

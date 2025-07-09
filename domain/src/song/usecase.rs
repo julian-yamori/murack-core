@@ -1,12 +1,12 @@
 use super::DbSongRepository;
 use crate::{
+    Error, FileLibraryRepository,
     artwork::DbArtworkRepository,
     db_wrapper::TransactionWrapper,
     folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
     path::{LibPathStr, LibSongPath, RelativeSongPath},
     playlist::{DbPlaylistRepository, DbPlaylistSongRepository},
     tag::DbSongTagRepository,
-    Error, FileLibraryRepository,
 };
 use anyhow::Result;
 use mockall::automock;
@@ -263,6 +263,7 @@ impl SongUsecaseImpl {
 mod tests {
     use super::*;
     use crate::{
+        MockFileLibraryRepository,
         artwork::MockDbArtworkRepository,
         db_wrapper::ConnectionFactory,
         folder::{MockDbFolderRepository, MockFolderUsecase},
@@ -271,7 +272,6 @@ mod tests {
         playlist::{MockDbPlaylistRepository, MockDbPlaylistSongRepository},
         song::MockDbSongRepository,
         tag::MockDbSongTagRepository,
-        MockFileLibraryRepository,
     };
     use paste::paste;
 

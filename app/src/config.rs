@@ -4,7 +4,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use toml::{value::Table, Value};
+use toml::{Value, value::Table};
 
 /// 設定ファイル取扱
 #[derive(Debug, PartialEq)]

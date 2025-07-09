@@ -3,7 +3,7 @@
 use crate::utils;
 use anyhow::Result;
 use domain::{artwork::SongArtwork, path::LibSongPath, sync::SongSync};
-use media::audio_meta::{formats, AudioMetaData, FormatType};
+use media::audio_meta::{AudioMetaData, FormatType, formats};
 use std::{
     fs::{self, File},
     io::prelude::*,

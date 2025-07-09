@@ -1,9 +1,10 @@
 use paste::paste;
 use std::rc::Rc;
-use walk_base_2_app::{cui::Cui, AppComponents, Config};
+use walk_base_2_app::{AppComponents, Config, cui::Cui};
 use walk_base_2_data_db::DbComponents;
 use walk_base_2_data_file::{DapRepositoryImpl, FileLibraryRepositoryImpl};
 use walk_base_2_domain::{
+    FileLibraryRepository,
     artwork::DbArtworkRepository,
     check::{CheckUsecase, CheckUsecaseImpl},
     dap::{DapPlaylistUsecase, DapPlaylistUsecaseImpl},
@@ -12,7 +13,6 @@ use walk_base_2_domain::{
     playlist::DbPlaylistRepository,
     song::{DbSongRepository, SongUsecase, SongUsecaseImpl},
     sync::{DbSongSyncRepository, SyncUsecase, SyncUsecaseImpl},
-    FileLibraryRepository,
 };
 
 macro_rules! struct_define {

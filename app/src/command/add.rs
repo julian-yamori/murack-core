@@ -1,11 +1,11 @@
-use crate::{cui::Cui, AppComponents, Config, Error};
+use crate::{AppComponents, Config, Error, cui::Cui};
 use anyhow::Result;
 use chrono::{Local, NaiveDate};
 use domain::{
+    FileLibraryRepository,
     db_wrapper::{ConnectionFactory, ConnectionWrapper},
     path::{LibPathStr, LibSongPath},
     sync::SyncUsecase,
-    FileLibraryRepository,
 };
 use std::rc::Rc;
 

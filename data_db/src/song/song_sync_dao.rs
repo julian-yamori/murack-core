@@ -3,7 +3,7 @@ use crate::{converts::DbLibSongPathRef, sql_func};
 use anyhow::Result;
 use domain::{db_wrapper::TransactionWrapper, path::LibSongPath};
 use mockall::automock;
-use rusqlite::{named_params, params, Row};
+use rusqlite::{Row, named_params, params};
 
 /// SongSyncRowのDAO
 #[automock]
@@ -45,9 +45,10 @@ impl SongSyncDao for SongSyncDaoImpl {
         song_id: i32,
         entry: &SongSyncEntry<'c>,
     ) -> Result<()> {
-        sql_func::execute(tx,
+        sql_func::execute(
+            tx,
             "update [song] set [duration] = :duration, [title] = :title, [artist] = :artist, [album] = :album, [genre] = :genre, [album_artist] = :album_artist, [composer] = :composer, [track_number] = :track_number, [track_max] = :track_max, [disc_number] = :disc_number, [disc_max] = :disc_max, [release_date] = :release_date, [memo] = :memo, [lyrics] = :lyrics, [title_order] = :title_order, [artist_order] = :artist_order, [album_order] = :album_order, [album_artist_order] = :album_artist_order, [composer_order] = :composer_order, [genre_order] = :genre_order where [rowid] = :rowid",
-            named_params!{
+            named_params! {
                 ":duration": entry.duration,
                 ":title": entry.title,
                 ":artist": entry.artist,
@@ -69,7 +70,8 @@ impl SongSyncDao for SongSyncDaoImpl {
                 ":composer_order": entry.composer_order,
                 ":genre_order": entry.genre_order,
                 ":rowid": song_id,
-            })
+            },
+        )
     }
 }
 

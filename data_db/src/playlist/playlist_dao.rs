@@ -3,7 +3,7 @@ use crate::sql_func;
 use anyhow::Result;
 use domain::db_wrapper::TransactionWrapper;
 use mockall::automock;
-use rusqlite::{params, Row};
+use rusqlite::{Row, params};
 
 /// playlistテーブルのDAO
 #[automock]

@@ -1,14 +1,14 @@
-use super::{messages, SongItemConflict};
-use crate::{cui::Cui, AppComponents, Config};
+use super::{SongItemConflict, messages};
+use crate::{AppComponents, Config, cui::Cui};
 use anyhow::Result;
 use domain::{
+    FileLibraryRepository,
     artwork::{DbArtworkRepository, SongArtwork},
     check::CheckUsecase,
     db_wrapper::ConnectionWrapper,
     path::LibSongPath,
     song::SongItemKind,
     sync::{DbSongSync, DbSongSyncRepository, SongSync},
-    FileLibraryRepository,
 };
 use mockall::automock;
 use std::rc::Rc;

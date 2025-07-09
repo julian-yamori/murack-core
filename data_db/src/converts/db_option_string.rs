@@ -26,11 +26,7 @@ impl From<Option<String>> for DbOptionString {
 
 impl From<DbOptionString> for Option<String> {
     fn from(s: DbOptionString) -> Self {
-        if s.0.is_empty() {
-            None
-        } else {
-            Some(s.0)
-        }
+        if s.0.is_empty() { None } else { Some(s.0) }
     }
 }
 

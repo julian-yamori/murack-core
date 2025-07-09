@@ -85,7 +85,11 @@ impl SongArtworkDao for SongArtworkDaoImpl {
         picture_type: u8,
         description: &str,
     ) -> Result<()> {
-        sql_func::execute(tx, "insert into [song_artwork]([song_id],[order],[artwork_id],[picture_type],[description]) values(?,?,?,?,?)", params![song_id, order, artwork_id, picture_type, description])
+        sql_func::execute(
+            tx,
+            "insert into [song_artwork]([song_id],[order],[artwork_id],[picture_type],[description]) values(?,?,?,?,?)",
+            params![song_id, order, artwork_id, picture_type, description],
+        )
     }
 
     /// 曲IDを指定して削除

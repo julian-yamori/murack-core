@@ -10,7 +10,7 @@ use domain::{
     path::{LibDirPath, LibSongPath},
 };
 use mockall::automock;
-use rusqlite::{named_params, params, Row};
+use rusqlite::{Row, named_params, params};
 
 /// songテーブルのDAO
 #[automock]
@@ -580,12 +580,16 @@ mod tests {
         target.insert(&tx, &entry_fill(&song_paths[1])).unwrap();
         target.insert(&tx, &entry_empty(&song_paths[2])).unwrap();
 
-        assert!(target
-            .exists_path(&tx, &LibSongPath::new("test/hoge.flac"))
-            .unwrap());
-        assert!(!target
-            .exists_path(&tx, &LibSongPath::new("none.m4a"))
-            .unwrap());
+        assert!(
+            target
+                .exists_path(&tx, &LibSongPath::new("test/hoge.flac"))
+                .unwrap()
+        );
+        assert!(
+            !target
+                .exists_path(&tx, &LibSongPath::new("none.m4a"))
+                .unwrap()
+        );
     }
 
     #[test]

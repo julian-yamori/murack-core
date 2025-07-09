@@ -1,5 +1,6 @@
-use crate::{cui::Cui, Config};
+use crate::{Config, cui::Cui};
 use domain::{
+    FileLibraryRepository,
     artwork::DbArtworkRepository,
     check::CheckUsecase,
     dap::DapPlaylistUsecase,
@@ -8,7 +9,6 @@ use domain::{
     playlist::DbPlaylistRepository,
     song::{DbSongRepository, SongUsecase},
     sync::{DbSongSyncRepository, SyncUsecase},
-    FileLibraryRepository,
 };
 use paste::paste;
 use std::rc::Rc;

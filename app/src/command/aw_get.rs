@@ -1,6 +1,6 @@
-use crate::{cui::Cui, AppComponents, Config, Error};
-use anyhow::{anyhow, Context, Result};
-use domain::{path::LibSongPath, FileLibraryRepository};
+use crate::{AppComponents, Config, Error, cui::Cui};
+use anyhow::{Context, Result, anyhow};
+use domain::{FileLibraryRepository, path::LibSongPath};
 use std::{
     fs,
     path::{Path, PathBuf},

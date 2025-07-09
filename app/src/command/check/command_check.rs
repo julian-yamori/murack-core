@@ -6,14 +6,14 @@ use super::{
     Args, ResolveDap, ResolveDapImpl, ResolveDataMatch, ResolveDataMatchImpl, ResolveExistance,
     ResolveExistanceImpl, ResolveFileExistanceResult,
 };
-use crate::{cui::Cui, AppComponents, Config};
+use crate::{AppComponents, Config, cui::Cui};
 use anyhow::Result;
 use domain::{
+    FileLibraryRepository,
     check::{CheckIssueSummary, CheckUsecase},
     db_wrapper::{ConnectionFactory, ConnectionWrapper},
     path::LibSongPath,
     song::DbSongRepository,
-    FileLibraryRepository,
 };
 use std::collections::BTreeSet;
 use std::rc::Rc;
@@ -255,8 +255,8 @@ mod tests {
     use super::*;
     use crate::cui::BufferCui;
     use domain::{
-        check::MockCheckUsecase, mocks, path::LibPathStr, song::MockDbSongRepository,
-        MockFileLibraryRepository,
+        MockFileLibraryRepository, check::MockCheckUsecase, mocks, path::LibPathStr,
+        song::MockDbSongRepository,
     };
     use paste::paste;
     use std::path::PathBuf;
