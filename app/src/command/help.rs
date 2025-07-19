@@ -1,17 +1,21 @@
-use crate::{AppComponents, cui::Cui};
 use anyhow::Result;
-use std::rc::Rc;
+
+use crate::cui::Cui;
 
 /// ヘルプ出力コマンド
-pub struct CommandHelp {
-    cui: Rc<dyn Cui>,
+pub struct CommandHelp<CUI>
+where
+    CUI: Cui,
+{
+    cui: CUI,
 }
 
-impl CommandHelp {
-    pub fn new(_command_line: &[String], app_components: &impl AppComponents) -> Result<Self> {
-        Ok(Self {
-            cui: app_components.cui().clone(),
-        })
+impl<CUI> CommandHelp<CUI>
+where
+    CUI: Cui,
+{
+    pub fn new(_command_line: &[String], cui: CUI) -> Result<Self> {
+        Ok(Self { cui })
     }
 
     /// このコマンドを実行

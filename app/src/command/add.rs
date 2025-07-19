@@ -1,43 +1,55 @@
-use crate::{AppComponents, Config, Error, cui::Cui};
 use anyhow::Result;
-use chrono::{Local, NaiveDate};
 use domain::{
     FileLibraryRepository,
-    db_wrapper::{ConnectionFactory, ConnectionWrapper},
+    db::DbTransaction,
     path::{LibPathStr, LibSongPath},
     sync::SyncUsecase,
 };
-use std::rc::Rc;
+use sqlx::PgPool;
+
+use crate::{Config, Error, cui::Cui, db_pool_connect};
 
 /// addコマンド
 ///
 /// 曲をライブラリに追加する
-pub struct CommandAdd {
+pub struct CommandAdd<CUI, FR, SS>
+where
+    CUI: Cui,
+    FR: FileLibraryRepository,
+    SS: SyncUsecase,
+{
     args: Args,
 
-    config: Rc<Config>,
-    cui: Rc<dyn Cui>,
-    connection_factory: Rc<ConnectionFactory>,
-    file_library_repository: Rc<dyn FileLibraryRepository>,
-    sync_usecase: Rc<dyn SyncUsecase>,
+    config: Config,
+    cui: CUI,
+    file_library_repository: FR,
+    sync_usecase: SS,
 }
 
-impl CommandAdd {
-    pub fn new(command_line: &[String], app_components: &impl AppComponents) -> Result<Self> {
+impl<CUI, FR, SS> CommandAdd<CUI, FR, SS>
+where
+    CUI: Cui,
+    FR: FileLibraryRepository,
+    SS: SyncUsecase,
+{
+    pub fn new(
+        command_line: &[String],
+        config: Config,
+        cui: CUI,
+        file_library_repository: FR,
+        sync_usecase: SS,
+    ) -> Result<Self> {
         Ok(Self {
             args: parse_args(command_line)?,
-            config: app_components.config().clone(),
-            cui: app_components.cui().clone(),
-            connection_factory: app_components.connection_factory().clone(),
-            file_library_repository: app_components.file_library_repository().clone(),
-            sync_usecase: app_components.sync_usecase().clone(),
+            config,
+            cui,
+            file_library_repository,
+            sync_usecase,
         })
     }
 
     /// このコマンドを実行
-    pub fn run(&self) -> Result<()> {
-        let entry_date = Local::now().naive_local().date();
-
+    pub async fn run(&self) -> Result<()> {
         //指定されたパスから音声ファイルを検索
         let path_list = self
             .file_library_repository
@@ -52,13 +64,13 @@ impl CommandAdd {
             .into());
         }
 
-        let mut db = self.connection_factory.open()?;
+        let db_pool = db_pool_connect(&self.config.database_url).await?;
 
         //取得した全ファイルについて処理
         for (song_idx, song_lib_path) in path_list.iter().enumerate() {
             self.write_console_progress(song_idx, file_count, song_lib_path);
 
-            if let Err(e) = self.unit_add(&mut db, song_lib_path, entry_date) {
+            if let Err(e) = self.unit_add(&db_pool, song_lib_path).await {
                 self.cui.err(format_args!("{e}\n"));
             }
         }
@@ -71,22 +83,20 @@ impl CommandAdd {
     /// # Arguments
     /// - song_path: 作業対象の曲のパス
     /// - entry_date: 登録日
-    fn unit_add(
-        &self,
-        db: &mut ConnectionWrapper,
-        song_path: &LibSongPath,
-        entry_date: NaiveDate,
-    ) -> Result<()> {
+    async fn unit_add(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<()> {
         //PCファイル情報読み込み
         let mut pc_song = self
             .file_library_repository
             .read_song_sync(&self.config.pc_lib, song_path)?;
 
         //DBに登録
-        db.run_in_transaction(|tx| {
-            self.sync_usecase
-                .register_db(tx, song_path, &mut pc_song, entry_date)
-        })?;
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
+        self.sync_usecase
+            .register_db(&mut tx, song_path, &mut pc_song)
+            .await?;
+        tx.commit().await?;
 
         //PCからDAPにコピー
         self.file_library_repository.copy_song_over_lib(

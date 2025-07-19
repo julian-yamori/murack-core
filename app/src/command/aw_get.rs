@@ -1,30 +1,43 @@
-use crate::{AppComponents, Config, Error, cui::Cui};
+use crate::{Config, Error, cui::Cui};
+
 use anyhow::{Context, Result, anyhow};
 use domain::{FileLibraryRepository, path::LibSongPath};
+
 use std::{
     fs,
     path::{Path, PathBuf},
-    rc::Rc,
 };
 
 /// aw-getコマンド
 ///
 /// 曲ファイルからアートワークを取得する
-pub struct CommandArtworkGet {
+pub struct CommandArtworkGet<CUI, FR>
+where
+    CUI: Cui,
+    FR: FileLibraryRepository,
+{
     args: Args,
-
-    config: Rc<Config>,
-    cui: Rc<dyn Cui>,
-    file_library_repository: Rc<dyn FileLibraryRepository>,
+    config: Config,
+    cui: CUI,
+    file_library_repository: FR,
 }
 
-impl CommandArtworkGet {
-    pub fn new(command_line: &[String], app_components: &impl AppComponents) -> Result<Self> {
+impl<CUI, FR> CommandArtworkGet<CUI, FR>
+where
+    CUI: Cui,
+    FR: FileLibraryRepository,
+{
+    pub fn new(
+        command_line: &[String],
+        config: Config,
+        cui: CUI,
+        file_library_repository: FR,
+    ) -> Result<Self> {
         Ok(Self {
             args: parse_args(command_line)?,
-            config: app_components.config().clone(),
-            cui: app_components.cui().clone(),
-            file_library_repository: app_components.file_library_repository().clone(),
+            config,
+            cui,
+            file_library_repository,
         })
     }
 

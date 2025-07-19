@@ -1,20 +1,24 @@
-use super::{ResolveFileExistanceResult, messages};
-use crate::{AppComponents, Config, cui::Cui};
+use std::sync::Arc;
+
 use anyhow::Result;
-use chrono::Local;
+use async_trait::async_trait;
 use domain::{
     FileLibraryRepository,
     check::CheckIssueSummary,
-    db_wrapper::ConnectionWrapper,
+    db::DbTransaction,
     path::LibSongPath,
     song::SongUsecase,
     sync::{DbSongSyncRepository, SongSync, SyncUsecase},
 };
 use mockall::automock;
-use std::rc::Rc;
+use sqlx::PgPool;
+
+use super::{ResolveFileExistanceResult, messages};
+use crate::{Config, cui::Cui};
 
 /// データ存在系の解決処理
 #[automock]
+#[async_trait]
 pub trait ResolveExistance {
     /// データ存在系の解決処理
     ///
@@ -23,37 +27,39 @@ pub trait ResolveExistance {
     /// - args: checkコマンドの引数
     /// - cui: CUI実装
     /// - song_path: 作業対象の曲のパス
-    fn resolve(
+    async fn resolve(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         song_path: &LibSongPath,
     ) -> Result<ResolveFileExistanceResult>;
 }
 
 /// ResolveExistanceの実装
-pub struct ResolveExistanceImpl {
-    config: Rc<Config>,
-    cui: Rc<dyn Cui>,
-    file_library_repository: Rc<dyn FileLibraryRepository>,
-    song_usecase: Rc<dyn SongUsecase>,
-    sync_usecase: Rc<dyn SyncUsecase>,
-    db_song_sync_repository: Rc<dyn DbSongSyncRepository>,
+pub struct ResolveExistanceImpl<CUI, FR, SOS, SYS, SSR>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository + Send + Sync,
+    SOS: SongUsecase + Send + Sync,
+    SYS: SyncUsecase + Send + Sync,
+    SSR: DbSongSyncRepository + Send + Sync,
+{
+    config: Arc<Config>,
+    cui: Arc<CUI>,
+    file_library_repository: FR,
+    song_usecase: SOS,
+    sync_usecase: SYS,
+    db_song_sync_repository: SSR,
 }
 
-impl ResolveExistanceImpl {
-    pub fn new(app_components: &impl AppComponents) -> Self {
-        Self {
-            config: app_components.config().clone(),
-            cui: app_components.cui().clone(),
-            file_library_repository: app_components.file_library_repository().clone(),
-            song_usecase: app_components.song_usecase().clone(),
-            sync_usecase: app_components.sync_usecase().clone(),
-            db_song_sync_repository: app_components.db_song_sync_repository().clone(),
-        }
-    }
-}
-
-impl ResolveExistance for ResolveExistanceImpl {
+#[async_trait]
+impl<CUI, FR, SOS, SYS, SSR> ResolveExistance for ResolveExistanceImpl<CUI, FR, SOS, SYS, SSR>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository + Send + Sync,
+    SOS: SongUsecase + Send + Sync,
+    SYS: SyncUsecase + Send + Sync,
+    SSR: DbSongSyncRepository + Send + Sync,
+{
     /// データ存在系の解決処理
     ///
     /// # Arguments
@@ -61,9 +67,9 @@ impl ResolveExistance for ResolveExistanceImpl {
     /// - args: checkコマンドの引数
     /// - cui: CUI実装
     /// - song_path: 作業対象の曲のパス
-    fn resolve(
+    async fn resolve(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         song_path: &LibSongPath,
     ) -> Result<ResolveFileExistanceResult> {
         //PCデータ読み込み
@@ -88,8 +94,15 @@ impl ResolveExistance for ResolveExistanceImpl {
         };
 
         //DBデータ読み込み
-        let db_data_opt =
-            db.run_in_transaction(|tx| self.db_song_sync_repository.get_by_path(tx, song_path))?;
+        let db_data_opt = {
+            let mut tx = DbTransaction::PgTransaction {
+                tx: db_pool.begin().await?,
+            };
+
+            self.db_song_sync_repository
+                .get_by_path(&mut tx, song_path)
+                .await?
+        };
 
         //DAP存在確認
         let dap_exists = song_path.abs(&self.config.dap_lib).exists();
@@ -100,15 +113,17 @@ impl ResolveExistance for ResolveExistanceImpl {
         let result = if pc_exists && db_exists && !dap_exists {
             self.resolve_not_exists_dap(song_path)?
         } else if pc_exists && !db_exists && dap_exists {
-            self.resolve_not_exists_db(db, song_path, &mut pc_data_opt.unwrap())?
+            self.resolve_not_exists_db(db_pool, song_path, &mut pc_data_opt.unwrap())
+                .await?
         } else if pc_exists && !db_exists && !dap_exists {
-            self.resolve_not_exists_db_dap(db, song_path, &mut pc_data_opt.unwrap())?
+            self.resolve_not_exists_db_dap(db_pool, song_path, &mut pc_data_opt.unwrap())
+                .await?
         } else if !pc_exists && db_exists && dap_exists {
-            self.resolve_not_exists_pc(db, song_path)?
+            self.resolve_not_exists_pc(db_pool, song_path).await?
         } else if !pc_exists && db_exists && !dap_exists {
-            self.resolve_not_exists_pc_dap(db, song_path)?
+            self.resolve_not_exists_pc_dap(db_pool, song_path).await?
         } else if !pc_exists && !db_exists && dap_exists {
-            self.resolve_not_exists_pc_db(db, song_path)?
+            self.resolve_not_exists_pc_db(db_pool, song_path).await?
         } else {
             //問題なし
             ResolveFileExistanceResult::Resolved
@@ -118,7 +133,32 @@ impl ResolveExistance for ResolveExistanceImpl {
     }
 }
 
-impl ResolveExistanceImpl {
+impl<CUI, FR, SOS, SYS, SSR> ResolveExistanceImpl<CUI, FR, SOS, SYS, SSR>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository + Send + Sync,
+    SOS: SongUsecase + Send + Sync,
+    SYS: SyncUsecase + Send + Sync,
+    SSR: DbSongSyncRepository + Send + Sync,
+{
+    pub fn new(
+        config: Arc<Config>,
+        cui: Arc<CUI>,
+        file_library_repository: FR,
+        song_usecase: SOS,
+        sync_usecase: SYS,
+        db_song_sync_repository: SSR,
+    ) -> Self {
+        Self {
+            config,
+            cui,
+            file_library_repository,
+            song_usecase,
+            sync_usecase,
+            db_song_sync_repository,
+        }
+    }
+
     /// PCから読み込めない状態の解決
     ///
     /// 実際には解決不能なので、
@@ -180,9 +220,9 @@ impl ResolveExistanceImpl {
     }
 
     /// DBにのみ存在しない状態の解決
-    fn resolve_not_exists_db(
+    async fn resolve_not_exists_db(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         song_path: &LibSongPath,
         pc_song: &mut SongSync,
     ) -> Result<ResolveFileExistanceResult> {
@@ -205,7 +245,8 @@ impl ResolveExistanceImpl {
         match input {
             //DBに曲を追加
             '1' => {
-                self.add_song_db_from_pc(db, song_path, pc_song)?;
+                self.add_song_db_from_pc(db_pool, song_path, pc_song)
+                    .await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //PCとDAPからファイルを削除
@@ -223,9 +264,9 @@ impl ResolveExistanceImpl {
     }
 
     /// DBとDAPに存在しない状態の解決
-    fn resolve_not_exists_db_dap(
+    async fn resolve_not_exists_db_dap(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         song_path: &LibSongPath,
         pc_song: &mut SongSync,
     ) -> Result<ResolveFileExistanceResult> {
@@ -249,7 +290,8 @@ impl ResolveExistanceImpl {
         match input {
             //DBに曲を追加し、DAPにもコピー
             '1' => {
-                self.add_song_db_from_pc(db, song_path, pc_song)?;
+                self.add_song_db_from_pc(db_pool, song_path, pc_song)
+                    .await?;
 
                 self.file_library_repository.copy_song_over_lib(
                     &self.config.pc_lib,
@@ -273,9 +315,9 @@ impl ResolveExistanceImpl {
     }
 
     /// PCにのみ存在しない状態の解決
-    fn resolve_not_exists_pc(
+    async fn resolve_not_exists_pc(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         song_path: &LibSongPath,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
@@ -307,7 +349,7 @@ impl ResolveExistanceImpl {
             }
             //DBとDAPから曲を削除
             '2' => {
-                self.delete_song_db(db, song_path)?;
+                self.delete_song_db(db_pool, song_path).await?;
 
                 self.song_usecase
                     .delete_song_dap(&self.config.dap_lib, song_path)?;
@@ -321,9 +363,9 @@ impl ResolveExistanceImpl {
     }
 
     /// PCとDAPに存在しない状態の解決
-    fn resolve_not_exists_pc_dap(
+    async fn resolve_not_exists_pc_dap(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         song_path: &LibSongPath,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
@@ -345,7 +387,7 @@ impl ResolveExistanceImpl {
         match input {
             //DBから曲を削除
             '2' => {
-                self.delete_song_db(db, song_path)?;
+                self.delete_song_db(db_pool, song_path).await?;
                 Ok(ResolveFileExistanceResult::Deleted)
             }
             '0' => Ok(ResolveFileExistanceResult::UnResolved),
@@ -355,9 +397,9 @@ impl ResolveExistanceImpl {
     }
 
     /// PCとDBに存在しない状態の解決
-    fn resolve_not_exists_pc_db(
+    async fn resolve_not_exists_pc_db(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         song_path: &LibSongPath,
     ) -> Result<ResolveFileExistanceResult> {
         let cui = &self.cui;
@@ -398,7 +440,8 @@ impl ResolveExistanceImpl {
                 };
 
                 //DBに追加
-                self.add_song_db_from_pc(db, song_path, &mut pc_song)?;
+                self.add_song_db_from_pc(db_pool, song_path, &mut pc_song)
+                    .await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //DAPからファイルを削除
@@ -414,26 +457,33 @@ impl ResolveExistanceImpl {
     }
 
     /// PCのファイルデータを元にDBに曲を追加
-    fn add_song_db_from_pc(
+    async fn add_song_db_from_pc(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         song_path: &LibSongPath,
         pc_song: &mut SongSync,
     ) -> Result<()> {
-        let entry_date = Local::now().naive_local().date();
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
 
-        db.run_in_transaction(|tx| {
-            self.sync_usecase
-                .register_db(tx, song_path, pc_song, entry_date)
-        })?;
+        self.sync_usecase
+            .register_db(&mut tx, song_path, pc_song)
+            .await?;
 
+        tx.commit().await?;
         Ok(())
     }
 
     /// DBから曲を削除
-    fn delete_song_db(&self, db: &mut ConnectionWrapper, song_path: &LibSongPath) -> Result<()> {
-        db.run_in_transaction(|tx| self.song_usecase.delete_song_db(tx, song_path))?;
+    async fn delete_song_db(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<()> {
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
 
+        self.song_usecase.delete_song_db(&mut tx, song_path).await?;
+
+        tx.commit().await?;
         Ok(())
     }
 }

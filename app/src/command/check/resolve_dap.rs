@@ -1,5 +1,5 @@
-use super::messages;
-use crate::{AppComponents, Config, cui::Cui};
+use std::sync::Arc;
+
 use anyhow::Result;
 use domain::{
     FileLibraryRepository,
@@ -7,7 +7,9 @@ use domain::{
     path::LibSongPath,
 };
 use mockall::automock;
-use std::rc::Rc;
+
+use super::messages;
+use crate::{Config, cui::Cui};
 
 /// PC・DAP間の齟齬の解決処理
 #[automock]
@@ -20,25 +22,45 @@ pub trait ResolveDap {
 }
 
 ///ResolveDapの実装
-pub struct ResolveDapImpl {
-    config: Rc<Config>,
-    cui: Rc<dyn Cui>,
-    file_library_repository: Rc<dyn FileLibraryRepository>,
-    check_usecase: Rc<dyn CheckUsecase>,
+pub struct ResolveDapImpl<CUI, FR, CS>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository,
+    CS: CheckUsecase,
+{
+    config: Arc<Config>,
+    cui: Arc<CUI>,
+    file_library_repository: FR,
+    check_usecase: CS,
 }
 
-impl ResolveDapImpl {
-    pub fn new(app_components: &impl AppComponents) -> Self {
+impl<CUI, FR, CS> ResolveDapImpl<CUI, FR, CS>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository,
+    CS: CheckUsecase,
+{
+    pub fn new(
+        config: Arc<Config>,
+        cui: Arc<CUI>,
+        file_library_repository: FR,
+        check_usecase: CS,
+    ) -> Self {
         Self {
-            config: app_components.config().clone(),
-            cui: app_components.cui().clone(),
-            file_library_repository: app_components.file_library_repository().clone(),
-            check_usecase: app_components.check_usecase().clone(),
+            config,
+            cui,
+            file_library_repository,
+            check_usecase,
         }
     }
 }
 
-impl ResolveDap for ResolveDapImpl {
+impl<CUI, FR, CS> ResolveDap for ResolveDapImpl<CUI, FR, CS>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository,
+    CS: CheckUsecase,
+{
     /// PC・DAP間のファイル内容齟齬の解決処理
     ///
     /// # Returns

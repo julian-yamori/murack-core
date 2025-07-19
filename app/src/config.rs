@@ -15,8 +15,8 @@ pub struct Config {
     pub dap_lib: PathBuf,
     /// DAPにプレイリストファイルを配置するパス
     pub dap_playlist: PathBuf,
-    /// WalkStudioのDBファイルパス
-    pub db_path: PathBuf,
+    /// MurackのDBのURL
+    pub database_url: String,
 }
 
 impl Config {
@@ -41,7 +41,7 @@ impl Config {
             pc_lib: tb_path(root, "pc_lib")?,
             dap_lib: tb_path(root, "dap_lib")?,
             dap_playlist: tb_path(root, "dap_playlist")?,
-            db_path: tb_path(root, "db_path")?,
+            database_url: tb_str(root, "database_url")?.to_string(),
         })
     }
 
@@ -52,7 +52,7 @@ impl Config {
             pc_lib: "pc_lib".into(),
             dap_lib: "dap_lib".into(),
             dap_playlist: "dap_playlist".into(),
-            db_path: "db_path".into(),
+            database_url: "database_url".to_string(),
         }
     }
 }

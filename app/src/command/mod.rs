@@ -7,7 +7,7 @@ mod aw_get;
 pub use aw_get::CommandArtworkGet;
 
 mod check;
-pub use check::CommandCheck;
+pub use check::{CommandCheck, ResolveDapImpl, ResolveDataMatchImpl, ResolveExistanceImpl};
 
 mod cmd_move;
 pub use cmd_move::CommandMove;

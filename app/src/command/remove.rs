@@ -1,46 +1,62 @@
-use crate::{AppComponents, Config, Error, cui::Cui};
 use anyhow::Result;
-use domain::{db_wrapper::ConnectionFactory, path::LibPathStr, song::SongUsecase};
-use std::rc::Rc;
+use domain::{db::DbTransaction, path::LibPathStr, song::SongUsecase};
+
+use crate::{Config, Error, cui::Cui, db_pool_connect};
 
 /// removeコマンド
 ///
 /// ライブラリから曲を削除
-pub struct CommandRemove {
+pub struct CommandRemove<CUI, SS>
+where
+    CUI: Cui,
+    SS: SongUsecase,
+{
     args: Args,
-
-    config: Rc<Config>,
-    cui: Rc<dyn Cui>,
-    connection_factory: Rc<ConnectionFactory>,
-    song_usecase: Rc<dyn SongUsecase>,
+    config: Config,
+    cui: CUI,
+    song_usecase: SS,
 }
 
-impl CommandRemove {
-    pub fn new(command_line: &[String], app_components: &impl AppComponents) -> Result<Self> {
+impl<CUI, SS> CommandRemove<CUI, SS>
+where
+    CUI: Cui,
+    SS: SongUsecase,
+{
+    pub fn new(
+        command_line: &[String],
+        config: Config,
+        cui: CUI,
+        song_usecase: SS,
+    ) -> Result<Self> {
         Ok(Self {
             args: parse_args(command_line)?,
-            config: app_components.config().clone(),
-            cui: app_components.cui().clone(),
-            connection_factory: app_components.connection_factory().clone(),
-            song_usecase: app_components.song_usecase().clone(),
+            config,
+            cui,
+            song_usecase,
         })
     }
 
     /// このコマンドを実行
     /// # Arguments
     /// - command_line: コマンドライン引数
-    pub fn run(&self) -> Result<()> {
-        self.remove_db()?;
+    pub async fn run(&self) -> Result<()> {
+        self.remove_db().await?;
         self.remove_dap()?;
         self.remove_pc()
     }
 
     /// DBから削除
-    pub fn remove_db(&self) -> Result<()> {
-        let mut db = self.connection_factory.open()?;
+    pub async fn remove_db(&self) -> Result<()> {
+        let db_pool = db_pool_connect(&self.config.database_url).await?;
 
-        let song_path_list =
-            db.run_in_transaction(|tx| self.song_usecase.delete_path_str_db(tx, &self.args.path))?;
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
+        let song_path_list = self
+            .song_usecase
+            .delete_path_str_db(&mut tx, &self.args.path)
+            .await?;
+        tx.commit().await?;
 
         if song_path_list.is_empty() {
             self.cui.err(format_args!(

@@ -2,65 +2,92 @@
 //!
 //! PC・DAP・DBの齟齬を確認する
 
-use super::{
-    Args, ResolveDap, ResolveDapImpl, ResolveDataMatch, ResolveDataMatchImpl, ResolveExistance,
-    ResolveExistanceImpl, ResolveFileExistanceResult,
-};
-use crate::{AppComponents, Config, cui::Cui};
+use std::{collections::BTreeSet, sync::Arc};
+
 use anyhow::Result;
 use domain::{
     FileLibraryRepository,
     check::{CheckIssueSummary, CheckUsecase},
-    db_wrapper::{ConnectionFactory, ConnectionWrapper},
+    db::DbTransaction,
     path::LibSongPath,
     song::DbSongRepository,
 };
-use std::collections::BTreeSet;
-use std::rc::Rc;
+use sqlx::PgPool;
 
-pub struct CommandCheck {
+use super::{Args, ResolveDap, ResolveDataMatch, ResolveExistance, ResolveFileExistanceResult};
+use crate::{Config, cui::Cui, db_pool_connect};
+
+pub struct CommandCheck<CUI, REX, RDM, RDP, FR, CS, SR>
+where
+    CUI: Cui + Send + Sync,
+    REX: ResolveExistance,
+    RDM: ResolveDataMatch,
+    RDP: ResolveDap,
+    FR: FileLibraryRepository,
+    CS: CheckUsecase,
+    SR: DbSongRepository,
+{
     args: Args,
 
-    resolve_existance: Rc<dyn ResolveExistance>,
-    resolve_data_match: Rc<dyn ResolveDataMatch>,
-    resolve_dap: Rc<dyn ResolveDap>,
+    resolve_existance: REX,
+    resolve_data_match: RDM,
+    resolve_dap: RDP,
 
-    config: Rc<Config>,
-    cui: Rc<dyn Cui>,
-    connection_factory: Rc<ConnectionFactory>,
-    file_library_repository: Rc<dyn FileLibraryRepository>,
-    check_usecase: Rc<dyn CheckUsecase>,
-    db_song_repository: Rc<dyn DbSongRepository>,
+    config: Arc<Config>,
+    cui: Arc<CUI>,
+    file_library_repository: FR,
+    check_usecase: CS,
+    db_song_repository: SR,
 }
 
-impl CommandCheck {
-    pub fn new(command_line: &[String], app_components: &impl AppComponents) -> Result<Self> {
+impl<CUI, REX, RDM, RDP, FR, CS, SR> CommandCheck<CUI, REX, RDM, RDP, FR, CS, SR>
+where
+    CUI: Cui + Send + Sync,
+    REX: ResolveExistance,
+    RDM: ResolveDataMatch,
+    RDP: ResolveDap,
+    FR: FileLibraryRepository,
+    CS: CheckUsecase,
+    SR: DbSongRepository,
+{
+    #[allow(clippy::too_many_arguments)] // todo
+    pub fn new(
+        command_line: &[String],
+        config: Arc<Config>,
+
+        resolve_existance: REX,
+        resolve_data_match: RDM,
+        resolve_dap: RDP,
+        cui: Arc<CUI>,
+        file_library_repository: FR,
+        check_usecase: CS,
+        db_song_repository: SR,
+    ) -> Result<Self> {
         Ok(Self {
             args: Args::parse(command_line)?,
-            resolve_existance: Rc::new(ResolveExistanceImpl::new(app_components)),
-            resolve_data_match: Rc::new(ResolveDataMatchImpl::new(app_components)),
-            resolve_dap: Rc::new(ResolveDapImpl::new(app_components)),
-            config: app_components.config().clone(),
-            cui: app_components.cui().clone(),
-            connection_factory: app_components.connection_factory().clone(),
-            file_library_repository: app_components.file_library_repository().clone(),
-            check_usecase: app_components.check_usecase().clone(),
-            db_song_repository: app_components.db_song_repository().clone(),
+            resolve_existance,
+            resolve_data_match,
+            resolve_dap,
+            config,
+            cui,
+            file_library_repository,
+            check_usecase,
+            db_song_repository,
         })
     }
 
     /// このコマンドを実行
-    pub fn run(&self) -> Result<()> {
-        let mut db = self.connection_factory.open()?;
+    pub async fn run(&self) -> Result<()> {
+        let db_pool = db_pool_connect(&self.config.database_url).await?;
 
-        let path_list = self.listup_song_path(&mut db)?;
-        let conflict_list = self.summary_check(&mut db, path_list)?;
+        let path_list = self.listup_song_path(&db_pool).await?;
+        let conflict_list = self.summary_check(&db_pool, path_list).await?;
 
         if !self.summary_result_cui(&conflict_list)? {
             return Ok(());
         }
 
-        let terminated = self.resolve_all_songs(&mut db, &conflict_list)?;
+        let terminated = self.resolve_all_songs(&db_pool, &conflict_list).await?;
 
         if !terminated {
             let cui = &self.cui;
@@ -75,7 +102,7 @@ impl CommandCheck {
     /// 全ての対象曲をリストアップ
     /// # Returns
     /// 全対象曲のパス
-    fn listup_song_path(&self, db: &mut ConnectionWrapper) -> Result<Vec<LibSongPath>> {
+    async fn listup_song_path(&self, db_pool: &PgPool) -> Result<Vec<LibSongPath>> {
         let cui = &self.cui;
 
         //マージ用set
@@ -102,16 +129,17 @@ impl CommandCheck {
         //DBからリストアップ
         cui_outln!(cui, "DBの検索中...");
 
-        db.run_in_transaction(|tx| {
-            for path in self
-                .db_song_repository
-                .get_path_by_path_str(tx, &self.args.path)?
-            {
-                set.insert(path);
-            }
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
 
-            Ok(())
-        })?;
+        for path in self
+            .db_song_repository
+            .get_path_by_path_str(&mut tx, &self.args.path)
+            .await?
+        {
+            set.insert(path);
+        }
 
         Ok(set.into_iter().collect())
     }
@@ -121,9 +149,9 @@ impl CommandCheck {
     /// - path_list: チェック対象の全曲のパス
     /// # Returns
     /// 問題があった曲のパスリスト
-    fn summary_check(
+    async fn summary_check(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         path_list: Vec<LibSongPath>,
     ) -> Result<Vec<LibSongPath>> {
         let cui = &self.cui;
@@ -137,13 +165,16 @@ impl CommandCheck {
                 cui_outln!(cui, "チェック中...({}/{})", current_index, all_count);
             }
 
-            let issues = self.check_usecase.listup_issue_summary(
-                db,
-                &self.config.pc_lib,
-                &self.config.dap_lib,
-                &path,
-                self.args.ignore_dap_content,
-            )?;
+            let issues = self
+                .check_usecase
+                .listup_issue_summary(
+                    db_pool,
+                    &self.config.pc_lib,
+                    &self.config.dap_lib,
+                    &path,
+                    self.args.ignore_dap_content,
+                )
+                .await?;
 
             if !issues.is_empty() {
                 conflict_list.push((path, issues));
@@ -192,9 +223,9 @@ impl CommandCheck {
     /// 問題があった全ての曲の解決処理
     /// # Returns
     /// 強制終了されたらtrue
-    fn resolve_all_songs(
+    async fn resolve_all_songs(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         conflict_list: &[LibSongPath],
     ) -> Result<bool> {
         let all_count = conflict_list.len();
@@ -208,7 +239,7 @@ impl CommandCheck {
                 cui_outln!(cui);
             }
 
-            if !self.resolve_song(db, song_path)? {
+            if !self.resolve_song(db_pool, song_path).await? {
                 return Ok(true);
             }
 
@@ -226,9 +257,9 @@ impl CommandCheck {
     ///
     /// # Returns
     /// 次の曲の解決処理へ継続するか
-    fn resolve_song(&self, db: &mut ConnectionWrapper, song_path: &LibSongPath) -> Result<bool> {
+    async fn resolve_song(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<bool> {
         //存在チェック・解決処理
-        match self.resolve_existance.resolve(db, song_path)? {
+        match self.resolve_existance.resolve(db_pool, song_path).await? {
             ResolveFileExistanceResult::Resolved => {}
             ResolveFileExistanceResult::Deleted => return Ok(true),
             ResolveFileExistanceResult::UnResolved => return Ok(true),
@@ -236,7 +267,7 @@ impl CommandCheck {
         }
 
         //データ同一性の解決処理
-        if !self.resolve_data_match.resolve(db, song_path)? {
+        if !self.resolve_data_match.resolve(db_pool, song_path).await? {
             return Ok(false);
         }
 

@@ -1,49 +1,56 @@
-use crate::{AppComponents, Config, cui::Cui};
 use anyhow::Result;
-use domain::{
-    dap::{DapPlaylistObserver, DapPlaylistUsecase},
-    db_wrapper::ConnectionFactory,
-};
-use std::rc::Rc;
+use domain::dap::{DapPlaylistObserver, DapPlaylistUsecase};
+
+use crate::{Config, cui::Cui, db_pool_connect};
 
 /// playlistコマンド
 ///
 /// DAPのプレイリストを更新する
-pub struct CommandPlaylist {
-    config: Rc<Config>,
-    cui: Rc<dyn Cui>,
-    connection_factory: Rc<ConnectionFactory>,
-
-    dap_playlist_usecase: Rc<dyn DapPlaylistUsecase>,
+pub struct CommandPlaylist<CUI, DPS>
+where
+    CUI: Cui + Send + Sync,
+    DPS: DapPlaylistUsecase,
+{
+    config: Config,
+    cui: CUI,
+    dap_playlist_usecase: DPS,
 }
 
-impl CommandPlaylist {
-    pub fn new(app_components: &impl AppComponents) -> Self {
+impl<CUI, DPS> CommandPlaylist<CUI, DPS>
+where
+    CUI: Cui + Send + Sync,
+    DPS: DapPlaylistUsecase,
+{
+    pub fn new(config: Config, cui: CUI, dap_playlist_usecase: DPS) -> Self {
         Self {
-            config: app_components.config().clone(),
-            cui: app_components.cui().clone(),
-            connection_factory: app_components.connection_factory().clone(),
-            dap_playlist_usecase: app_components.dap_playlist_usecase().clone(),
+            config,
+            cui,
+            dap_playlist_usecase,
         }
     }
 
     /// このコマンドを実行
-    pub fn run(&self) -> Result<()> {
-        let mut observer = Observer {
-            cui: self.cui.clone(),
-        };
-        let mut db = self.connection_factory.open()?;
+    pub async fn run(self) -> Result<()> {
+        let mut observer = Observer { cui: self.cui };
+        let db_pool = db_pool_connect(&self.config.database_url).await?;
 
         self.dap_playlist_usecase
-            .run(&mut db, &self.config.dap_playlist, false, &mut observer)
+            .run(&db_pool, &self.config.dap_playlist, false, &mut observer)
+            .await
     }
 }
 
-struct Observer {
-    cui: Rc<dyn Cui>,
+struct Observer<CUI>
+where
+    CUI: Cui + Send + Sync,
+{
+    cui: CUI,
 }
 
-impl DapPlaylistObserver for Observer {
+impl<CUI> DapPlaylistObserver for Observer<CUI>
+where
+    CUI: Cui + Send + Sync,
+{
     /// プレイリスト情報の読み込み開始時
     fn on_start_load_playlist(&mut self) {
         cui_outln!(self.cui, "プレイリスト情報の取得中...")

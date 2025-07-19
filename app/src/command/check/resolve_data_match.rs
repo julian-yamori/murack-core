@@ -1,72 +1,88 @@
-use super::{SongItemConflict, messages};
-use crate::{AppComponents, Config, cui::Cui};
+use std::sync::Arc;
+
 use anyhow::Result;
+use async_trait::async_trait;
 use domain::{
     FileLibraryRepository,
     artwork::{DbArtworkRepository, SongArtwork},
     check::CheckUsecase,
-    db_wrapper::ConnectionWrapper,
+    db::DbTransaction,
     path::LibSongPath,
     song::SongItemKind,
     sync::{DbSongSync, DbSongSyncRepository, SongSync},
 };
 use mockall::automock;
-use std::rc::Rc;
+use sqlx::PgPool;
+
+use super::{SongItemConflict, messages};
+use crate::{Config, cui::Cui};
 
 /// データ内容同一性についての解決処理
 #[automock]
+#[async_trait]
 pub trait ResolveDataMatch {
     /// データ内容同一性についての解決処理
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    fn resolve(&self, db: &mut ConnectionWrapper, song_path: &LibSongPath) -> Result<bool>;
+    async fn resolve(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<bool>;
 }
 
 /// ResolveDataMatchの実装
-pub struct ResolveDataMatchImpl {
-    config: Rc<Config>,
-    cui: Rc<dyn Cui>,
-    file_library_repository: Rc<dyn FileLibraryRepository>,
-    check_usecase: Rc<dyn CheckUsecase>,
-    db_artwork_repository: Rc<dyn DbArtworkRepository>,
-    db_song_sync_repository: Rc<dyn DbSongSyncRepository>,
+pub struct ResolveDataMatchImpl<CUI, FR, CS, AR, SSR>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository + Send + Sync,
+    CS: CheckUsecase + Send + Sync,
+    AR: DbArtworkRepository + Send + Sync,
+    SSR: DbSongSyncRepository + Send + Sync,
+{
+    config: Arc<Config>,
+    cui: Arc<CUI>,
+    file_library_repository: FR,
+    check_usecase: CS,
+    db_artwork_repository: AR,
+    db_song_sync_repository: SSR,
 }
 
-impl ResolveDataMatchImpl {
-    pub fn new(app_components: &impl AppComponents) -> Self {
-        Self {
-            config: app_components.config().clone(),
-            cui: app_components.cui().clone(),
-            file_library_repository: app_components.file_library_repository().clone(),
-            check_usecase: app_components.check_usecase().clone(),
-            db_artwork_repository: app_components.db_artwork_repository().clone(),
-            db_song_sync_repository: app_components.db_song_sync_repository().clone(),
-        }
-    }
-}
-
-impl ResolveDataMatch for ResolveDataMatchImpl {
+#[async_trait]
+impl<CUI, FR, CS, AR, SSR> ResolveDataMatch for ResolveDataMatchImpl<CUI, FR, CS, AR, SSR>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository + Send + Sync,
+    CS: CheckUsecase + Send + Sync,
+    AR: DbArtworkRepository + Send + Sync,
+    SSR: DbSongSyncRepository + Send + Sync,
+{
     /// データ内容同一性についての解決処理
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    fn resolve(&self, db: &mut ConnectionWrapper, song_path: &LibSongPath) -> Result<bool> {
+    async fn resolve(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<bool> {
         //データ読み込み
         let mut pc_data = self
             .file_library_repository
             .read_song_sync(&self.config.pc_lib, song_path)?;
-        let mut db_data = self.load_db_song(db, song_path)?;
+        let mut db_data = self.load_db_song(db_pool, song_path).await?;
 
-        if !self.resolve_editable(db, &mut pc_data, &mut db_data)? {
+        if !self
+            .resolve_editable(db_pool, &mut pc_data, &mut db_data)
+            .await?
+        {
             return Ok(false);
         }
 
-        if !self.resolve_artwork(db, &mut pc_data, &mut db_data)? {
+        if !self
+            .resolve_artwork(db_pool, &mut pc_data, &mut db_data)
+            .await?
+        {
             return Ok(false);
         }
 
-        if !self.resolve_duration(db, &mut pc_data, &mut db_data)? {
+        if !self
+            .resolve_duration(db_pool, &mut pc_data, &mut db_data)
+            .await?
+        {
             return Ok(false);
         }
 
@@ -74,14 +90,39 @@ impl ResolveDataMatch for ResolveDataMatchImpl {
     }
 }
 
-impl ResolveDataMatchImpl {
+impl<CUI, FR, CS, AR, SSR> ResolveDataMatchImpl<CUI, FR, CS, AR, SSR>
+where
+    CUI: Cui + Send + Sync,
+    FR: FileLibraryRepository + Send + Sync,
+    CS: CheckUsecase + Send + Sync,
+    AR: DbArtworkRepository + Send + Sync,
+    SSR: DbSongSyncRepository + Send + Sync,
+{
+    pub fn new(
+        config: Arc<Config>,
+        cui: Arc<CUI>,
+        file_library_repository: FR,
+        check_usecase: CS,
+        db_artwork_repository: AR,
+        db_song_sync_repository: SSR,
+    ) -> Self {
+        Self {
+            config,
+            cui,
+            file_library_repository,
+            check_usecase,
+            db_artwork_repository,
+            db_song_sync_repository,
+        }
+    }
+
     /// PC・DB間の、曲情報(編集可能部)の齟齬の解決
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    fn resolve_editable(
+    async fn resolve_editable(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         pc_song: &mut SongSync,
         db_song: &mut DbSongSync,
     ) -> Result<bool> {
@@ -118,7 +159,7 @@ impl ResolveDataMatchImpl {
             //PCからDBへ上書き
             '1' => {
                 self.overwrite_song_editable(pc_song, &mut db_song.song_sync);
-                self.save_db_exclude_artwork(db, db_song)?;
+                self.save_db_exclude_artwork(db_pool, db_song).await?;
 
                 Ok(true)
             }
@@ -142,7 +183,10 @@ impl ResolveDataMatchImpl {
             //それぞれの項目個別に処理方法を選択
             '3' => {
                 for conflict in conflicts {
-                    if !self.resolve_each_property(db, pc_song, db_song, &conflict)? {
+                    if !self
+                        .resolve_each_property(db_pool, pc_song, db_song, &conflict)
+                        .await?
+                    {
                         return Ok(false);
                     }
                 }
@@ -159,9 +203,9 @@ impl ResolveDataMatchImpl {
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    fn resolve_each_property(
+    async fn resolve_each_property(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         pc_song: &mut SongSync,
         db_song: &mut DbSongSync,
         conflict: &SongItemConflict,
@@ -204,7 +248,7 @@ impl ResolveDataMatchImpl {
             '1' => {
                 //DBの値を上書きする
                 conflict.copy_each_sync(pc_song, db_sync);
-                self.save_db_exclude_artwork(db, db_song)?;
+                self.save_db_exclude_artwork(db_pool, db_song).await?;
 
                 Ok(true)
             }
@@ -235,9 +279,9 @@ impl ResolveDataMatchImpl {
     ///
     /// # Returns
     /// 次の曲の解決処理へ継続するか
-    fn resolve_artwork(
+    async fn resolve_artwork(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         pc_song: &mut SongSync,
         db_song: &mut DbSongSync,
     ) -> Result<bool> {
@@ -273,23 +317,24 @@ impl ResolveDataMatchImpl {
         match input {
             //PCからDBへ上書き
             '1' => {
+                let mut tx = DbTransaction::PgTransaction {
+                    tx: db_pool.begin().await?,
+                };
+
                 //DBに上書き保存
-                db.run_in_transaction(|tx| {
-                    let song_id = db_song.id;
+                let song_id = db_song.id;
 
-                    self.db_artwork_repository.register_song_artworks(
-                        tx,
-                        song_id,
-                        &pc_song.artworks,
-                    )?;
+                self.db_artwork_repository
+                    .register_song_artworks(&mut tx, song_id, &pc_song.artworks)
+                    .await?;
 
-                    //念の為、保存した値で変数値を上書きしておく
-                    db_song.song_sync.artworks =
-                        self.db_artwork_repository.get_song_artworks(tx, song_id)?;
+                //念の為、保存した値で変数値を上書きしておく
+                db_song.song_sync.artworks = self
+                    .db_artwork_repository
+                    .get_song_artworks(&mut tx, song_id)
+                    .await?;
 
-                    Ok(())
-                })?;
-
+                tx.commit().await?;
                 Ok(true)
             }
             //DBからPCへ上書きし、DAPも更新
@@ -320,9 +365,9 @@ impl ResolveDataMatchImpl {
     ///
     /// # Returns
     /// 次の曲の解決処理へ継続するか
-    fn resolve_duration(
+    async fn resolve_duration(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         pc_song: &mut SongSync,
         db_song: &mut DbSongSync,
     ) -> Result<bool> {
@@ -361,7 +406,7 @@ impl ResolveDataMatchImpl {
             '1' => {
                 //DB側の再生時間を上書きして保存
                 db_song.song_sync.duration = pc_song.duration;
-                self.save_db_exclude_artwork(db, db_song)?;
+                self.save_db_exclude_artwork(db_pool, db_song).await?;
 
                 Ok(true)
             }
@@ -372,28 +417,29 @@ impl ResolveDataMatchImpl {
     }
 
     /// DBから曲ファイルを読み込み
-    fn load_db_song(
-        &self,
-        db: &mut ConnectionWrapper,
-        song_path: &LibSongPath,
-    ) -> Result<DbSongSync> {
-        db.run_in_transaction(|tx| {
-            self.db_song_sync_repository
-                .get_by_path(tx, song_path)?
-                .ok_or_else(|| domain::Error::DbSongNotFound(song_path.clone()).into())
-        })
+    async fn load_db_song(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<DbSongSync> {
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
+
+        self.db_song_sync_repository
+            .get_by_path(&mut tx, song_path)
+            .await?
+            .ok_or_else(|| domain::Error::DbSongNotFound(song_path.clone()).into())
     }
 
     /// DBに曲の連携情報(アートワーク以外)を保存
-    fn save_db_exclude_artwork(
-        &self,
-        db: &mut ConnectionWrapper,
-        db_song: &DbSongSync,
-    ) -> Result<()> {
-        db.run_in_transaction(|tx| {
-            self.db_song_sync_repository
-                .save_exclude_artwork(tx, db_song)
-        })
+    async fn save_db_exclude_artwork(&self, db_pool: &PgPool, db_song: &DbSongSync) -> Result<()> {
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
+
+        self.db_song_sync_repository
+            .save_exclude_artwork(&mut tx, db_song)
+            .await?;
+
+        tx.commit().await?;
+        Ok(())
     }
 
     /// PCのファイルの曲データを上書き

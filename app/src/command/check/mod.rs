@@ -14,15 +14,15 @@ mod messages;
 mod resolve_dap;
 #[cfg(test)]
 use resolve_dap::MockResolveDap;
-use resolve_dap::{ResolveDap, ResolveDapImpl};
+pub use resolve_dap::{ResolveDap, ResolveDapImpl};
 mod resolve_data_match;
 #[cfg(test)]
 use resolve_data_match::MockResolveDataMatch;
-use resolve_data_match::{ResolveDataMatch, ResolveDataMatchImpl};
+pub use resolve_data_match::{ResolveDataMatch, ResolveDataMatchImpl};
 mod resolve_existance;
 #[cfg(test)]
 use resolve_existance::MockResolveExistance;
-use resolve_existance::{ResolveExistance, ResolveExistanceImpl};
+pub use resolve_existance::{ResolveExistance, ResolveExistanceImpl};
 
 mod song_item_conflict;
 use song_item_conflict::SongItemConflict;
