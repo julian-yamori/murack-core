@@ -1,8 +1,8 @@
 use anyhow::Result;
-use std::{env, rc::Rc};
+use std::{env};
 use walk_base_2_app::cui::StdCui;
 
-fn main() -> Result<()> {
-    let cui = Rc::new(StdCui {});
-    walk_base_2::run(env::args(), cui)
+#[tokio::main]
+async fn main() -> Result<()> {
+    walk_base_2::run(env::args(), StdCui {}).await
 }

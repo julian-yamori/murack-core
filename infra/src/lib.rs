@@ -7,8 +7,5 @@ pub use run::run;
 mod app_args;
 use app_args::AppArgs;
 
-mod app_components_impl;
-use app_components_impl::AppComponentsImpl;
-
-#[macro_use]
-extern crate derive_getters;
+mod registry;
+use registry::Registry;

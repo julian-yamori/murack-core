@@ -3,8 +3,7 @@
 mod error;
 pub use error::Error;
 
-mod db_components;
-pub use db_components::DbComponents;
+pub mod db_components;
 
 pub mod artwork;
 pub mod folder;

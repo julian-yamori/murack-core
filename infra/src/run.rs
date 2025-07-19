@@ -1,38 +1,41 @@
-use crate::{AppArgs, AppComponentsImpl};
-use anyhow::{Context, Result};
 use std::{
     env,
     path::{Path, PathBuf},
-    rc::Rc,
 };
-use walk_base_2_app::{Config, command::*, cui::Cui};
+
+use anyhow::{Context, Result};
+use walk_base_2_app::{Config, cui::Cui};
+
+use crate::{AppArgs, Registry};
 
 /// WalkBase2ライブラリのエントリポイント
 /// # Arguments
 /// - args: コマンドライン引数
-pub fn run(args: impl Iterator<Item = String>, cui: Rc<dyn Cui>) -> Result<()> {
+pub async fn run(args: impl Iterator<Item = String>, cui: impl Cui + Sync + Send) -> Result<()> {
     let app_args = AppArgs::parse(args);
     let config = load_config(app_args.config_path.as_deref())?;
 
-    let app_components = AppComponentsImpl::new(cui, config);
+    let registry = Registry::new(cui, config);
 
     match app_args.sub_command {
         //サブコマンドにより、コマンドオブジェクトを分岐
         Some(sub_command) => match &*sub_command {
             "add" => {
-                CommandAdd::new(&app_args.sub_args[..], &app_components)?.run()?;
+                registry.command_add(&app_args.sub_args[..])?.run().await?;
             }
             "check" => {
-                CommandCheck::new(&app_args.sub_args[..], &app_components)?.run()?;
+                registry
+                    .command_check(&app_args.sub_args[..])?.run().await?;
             }
             "move" => {
-                CommandMove::new(&app_args.sub_args[..], &app_components)?.run()?;
+                registry.command_move(&app_args.sub_args[..])?.run().await?;
             }
             "remove" => {
-                CommandRemove::new(&app_args.sub_args[..], &app_components)?.run()?;
+                registry
+                    .command_remove(&app_args.sub_args[..])?.run().await?;
             }
             "playlist" => {
-                CommandPlaylist::new(&app_components).run()?;
+                registry.command_playlist().run().await?;
             }
             "replace" => {
                 //todo app側で無効化中
@@ -40,10 +43,11 @@ pub fn run(args: impl Iterator<Item = String>, cui: Rc<dyn Cui>) -> Result<()> {
                 todo!("not implemented");
             }
             "aw-get" => {
-                CommandArtworkGet::new(&app_args.sub_args[..], &app_components)?.run()?;
+                registry
+                    .command_artwork_get(&app_args.sub_args[..])?.run()?;
             }
             "help" => {
-                CommandHelp::new(&app_args.sub_args[..], &app_components)?.run()?;
+                registry.command_help(&app_args.sub_args[..])?.run()?;
             }
             _ => {
                 return Err(walk_base_2_app::Error::InvalidCommandArgument {
@@ -54,7 +58,7 @@ pub fn run(args: impl Iterator<Item = String>, cui: Rc<dyn Cui>) -> Result<()> {
         },
         //サブコマンドが空欄ならヘルプ出力
         None => {
-            CommandHelp::new(&app_args.sub_args[..], &app_components)?.run()?;
+            registry.command_help(&app_args.sub_args[..])?.run()?;
         }
     }
 
