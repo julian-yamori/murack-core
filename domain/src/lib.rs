@@ -6,7 +6,6 @@ pub use error::Error;
 pub mod artwork;
 pub mod check;
 pub mod dap;
-pub mod db_wrapper;
 pub mod filter;
 pub mod folder;
 pub mod path;
@@ -18,6 +17,8 @@ pub mod tag;
 
 mod file_lib_repos;
 pub use file_lib_repos::{FileLibraryRepository, MockFileLibraryRepository};
+
+pub mod db;
 
 pub mod test_utils;
 

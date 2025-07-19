@@ -1,5 +1,3 @@
-use domain::filter::{FilterTarget, FilterValueRange};
-
 /// WalkBase2 data層のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -16,18 +14,8 @@ pub enum Error {
     #[error("親が見つからないプレイリストが検出されました: {}", diaplay_playlist_no_parents_detected(.0))]
     PlaylistNoParentsDetected(Vec<PlaylistNoParentsDetectedItem>),
 
-    #[error("フィルタプレイリストのフィルタIDがNoneです: playlist_id={plist_id}")]
-    FilterPlaylistFilterIdNone { plist_id: i32 },
-    #[error("rootフィルタが見つかりませんでした: root_id={root_id}")]
-    RootFilterNotFound { root_id: i32 },
-    #[error("親がみつからないフィルタが検出されました: {}", diaplay_filter_no_parents_detected(.0))]
-    FilterNoParentsDetected(Vec<FilterNoParentsDetectedItem>),
-    #[error("FilterRangeの値が不正です: filter_id={filter_id}, target={target}, range={range}")]
-    InvalidFilterRangeForTarget {
-        filter_id: i32,
-        target: FilterTarget,
-        range: FilterValueRange,
-    },
+    #[error("フィルタプレイリストにフィルタがありません: playlist_id={plist_id}")]
+    FilterPlaylistHasNoFilter { plist_id: i32 },
 }
 
 #[derive(Debug, PartialEq)]
@@ -55,23 +43,6 @@ fn diaplay_playlist_no_parents_detected(items: &[PlaylistNoParentsDetectedItem])
                 i.parent_id
                     .map(|id| id.to_string())
                     .unwrap_or_else(|| "None".to_owned())
-            )
-        })
-        .collect();
-    v.join(", ")
-}
-
-fn diaplay_filter_no_parents_detected(items: &[FilterNoParentsDetectedItem]) -> String {
-    let v: Vec<String> = items
-        .iter()
-        .map(|i| {
-            format!(
-                "{{id: {}, parent_id: {}, root_id: {}}}",
-                i.filter_id,
-                i.parent_id
-                    .map(|id| id.to_string())
-                    .unwrap_or_else(|| "None".to_owned()),
-                i.root_id,
             )
         })
         .collect();

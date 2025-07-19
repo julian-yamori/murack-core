@@ -1,51 +1,72 @@
+use std::{collections::HashSet, path::Path};
+
+use anyhow::Result;
+use async_recursion::async_recursion;
+use async_trait::async_trait;
+use mockall::mock;
+use sqlx::PgPool;
+
 use super::{DapPlaylistObserver, DapRepository, SongFinder};
 use crate::{
-    db_wrapper::{ConnectionWrapper, TransactionWrapper},
+    db::DbTransaction,
     path::LibSongPath,
     playlist::{DbPlaylistRepository, Playlist},
 };
-use anyhow::Result;
-use mockall::automock;
-use std::{collections::HashSet, path::Path, rc::Rc};
 
 /// DAPとのプレイリスト同期のUsecase
-#[automock]
+#[async_trait]
 pub trait DapPlaylistUsecase {
     /// プレイリスト同期処理を実行
     /// # Arguments
     /// - dap_plist_path: DAPのプレイリスト保存パス
     /// - all_flag: 変更されていないデータも含め、全て更新するか
     /// - observer: プレイリスト同期処理のObserver
-    fn run(
+    async fn run<O>(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         dap_plist_path: &Path,
         all_flag: bool,
-        observer: &mut dyn DapPlaylistObserver,
-    ) -> Result<()>;
+        observer: &mut O,
+    ) -> Result<()>
+    where
+        O: DapPlaylistObserver + Send + Sync;
 }
 
 /// DapPlaylistUsecaseの本実装
 #[derive(new)]
-pub struct DapPlaylistUsecaseImpl {
-    dap_repository: Rc<dyn DapRepository>,
-    db_playlist_repository: Rc<dyn DbPlaylistRepository>,
-    song_finder: Rc<dyn SongFinder>,
+pub struct DapPlaylistUsecaseImpl<DR, PR, SF>
+where
+    DR: DapRepository + Sync + Send,
+    PR: DbPlaylistRepository + Sync + Send,
+    SF: SongFinder + Sync + Send,
+{
+    dap_repository: DR,
+    db_playlist_repository: PR,
+    song_finder: SF,
 }
 
-impl DapPlaylistUsecase for DapPlaylistUsecaseImpl {
+#[async_trait]
+impl<DR, PR, SF> DapPlaylistUsecase for DapPlaylistUsecaseImpl<DR, PR, SF>
+where
+    DR: DapRepository + Sync + Send,
+    PR: DbPlaylistRepository + Sync + Send,
+    SF: SongFinder + Sync + Send,
+{
     /// プレイリスト同期処理を実行
     /// # Arguments
     /// - dap_plist_path: DAPのプレイリスト保存パス
     /// - all_flag: 変更されていないデータも含め、全て更新するか
     /// - observer: プレイリスト同期処理のObserver
-    fn run(
+    async fn run<O>(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         dap_plist_path: &Path,
         all_flag: bool,
-        observer: &mut dyn DapPlaylistObserver,
-    ) -> Result<()> {
+        observer: &mut O,
+    ) -> Result<()>
+    where
+        O: DapPlaylistObserver + Send + Sync,
+    {
         //現在DAPにあるプレイリストファイルを列挙し、Setに格納
         let mut existing_file_set: HashSet<String> = self
             .dap_repository
@@ -53,47 +74,64 @@ impl DapPlaylistUsecase for DapPlaylistUsecaseImpl {
             .into_iter()
             .collect();
 
-        db.run_in_transaction(|tx| {
-            //全て更新するなら、一旦全プレイリストを変更済みとする
-            if all_flag {
-                self.db_playlist_repository
-                    .set_dap_change_flag_all(tx, true)?;
-            }
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
 
-            observer.on_start_load_playlist();
-
-            //プレイリストを全て取得
-            let plist_trees = self.db_playlist_repository.get_playlist_tree(tx)?;
-
-            //DAPに保存する数を数える
-            let save_count = count_save_plists_recursive(&plist_trees);
-
-            observer.on_start_save_file();
-
-            //再帰的に保存を実行
-            self.save_plists_recursive(
-                &plist_trees,
-                tx,
-                dap_plist_path,
-                0,
-                save_count,
-                &mut existing_file_set,
-            )?;
-
-            //DBに存在しなかったプレイリストファイルを削除する
-            for name in &existing_file_set {
-                self.dap_repository
-                    .delete_playlist_file(dap_plist_path, name)?;
-            }
-
-            //DAP未反映フラグを下ろす
+        //全て更新するなら、一旦全プレイリストを変更済みとする
+        if all_flag {
             self.db_playlist_repository
-                .set_dap_change_flag_all(tx, false)
-        })
+                .set_dap_change_flag_all(&mut tx, true)
+                .await?;
+        }
+
+        observer.on_start_load_playlist();
+
+        //プレイリストを全て取得
+        let plist_trees = self
+            .db_playlist_repository
+            .get_playlist_tree(&mut tx)
+            .await?;
+
+        //DAPに保存する数を数える
+        let save_count = count_save_plists_recursive(&plist_trees);
+
+        observer.on_start_save_file();
+
+        //再帰的に保存を実行
+        self.save_plists_recursive(
+            &plist_trees,
+            &mut tx,
+            dap_plist_path,
+            0,
+            save_count,
+            &mut existing_file_set,
+        )
+        .await?;
+
+        //DBに存在しなかったプレイリストファイルを削除する
+        for name in &existing_file_set {
+            self.dap_repository
+                .delete_playlist_file(dap_plist_path, name)?;
+        }
+
+        //DAP未反映フラグを下ろす
+        self.db_playlist_repository
+            .set_dap_change_flag_all(&mut tx, false)
+            .await?;
+
+        tx.commit().await?;
+
+        Ok(())
     }
 }
 
-impl DapPlaylistUsecaseImpl {
+impl<DR, PR, SF> DapPlaylistUsecaseImpl<DR, PR, SF>
+where
+    DR: DapRepository + Sync + Send,
+    PR: DbPlaylistRepository + Sync + Send,
+    SF: SongFinder + Sync + Send,
+{
     /// プレイリスト数をDAPに再帰的に保存
     ///
     /// # Arguments
@@ -105,10 +143,11 @@ impl DapPlaylistUsecaseImpl {
     ///
     /// # Returns
     /// プレイリストをいくつ保存したか
-    fn save_plists_recursive(
+    #[async_recursion]
+    async fn save_plists_recursive<'c>(
         &self,
         plist_trees: &[Playlist],
-        tx: &TransactionWrapper,
+        tx: &mut DbTransaction<'c>,
         root_path: &Path,
         save_offset: u32,
         save_count: u32,
@@ -128,12 +167,13 @@ impl DapPlaylistUsecaseImpl {
                     playlist_to_file_name(plist, now_save_offset, save_count_digit);
 
                 //プレイリスト内の曲パスを取得
-                let song_paths = self.song_finder.get_song_path_list(tx, plist)?;
+                let song_paths = self.song_finder.get_song_path_list(tx, plist).await?;
 
                 //プレイリストの曲データ取得後に、リストに変更があったか確認
                 let new_plist_data = self
                     .db_playlist_repository
-                    .get_playlist(tx, plist.rowid)?
+                    .get_playlist(tx, plist.rowid)
+                    .await?
                     .expect("playlist not found");
 
                 if new_plist_data.dap_changed {
@@ -158,14 +198,16 @@ impl DapPlaylistUsecaseImpl {
                 }
             }
             //子プレイリストの保存
-            now_save_offset += self.save_plists_recursive(
-                &plist.children,
-                tx,
-                root_path,
-                now_save_offset,
-                save_count,
-                existing_file_set,
-            )?;
+            now_save_offset += self
+                .save_plists_recursive(
+                    &plist.children,
+                    tx,
+                    root_path,
+                    now_save_offset,
+                    save_count,
+                    existing_file_set,
+                )
+                .await?;
         }
 
         Ok(now_save_offset - save_offset)
@@ -263,6 +305,36 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
     format!("{}-{}.{}", buf, plist.name, PLAYLIST_EXT)
 }
 
+#[derive(Default)]
+pub struct MockDapPlaylistUsecase {
+    pub inner: MockDapPlaylistUsecaseInner,
+}
+#[async_trait]
+impl DapPlaylistUsecase for MockDapPlaylistUsecase {
+    async fn run<O>(
+        &self,
+        db_pool: &PgPool,
+        dap_plist_path: &Path,
+        all_flag: bool,
+        _observer: &mut O,
+    ) -> Result<()>
+    where
+        O: DapPlaylistObserver + Send + Sync,
+    {
+        self.inner.run(db_pool, dap_plist_path, all_flag)
+    }
+}
+mock! {
+    pub DapPlaylistUsecaseInner {
+        pub fn run(
+            &self,
+            db_pool: &PgPool,
+            dap_plist_path: &Path,
+            all_flag: bool,
+        ) -> Result<()>;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::{MockDapRepository, MockSongFinder};
@@ -341,7 +413,7 @@ mod tests {
             playlist_type: PlaylistType::Normal,
             parent_id: if parents.is_empty() { None } else { Some(34) },
             in_folder_order: 99,
-            filter_root_id: None,
+            filter: None,
             sort_type: SortType::Artist,
             sort_desc: false,
             save_dap: true,

@@ -1,7 +1,10 @@
 use num_derive::FromPrimitive;
+use serde::{Deserialize, Serialize};
+use sqlx::prelude::Type;
 
 /// ソートの種類
-#[derive(Debug, PartialEq, Clone, Copy, FromPrimitive)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, FromPrimitive, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "playlist_type", rename_all = "lowercase")]
 pub enum SortType {
     /// 曲名
     SongName = 0,

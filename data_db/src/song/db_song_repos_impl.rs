@@ -1,38 +1,50 @@
-use super::SongDao;
 use anyhow::Result;
+use async_trait::async_trait;
 use domain::{
-    db_wrapper::TransactionWrapper,
+    db::DbTransaction,
     folder::FolderIdMayRoot,
     path::{LibDirPath, LibPathStr, LibSongPath},
     song::DbSongRepository,
 };
-use std::rc::Rc;
+
+use super::SongDao;
 
 /// HasDbSongRepositoryの本実装
 #[derive(new)]
-pub struct DbSongRepositoryImpl {
-    song_dao: Rc<dyn SongDao>,
+pub struct DbSongRepositoryImpl<SD>
+where
+    SD: SongDao + Sync + Send,
+{
+    song_dao: SD,
 }
 
-impl DbSongRepository for DbSongRepositoryImpl {
+#[async_trait]
+impl<SD> DbSongRepository for DbSongRepositoryImpl<SD>
+where
+    SD: SongDao + Sync + Send,
+{
     /// パスから曲IDを取得
-    fn get_id_by_path(&self, tx: &TransactionWrapper, path: &LibSongPath) -> Result<Option<i32>> {
-        self.song_dao.select_id_by_path(tx, path)
+    async fn get_id_by_path<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        path: &LibSongPath,
+    ) -> Result<Option<i32>> {
+        self.song_dao.select_id_by_path(tx, path).await
     }
 
     /// 文字列でパスを指定して、該当曲のパスリストを取得
-    fn get_path_by_path_str(
+    async fn get_path_by_path_str<'c>(
         &self,
-        tx: &TransactionWrapper,
+        tx: &mut DbTransaction<'c>,
         path: &LibPathStr,
     ) -> Result<Vec<LibSongPath>> {
         //ディレクトリ指定とみなして検索
         let dir_path = path.to_dir_path();
-        let mut list = self.get_path_by_directory(tx, &dir_path)?;
+        let mut list = self.get_path_by_directory(tx, &dir_path).await?;
 
         //ファイル指定とみなしての検索でヒットしたら追加
         let song_path = path.to_song_path();
-        if self.is_exist_path(tx, &song_path)? {
+        if self.is_exist_path(tx, &song_path).await? {
             list.push(song_path);
         }
 
@@ -44,34 +56,43 @@ impl DbSongRepository for DbSongRepositoryImpl {
     /// - path: 検索対象のライブラリパス
     /// # Returns
     /// 指定されたディレクトリ内の、全ての曲のパス
-    fn get_path_by_directory(
+    async fn get_path_by_directory<'c>(
         &self,
-        tx: &TransactionWrapper,
+        tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Vec<LibSongPath>> {
         //ルートフォルダ指定なら、全曲
         if path.is_root() {
-            self.song_dao.select_path_all(tx)
+            self.song_dao.select_path_all(tx).await
         } else {
-            self.song_dao.select_path_begins_directory(tx, path)
+            self.song_dao.select_path_begins_directory(tx, path).await
         }
     }
 
     /// ライブラリ内の全ての曲のパスを取得
-    fn get_path_all(&self, tx: &TransactionWrapper) -> Result<Vec<LibSongPath>> {
-        self.song_dao.select_path_all(tx)
+    async fn get_path_all<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<LibSongPath>> {
+        self.song_dao.select_path_all(tx).await
     }
 
     /// 指定したパスの曲が存在するか確認
-    fn is_exist_path(&self, tx: &TransactionWrapper, path: &LibSongPath) -> Result<bool> {
-        self.song_dao.exists_path(tx, path)
+    async fn is_exist_path<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        path: &LibSongPath,
+    ) -> Result<bool> {
+        self.song_dao.exists_path(tx, path).await
     }
 
     /// 指定されたフォルダに曲が存在するか確認
-    fn is_exist_in_folder(&self, tx: &TransactionWrapper, folder_id: i32) -> Result<bool> {
+    async fn is_exist_in_folder<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        folder_id: i32,
+    ) -> Result<bool> {
         let song_count = self
             .song_dao
-            .count_by_folder_id(tx, FolderIdMayRoot::Folder(folder_id))?;
+            .count_by_folder_id(tx, FolderIdMayRoot::Folder(folder_id))
+            .await?;
         Ok(song_count > 0)
     }
 
@@ -81,33 +102,36 @@ impl DbSongRepository for DbSongRepositoryImpl {
     /// - old_path: 書き換え元の曲のパス
     /// - new_path: 書き換え先の曲のパス
     /// - new_folder_id: 新しい親フォルダのID
-    fn update_path<'c>(
+    async fn update_path<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         old_path: &LibSongPath,
         new_path: &LibSongPath,
         new_folder_id: FolderIdMayRoot,
     ) -> Result<()> {
         self.song_dao
             .update_path_by_path(tx, old_path, new_path, new_folder_id)
+            .await
     }
 
     /// 曲の再生時間を書き換え
-    fn update_duration<'c>(
+    async fn update_duration<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         song_id: i32,
         duration: u32,
     ) -> Result<()> {
-        self.song_dao.update_duration_by_id(tx, song_id, duration)
+        self.song_dao
+            .update_duration_by_id(tx, song_id, duration)
+            .await
     }
 
     /// 曲を削除
     ///
     /// # Arguments
     /// - song_id: 削除する曲のID
-    fn delete(&self, tx: &TransactionWrapper, song_id: i32) -> Result<()> {
-        self.song_dao.delete(tx, song_id)
+    async fn delete<'c>(&self, tx: &mut DbTransaction<'c>, song_id: i32) -> Result<()> {
+        self.song_dao.delete(tx, song_id).await
     }
 }
 
@@ -115,7 +139,7 @@ impl DbSongRepository for DbSongRepositoryImpl {
 mod tests {
     use super::super::MockSongDao;
     use super::*;
-    use domain::{db_wrapper::ConnectionFactory, mocks};
+    use domain::mocks;
     use paste::paste;
 
     mocks! {DbSongRepositoryImpl, [
@@ -145,12 +169,11 @@ mod tests {
                 .returning(|_, _| Ok(false));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
             let result = t
-                .get_path_by_path_str(&tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
+                .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
                 .unwrap();
             assert_eq!(result, expect());
         });
@@ -172,12 +195,11 @@ mod tests {
                 .returning(|_, _| Ok(false));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
             let result = t
-                .get_path_by_path_str(&tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
+                .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
                 .unwrap();
             assert_eq!(result, vec![]);
         });
@@ -199,12 +221,11 @@ mod tests {
                 .returning(|_, _| Ok(true));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
             let result = t
-                .get_path_by_path_str(&tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
+                .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
                 .unwrap();
             assert_eq!(result, vec![LibSongPath::new("test/hoge.flac")]);
         });
@@ -231,11 +252,12 @@ mod tests {
                 .returning(|_, _| Ok(false));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
-            let result = t.get_path_by_path_str(&tx, &LibPathStr::root()).unwrap();
+            let result = t
+                .get_path_by_path_str(&mut tx, &LibPathStr::root())
+                .unwrap();
             assert_eq!(result, expect());
         });
     }

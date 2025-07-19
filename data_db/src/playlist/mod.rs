@@ -11,4 +11,4 @@ use playlist_row::PlaylistRow;
 mod playlist_dao;
 pub use playlist_dao::{MockPlaylistDao, PlaylistDao, PlaylistDaoImpl};
 mod playlist_song_dao;
-pub use playlist_song_dao::{MockPlaylistSongDao, PlaylistSongDao, PlaylistSongDaoImpl};
+pub use playlist_song_dao::{PlaylistSongDao, PlaylistSongDaoImpl};

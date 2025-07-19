@@ -19,4 +19,4 @@ pub use song_sync_row::SongSyncRow;
 mod song_dao;
 pub use song_dao::{MockSongDao, SongDao, SongDaoImpl};
 mod song_sync_dao;
-pub use song_sync_dao::{MockSongSyncDao, SongSyncDao, SongSyncDaoImpl};
+pub use song_sync_dao::{SongSyncDao, SongSyncDaoImpl};

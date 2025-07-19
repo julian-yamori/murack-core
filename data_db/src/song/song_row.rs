@@ -1,18 +1,20 @@
-use crate::converts::{DbDate, DbFolderIdMayRoot, DbLibSongPath, DbOptionString};
+use chrono::{DateTime, NaiveDate, Utc};
+
+use crate::converts::DbOptionString;
 
 /// songテーブルのレコード
 #[derive(Debug, PartialEq, Clone)]
 pub struct SongRow {
     /// 曲ID
-    pub rowid: i32,
+    pub id: i32,
 
     /// 曲の長さ(ミリ秒)
-    pub duration: u32,
+    pub duration: i32,
 
     /// 曲ファイルのパス
-    pub path: DbLibSongPath,
+    pub path: String,
     /// フォルダID
-    pub folder_id: DbFolderIdMayRoot,
+    pub folder_id: Option<i32>,
 
     /// 曲名
     pub title: DbOptionString,
@@ -38,15 +40,15 @@ pub struct SongRow {
     pub disc_max: Option<i32>,
 
     /// リリース日
-    pub release_date: Option<DbDate>,
+    pub release_date: Option<NaiveDate>,
 
     /// メモ
     pub memo: DbOptionString,
 
     /// レート
-    pub rating: u8,
+    pub rating: i16,
     /// 原曲
-    pub original_song: DbOptionString,
+    pub original_track: DbOptionString,
     /// サジェスト対象フラグ
     pub suggest_target: bool,
     /// 管理メモ
@@ -69,5 +71,5 @@ pub struct SongRow {
     pub composer_order: String,
 
     /// 登録日
-    pub entry_date: DbDate,
+    pub created_at: DateTime<Utc>,
 }

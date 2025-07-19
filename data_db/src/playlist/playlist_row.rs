@@ -1,13 +1,12 @@
-use crate::converts::{DbPlaylistType, DbSortType};
-use domain::playlist::Playlist;
+use domain::playlist::{Playlist, PlaylistType, SortType};
 
 /// playlistテーブルのレコード
 pub struct PlaylistRow {
     /// プレイリストID
-    pub rowid: i32,
+    pub id: i32,
 
     /// プレイリストの種類
-    pub playlist_type: DbPlaylistType,
+    pub playlist_type: PlaylistType,
 
     /// プレイリスト名
     pub name: String,
@@ -19,16 +18,13 @@ pub struct PlaylistRow {
     pub parent_id: Option<i32>,
 
     /// 親プレイリスト内でのインデックス
-    pub in_folder_order: u32,
+    pub in_folder_order: i32,
 
-    /// このプレイリスト用フィルタの基底ノードの、FilterData.Id
-    ///
-    /// PlaylistType.Filter用。
-    /// フィルタがなければNone。
-    pub filter_root_id: Option<i32>,
+    /// PlaylistType::Filter で使うフィルタ
+    pub filter_json: Option<serde_json::Value>,
 
     /// ソート対象
-    pub sort_type: DbSortType,
+    pub sort_type: SortType,
 
     /// ソートが降順か
     pub sort_desc: bool,
@@ -48,16 +44,21 @@ pub struct PlaylistRow {
     pub dap_changed: bool,
 }
 
-impl From<PlaylistRow> for Playlist {
-    fn from(row: PlaylistRow) -> Self {
-        Self {
-            rowid: row.rowid,
-            playlist_type: row.playlist_type.into(),
+impl TryFrom<PlaylistRow> for Playlist {
+    type Error = anyhow::Error;
+
+    fn try_from(row: PlaylistRow) -> anyhow::Result<Self> {
+        Ok(Self {
+            rowid: row.id,
+            playlist_type: row.playlist_type,
             name: row.name,
             parent_id: row.parent_id,
-            in_folder_order: row.in_folder_order,
-            filter_root_id: row.filter_root_id,
-            sort_type: row.sort_type.into(),
+            in_folder_order: row.in_folder_order as u32,
+            filter: match row.filter_json {
+                Some(json) => Some(serde_json::from_value(json)?),
+                None => None,
+            },
+            sort_type: row.sort_type,
             sort_desc: row.sort_desc,
             save_dap: row.save_dap,
             listuped_flag: row.listuped_flag,
@@ -65,6 +66,6 @@ impl From<PlaylistRow> for Playlist {
             //todo 以下は暫定
             children: vec![],
             parent_names: vec![],
-        }
+        })
     }
 }

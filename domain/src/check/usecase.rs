@@ -1,17 +1,21 @@
+use std::{fs::File, io::prelude::*, path::Path};
+
+use anyhow::Result;
+use async_trait::async_trait;
+use mockall::automock;
+use sqlx::PgPool;
+
 use super::CheckIssueSummary;
+use crate::db::DbTransaction;
 use crate::{
     Error, FileLibraryRepository,
-    db_wrapper::ConnectionWrapper,
     path::LibSongPath,
     song::SongItemKind,
     sync::{DbSongSyncRepository, SongSync},
 };
-use anyhow::Result;
-use mockall::automock;
-use std::rc::Rc;
-use std::{fs::File, io::prelude::*, path::Path};
 
 /// PC・DB・DAP間の曲の整合性チェックのUsecase
+#[async_trait]
 #[automock]
 pub trait CheckUsecase {
     /// 曲のチェックを行い、問題の簡易情報リストを取得
@@ -22,9 +26,9 @@ pub trait CheckUsecase {
     /// DAPのファイル内容を無視するか。
     /// trueなら、PC間とDAP間でファイル内容を比較しない。
     /// (一致として扱う)
-    fn listup_issue_summary(
+    async fn listup_issue_summary(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         pc_lib: &Path,
         dap_lib: &Path,
         song_path: &LibSongPath,
@@ -60,12 +64,21 @@ pub trait CheckUsecase {
 
 /// CheckUsecaseの本実装
 #[derive(new)]
-pub struct CheckUsecaseImpl {
-    db_song_sync_repository: Rc<dyn DbSongSyncRepository>,
-    file_library_repository: Rc<dyn FileLibraryRepository>,
+pub struct CheckUsecaseImpl<SSR, FLR>
+where
+    SSR: DbSongSyncRepository + Sync + Send,
+    FLR: FileLibraryRepository + Sync + Send,
+{
+    db_song_sync_repository: SSR,
+    file_library_repository: FLR,
 }
 
-impl CheckUsecase for CheckUsecaseImpl {
+#[async_trait]
+impl<SSR, FLR> CheckUsecase for CheckUsecaseImpl<SSR, FLR>
+where
+    SSR: DbSongSyncRepository + Sync + Send,
+    FLR: FileLibraryRepository + Sync + Send,
+{
     /// 曲のチェックを行い、問題の簡易情報リストを取得
     ///
     /// # Arguments
@@ -74,9 +87,9 @@ impl CheckUsecase for CheckUsecaseImpl {
     /// DAPのファイル内容を無視するか。
     /// trueなら、PC間とDAP間でファイル内容を比較しない。
     /// (一致として扱う)
-    fn listup_issue_summary(
+    async fn listup_issue_summary(
         &self,
-        db: &mut ConnectionWrapper,
+        db_pool: &PgPool,
         pc_lib: &Path,
         dap_lib: &Path,
         song_path: &LibSongPath,
@@ -103,8 +116,15 @@ impl CheckUsecase for CheckUsecaseImpl {
         };
 
         //DBデータ読み込み
-        let db_data_opt =
-            db.run_in_transaction(|tx| self.db_song_sync_repository.get_by_path(tx, song_path))?;
+        let mut tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await?,
+        };
+        let db_data_opt = self
+            .db_song_sync_repository
+            .get_by_path(&mut tx, song_path)
+            .await?;
+        tx.commit().await?;
+
         if db_data_opt.is_none() {
             issue_list.push(CheckIssueSummary::DbNotExists);
         }

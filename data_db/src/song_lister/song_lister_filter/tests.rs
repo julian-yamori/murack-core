@@ -1,43 +1,36 @@
 //! SongListerFilterのテスト
 
+use chrono::NaiveDate;
+use domain::{folder::FolderIdMayRoot, mocks, path::LibSongPath, test_utils::assert_eq_not_orderd};
+use once_cell::sync::Lazy;
+use paste::paste;
+use sqlx::PgPool;
+use test_case::test_case;
+
 use super::*;
 use crate::{
     artwork::{SongArtworkDao, SongArtworkDaoImpl},
     converts::DbDate,
-    initialize,
     song::{SongDao, SongDaoImpl, SongEntry},
     tag::{SongTagsDao, SongTagsDaoImpl},
 };
-use chrono::NaiveDate;
-use domain::{
-    db_wrapper::{ConnectionFactory, ConnectionWrapper},
-    folder::FolderIdMayRoot,
-    mocks,
-    path::LibSongPath,
-    test_utils::assert_eq_not_orderd,
-};
-use once_cell::sync::Lazy;
-use paste::paste;
-use test_case::test_case;
 
 mocks! {
     SongListerFilterImpl,
     []
 }
 
-struct TestDb<'c> {
-    tx: TransactionWrapper<'c>,
+struct TestDb {
+    tx: DbTransaction<'static>,
     song_dao: SongDaoImpl,
     song_tags_dao: SongTagsDaoImpl,
     song_artwork_dao: SongArtworkDaoImpl,
 }
-impl<'c> TestDb<'c> {
-    fn new(db: &'c mut ConnectionWrapper) -> Self {
-        let tx = db.transaction().unwrap();
-
-        initialize::song(&tx).unwrap();
-        initialize::song_tags(&tx).unwrap();
-        initialize::song_artwork(&tx).unwrap();
+impl TestDb {
+    async fn new(db_pool: &PgPool) -> Self {
+        let tx = DbTransaction::PgTransaction {
+            tx: db_pool.begin().await.unwrap(),
+        };
 
         Self {
             tx,
@@ -47,7 +40,7 @@ impl<'c> TestDb<'c> {
         }
     }
 }
-impl TestDb<'_> {
+impl TestDb {
     fn insert_song(&self, entry: &SongEntry) -> i32 {
         self.song_dao.insert(&self.tx, entry).unwrap()
     }
@@ -92,8 +85,8 @@ fn dummy_song() -> SongEntry<'static> {
     }
 }
 
-#[test]
-fn test_group() {
+#[sqlx::test()]
+fn test_group(db_pool: PgPool) {
     fn insert_song(
         test_db: &TestDb,
         artist: &str,
@@ -114,8 +107,7 @@ fn test_group() {
         song_id
     }
 
-    let mut db = ConnectionFactory::Memory.open().unwrap();
-    let test_db = TestDb::new(&mut db);
+    let test_db = TestDb::new(&db_pool).await;
 
     let hit_1 = insert_song(&test_db, "taro", &[45, 58], 3, None);
     insert_song(
@@ -155,51 +147,27 @@ fn test_group() {
         Some(NaiveDate::from_ymd_opt(2021, 9, 25).unwrap()),
     );
 
-    let filter = Filter {
-        rowid: 0,
-        target: FilterTarget::FilterGroup,
-        str_value: String::default(),
-        str_value2: String::default(),
-        range: FilterValueRange::GroupAnd,
+    let filter = FilterTarget::FilterGroup {
+        op: GroupOperand::And,
         children: vec![
-            Filter {
-                rowid: 1,
-                target: FilterTarget::Artist,
-                str_value: "taro".to_owned(),
-                str_value2: String::default(),
-                range: FilterValueRange::StrContain,
-                children: vec![],
+            FilterTarget::Artist {
+                range: StringFilterRange::Contain {
+                    value: "taro".to_owned(),
+                },
             },
-            Filter {
-                rowid: 2,
-                target: FilterTarget::FilterGroup,
-                str_value: String::default(),
-                str_value2: String::default(),
-                range: FilterValueRange::GroupOr,
+            FilterTarget::FilterGroup {
+                op: GroupOperand::Or,
                 children: vec![
-                    Filter {
-                        rowid: 3,
-                        target: FilterTarget::Tags,
-                        str_value: "45".to_owned(),
-                        str_value2: String::default(),
-                        range: FilterValueRange::TagContain,
-                        children: vec![],
+                    FilterTarget::Tags {
+                        range: TagsFilterRange::Contain { value: 45 },
                     },
-                    Filter {
-                        rowid: 9,
-                        target: FilterTarget::Rating,
-                        str_value: "4".to_owned(),
-                        str_value2: String::default(),
-                        range: FilterValueRange::IntLargeEqual,
-                        children: vec![],
+                    FilterTarget::Rating {
+                        range: IntFilterRange::LargeEqual { value: 4 },
                     },
-                    Filter {
-                        rowid: 21,
-                        target: FilterTarget::ReleaseDate,
-                        str_value: "2021-09-25".to_owned(),
-                        str_value2: String::default(),
-                        range: FilterValueRange::DateEqual,
-                        children: vec![],
+                    FilterTarget::ReleaseDate {
+                        range: DateFilterRange::Equal {
+                            value: NaiveDate::from_ymd_opt(2021, 9, 25).unwrap(),
+                        },
                     },
                 ],
             },
@@ -215,28 +183,19 @@ fn test_group() {
     });
 }
 
-#[test]
-fn test_str() {
+#[sqlx::test()]
+fn test_str(db_pool: PgPool) {
     fn insert_song(test_db: &TestDb, artist: &str) -> i32 {
         let mut song = dummy_song();
         song.artist = artist;
         test_db.insert_song(&song)
     }
 
-    fn filter(value: &str, range: FilterValueRange) -> Filter {
-        Filter {
-            str_value: value.to_owned(),
-            range,
-
-            rowid: 1,
-            target: FilterTarget::Artist,
-            str_value2: String::default(),
-            children: vec![],
-        }
+    fn filter(range: StringFilterRange) -> FilterTarget {
+        FilterTarget::Artist { range }
     }
 
-    let mut db = ConnectionFactory::Memory.open().unwrap();
-    let test_db = TestDb::new(&mut db);
+    let test_db = TestDb::new(&db_pool).await;
 
     let song_1 = insert_song(&test_db, "test");
     let song_2 = insert_song(&test_db, "AAtest");
@@ -252,77 +211,105 @@ fn test_str() {
     let mut mocks = Mocks::new();
     mocks.run_target(|t| {
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("test", FilterValueRange::StrEqual))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(StringFilterRange::Equal {
+                    value: "test".to_owned(),
+                }),
+            )
+            .unwrap(),
             &[song_1],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("test", FilterValueRange::StrNotEqual))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(StringFilterRange::NotEqual {
+                    value: "test".to_owned(),
+                }),
+            )
+            .unwrap(),
             &[
                 song_2, song_3, song_4, song_5, song_6, song_7, song_8, song_9, song_10,
             ],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("test", FilterValueRange::StrStart))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(StringFilterRange::Start {
+                    value: "test".to_owned(),
+                }),
+            )
+            .unwrap(),
             &[song_1, song_3, song_5],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("test", FilterValueRange::StrEnd))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(StringFilterRange::End {
+                    value: "test".to_owned(),
+                }),
+            )
+            .unwrap(),
             &[song_1, song_2, song_5],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("test", FilterValueRange::StrContain))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(StringFilterRange::Contain {
+                    value: "test".to_owned(),
+                }),
+            )
+            .unwrap(),
             &[song_1, song_2, song_3, song_4, song_5],
         );
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("test", FilterValueRange::StrNotContain),
+                &filter(StringFilterRange::NotContain {
+                    value: "test".to_owned(),
+                }),
             )
             .unwrap(),
             &[song_6, song_7, song_8, song_9, song_10],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("te%st", FilterValueRange::StrEqual))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(StringFilterRange::Equal {
+                    value: "te%st".to_owned(),
+                }),
+            )
+            .unwrap(),
             &[song_9],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("te%st", FilterValueRange::StrContain))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(StringFilterRange::Contain {
+                    value: "te%st".to_owned(),
+                }),
+            )
+            .unwrap(),
             &[song_9, song_10],
         );
     });
 }
 
-#[test]
-fn test_int() {
+#[sqlx::test()]
+fn test_int(db_pool: PgPool) {
     fn insert_song(test_db: &TestDb, track_number: Option<i32>) -> i32 {
         let mut song = dummy_song();
         song.track_number = track_number;
         test_db.insert_song(&song)
     }
 
-    fn filter(value1: &str, value2: &str, range: FilterValueRange) -> Filter {
-        Filter {
-            str_value: value1.to_owned(),
-            str_value2: value2.to_owned(),
-            range,
-
-            rowid: 1,
-            target: FilterTarget::TrackNumber,
-            children: vec![],
-        }
+    fn filter(range: IntFilterRange) -> FilterTarget {
+        FilterTarget::TrackNumber { range }
     }
 
-    let mut db = ConnectionFactory::Memory.open().unwrap();
-    let test_db = TestDb::new(&mut db);
+    let test_db = TestDb::new(&db_pool).await;
 
-    let song_0 = insert_song(&test_db, None);
+    let _song_0 = insert_song(&test_db, None);
     let song_1 = insert_song(&test_db, Some(1));
     let song_5 = insert_song(&test_db, Some(5));
     let song_9 = insert_song(&test_db, Some(9));
@@ -333,23 +320,20 @@ fn test_int() {
     let mut mocks = Mocks::new();
     mocks.run_target(|t| {
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("9", "", FilterValueRange::IntEqual))
+            &t.list_song_id(&test_db.tx, &filter(IntFilterRange::Equal { value: 9 }))
                 .unwrap(),
             &[song_9],
         );
         //※nullは含めない仕様(WalkBase1がそうなっていたので)
         assert_eq_not_orderd(
-            &t.list_song_id(
-                &test_db.tx,
-                &filter("25", "", FilterValueRange::IntNotEqual),
-            )
-            .unwrap(),
+            &t.list_song_id(&test_db.tx, &filter(IntFilterRange::NotEqual { value: 25 }))
+                .unwrap(),
             &[song_1, song_5, song_9, song_10, song_123],
         );
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("10", "", FilterValueRange::IntLargeEqual),
+                &filter(IntFilterRange::LargeEqual { value: 10 }),
             )
             .unwrap(),
             &[song_10, song_25, song_123],
@@ -357,7 +341,7 @@ fn test_int() {
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("5", "", FilterValueRange::IntSmallEqual),
+                &filter(IntFilterRange::SmallEqual { value: 5 }),
             )
             .unwrap(),
             &[song_1, song_5],
@@ -365,7 +349,7 @@ fn test_int() {
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("9", "25", FilterValueRange::IntRangeIn),
+                &filter(IntFilterRange::RangeIn { min: 9, max: 25 }),
             )
             .unwrap(),
             &[song_9, song_10, song_25],
@@ -373,44 +357,53 @@ fn test_int() {
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("5", "10", FilterValueRange::IntRangeOut),
+                &filter(IntFilterRange::RangeOut { min: 5, max: 10 }),
             )
             .unwrap(),
             &[song_1, song_25, song_123],
         );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", "", FilterValueRange::IntEqual))
-                .unwrap(),
-            &[song_0],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", "", FilterValueRange::IntNotEqual))
-                .unwrap(),
-            &[song_1, song_5, song_9, song_10, song_25, song_123],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(
-                &test_db.tx,
-                &filter("", "", FilterValueRange::IntLargeEqual),
-            )
-            .unwrap(),
-            &[],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", "5", FilterValueRange::IntRangeIn))
-                .unwrap(),
-            &[],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("5", "", FilterValueRange::IntRangeIn))
-                .unwrap(),
-            &[],
-        );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(&test_db.tx, &filter(IntFilterRange::Equal { value: None }))
+        //         .unwrap(),
+        //     &[song_0],
+        // );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(
+        //         &test_db.tx,
+        //         &filter(IntFilterRange::NotEqual { value: None }),
+        //     )
+        //     .unwrap(),
+        //     &[song_1, song_5, song_9, song_10, song_25, song_123],
+        // );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(
+        //         &test_db.tx,
+        //         &filter(IntFilterRange::LargeEqual { value: None }),
+        //     )
+        //     .unwrap(),
+        //     &[],
+        // );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(
+        //         &test_db.tx,
+        //         &filter(IntFilterRange::RangeIn { min: None, max: 5 }),
+        //     )
+        //     .unwrap(),
+        //     &[],
+        // );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(
+        //         &test_db.tx,
+        //         &filter(IntFilterRange::RangeIn { min: 5, max: None }),
+        //     )
+        //     .unwrap(),
+        //     &[],
+        // );
     });
 }
 
-#[test]
-fn test_tag() {
+#[sqlx::test()]
+fn test_tag(db_pool: PgPool) {
     fn insert_song(test_db: &TestDb, tags: &[i32]) -> i32 {
         let song_id = test_db.insert_song(&dummy_song());
         for tag_id in tags {
@@ -420,20 +413,11 @@ fn test_tag() {
         song_id
     }
 
-    fn filter(value: &str, range: FilterValueRange) -> Filter {
-        Filter {
-            str_value: value.to_owned(),
-            range,
-
-            rowid: 1,
-            target: FilterTarget::Tags,
-            str_value2: String::default(),
-            children: vec![],
-        }
+    fn filter(range: TagsFilterRange) -> FilterTarget {
+        FilterTarget::Tags { range }
     }
 
-    let mut db = ConnectionFactory::Memory.open().unwrap();
-    let test_db = TestDb::new(&mut db);
+    let test_db = TestDb::new(&db_pool).await;
 
     let song_0 = insert_song(&test_db, &[]);
     let song_1 = insert_song(&test_db, &[4]);
@@ -443,76 +427,82 @@ fn test_tag() {
     let mut mocks = Mocks::new();
     mocks.run_target(|t| {
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("4", FilterValueRange::TagContain))
+            &t.list_song_id(&test_db.tx, &filter(TagsFilterRange::Contain { value: 4 }))
                 .unwrap(),
             &[song_1, song_2],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("4", FilterValueRange::TagNotContain))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(TagsFilterRange::NotContain { value: 4 }),
+            )
+            .unwrap(),
             &[song_0, song_3],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("5", FilterValueRange::TagContain))
+            &t.list_song_id(&test_db.tx, &filter(TagsFilterRange::Contain { value: 5 }))
                 .unwrap(),
             &[],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("5", FilterValueRange::TagNotContain))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(TagsFilterRange::NotContain { value: 5 }),
+            )
+            .unwrap(),
             &[song_0, song_1, song_2, song_3],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("83", FilterValueRange::TagContain))
+            &t.list_song_id(&test_db.tx, &filter(TagsFilterRange::Contain { value: 83 }))
                 .unwrap(),
             &[song_2, song_3],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("83", FilterValueRange::TagNotContain))
-                .unwrap(),
+            &t.list_song_id(
+                &test_db.tx,
+                &filter(TagsFilterRange::NotContain { value: 83 }),
+            )
+            .unwrap(),
             &[song_0, song_1],
         );
 
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(
+        //         &test_db.tx,
+        //         &filter(TagsFilterRange::Contain { value: None }),
+        //     )
+        //     .unwrap(),
+        //     &[],
+        // );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(
+        //         &test_db.tx,
+        //         &filter(TagsFilterRange::NotContain { value: None }),
+        //     )
+        //     .unwrap(),
+        //     &[],
+        // );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", FilterValueRange::TagContain))
-                .unwrap(),
-            &[],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", FilterValueRange::TagNotContain))
-                .unwrap(),
-            &[],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", FilterValueRange::TagNone))
+            &t.list_song_id(&test_db.tx, &filter(TagsFilterRange::None))
                 .unwrap(),
             &[song_0],
         );
     });
 }
 
-#[test]
-fn test_bool() {
+#[sqlx::test()]
+fn test_bool(db_pool: PgPool) {
     fn insert_song(test_db: &TestDb, suggest_target: bool) -> i32 {
         let mut song = dummy_song();
         song.suggest_target = suggest_target;
         test_db.insert_song(&song)
     }
 
-    fn filter(range: FilterValueRange) -> Filter {
-        Filter {
-            range,
-
-            rowid: 1,
-            target: FilterTarget::SuggestTarget,
-            str_value: String::default(),
-            str_value2: String::default(),
-            children: vec![],
-        }
+    fn filter(range: BoolFilterRange) -> FilterTarget {
+        FilterTarget::SuggestTarget { range }
     }
 
-    let mut db = ConnectionFactory::Memory.open().unwrap();
-    let test_db = TestDb::new(&mut db);
+    let test_db = TestDb::new(&db_pool).await;
 
     let song_true = insert_song(&test_db, true);
     let song_false = insert_song(&test_db, false);
@@ -520,20 +510,20 @@ fn test_bool() {
     let mut mocks = Mocks::new();
     mocks.run_target(|t| {
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter(FilterValueRange::BoolTrue))
+            &t.list_song_id(&test_db.tx, &filter(BoolFilterRange::True))
                 .unwrap(),
             &[song_true],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter(FilterValueRange::BoolFalse))
+            &t.list_song_id(&test_db.tx, &filter(BoolFilterRange::False))
                 .unwrap(),
             &[song_false],
         );
     });
 }
 
-#[test]
-fn test_artwork() {
+#[sqlx::test()]
+fn test_artwork(db_pool: PgPool) {
     fn insert_song(test_db: &TestDb, artworks: &[i32]) -> i32 {
         let song_id = test_db.insert_song(&dummy_song());
         for (idx, artwork_id) in artworks.iter().enumerate() {
@@ -545,20 +535,11 @@ fn test_artwork() {
 
         song_id
     }
-    fn filter(range: FilterValueRange) -> Filter {
-        Filter {
-            range,
-
-            rowid: 1,
-            target: FilterTarget::Artwork,
-            str_value: String::default(),
-            str_value2: String::default(),
-            children: vec![],
-        }
+    fn filter(range: ArtworkFilterRange) -> FilterTarget {
+        FilterTarget::Artwork { range }
     }
 
-    let mut db = ConnectionFactory::Memory.open().unwrap();
-    let test_db = TestDb::new(&mut db);
+    let test_db = TestDb::new(&db_pool).await;
 
     let song_0 = insert_song(&test_db, &[]);
     let song_1 = insert_song(&test_db, &[7]);
@@ -567,40 +548,31 @@ fn test_artwork() {
     let mut mocks = Mocks::new();
     mocks.run_target(|t| {
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter(FilterValueRange::ArtworkHas))
+            &t.list_song_id(&test_db.tx, &filter(ArtworkFilterRange::Has))
                 .unwrap(),
             &[song_1, song_2],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter(FilterValueRange::ArtworkNone))
+            &t.list_song_id(&test_db.tx, &filter(ArtworkFilterRange::None))
                 .unwrap(),
             &[song_0],
         );
     });
 }
 
-#[test]
-fn test_date() {
+#[sqlx::test()]
+fn test_date(db_pool: PgPool) {
     fn insert_song(test_db: &TestDb, release_date: Option<NaiveDate>) -> i32 {
         let mut song = dummy_song();
         song.release_date = release_date.map(DbDate::from);
         test_db.insert_song(&song)
     }
 
-    fn filter(value: &str, range: FilterValueRange) -> Filter {
-        Filter {
-            str_value: value.to_owned(),
-            range,
-
-            rowid: 1,
-            target: FilterTarget::ReleaseDate,
-            str_value2: String::default(),
-            children: vec![],
-        }
+    fn filter(range: DateFilterRange) -> FilterTarget {
+        FilterTarget::ReleaseDate { range }
     }
 
-    let mut db = ConnectionFactory::Memory.open().unwrap();
-    let test_db = TestDb::new(&mut db);
+    let test_db = TestDb::new(&db_pool).await;
 
     let song_0 = insert_song(&test_db, None);
     let song_1 = insert_song(
@@ -618,7 +590,9 @@ fn test_date() {
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("2012-04-05", FilterValueRange::DateEqual),
+                &filter(DateFilterRange::Equal {
+                    value: NaiveDate::from_ymd_opt(2012, 4, 5).unwrap(),
+                }),
             )
             .unwrap(),
             &[song_2],
@@ -627,7 +601,9 @@ fn test_date() {
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("2012-04-05", FilterValueRange::DateNotEqual),
+                &filter(DateFilterRange::NotEqual {
+                    value: NaiveDate::from_ymd_opt(2012, 4, 5).unwrap(),
+                }),
             )
             .unwrap(),
             &[song_1, song_3],
@@ -635,7 +611,9 @@ fn test_date() {
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("2012-11-12", FilterValueRange::DateBefore),
+                &filter(DateFilterRange::Before {
+                    value: NaiveDate::from_ymd_opt(2012, 11, 12).unwrap(),
+                }),
             )
             .unwrap(),
             &[song_1, song_2],
@@ -643,55 +621,48 @@ fn test_date() {
         assert_eq_not_orderd(
             &t.list_song_id(
                 &test_db.tx,
-                &filter("2012-04-05", FilterValueRange::DateAfter),
+                &filter(DateFilterRange::After {
+                    value: NaiveDate::from_ymd_opt(2012, 4, 5).unwrap(),
+                }),
             )
             .unwrap(),
             &[song_2, song_3],
         );
         assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", FilterValueRange::DateNone))
+            &t.list_song_id(&test_db.tx, &filter(DateFilterRange::None))
                 .unwrap(),
             &[song_0],
         );
 
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", FilterValueRange::DateEqual))
-                .unwrap(),
-            &[song_0],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", FilterValueRange::DateNotEqual))
-                .unwrap(),
-            &[song_1, song_2, song_3],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", FilterValueRange::DateBefore))
-                .unwrap(),
-            &[],
-        );
-        assert_eq_not_orderd(
-            &t.list_song_id(&test_db.tx, &filter("", FilterValueRange::DateAfter))
-                .unwrap(),
-            &[],
-        );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(&test_db.tx, &filter(DateFilterRange::Equal{value: None}))
+        //         .unwrap(),
+        //     &[song_0],
+        // );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(&test_db.tx, &filter(DateFilterRange::NotEqual{value: None}))
+        //         .unwrap(),
+        //     &[song_1, song_2, song_3],
+        // );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(&test_db.tx, &filter(DateFilterRange::Before{value: None}))
+        //         .unwrap(),
+        //     &[],
+        // );
+        // assert_eq_not_orderd(
+        //     &t.list_song_id(&test_db.tx, &filter(DateFilterRange::After{value: None}))
+        //         .unwrap(),
+        //     &[],
+        // );
     });
 }
 
-#[test_case("15", "28", 15, 28 ; "normal")]
-#[test_case("28", "15", 15, 28 ; "inversed")]
-#[test_case("6", "113", 6, 113 ; "digit_dif")]
-#[test_case("113", "6", 6, 113 ; "digit_dif_inversed")]
-fn test_get_ordered_int(value1: &str, value2: &str, expect_1: i32, expect_2: i32) {
-    let filter = Filter {
-        str_value: value1.to_owned(),
-        str_value2: value2.to_owned(),
-
-        rowid: 1,
-        target: FilterTarget::DiscNumber,
-        range: FilterValueRange::IntRangeIn,
-        children: vec![],
-    };
-    let result = get_ordered_int(&filter).unwrap();
+#[test_case(15, 28, 15, 28 ; "normal")]
+#[test_case(28, 15, 15, 28 ; "inversed")]
+#[test_case(6, 113, 6, 113 ; "digit_dif")]
+#[test_case(113, 6, 6, 113 ; "digit_dif_inversed")]
+fn test_get_ordered_int(value1: i32, value2: i32, expect_1: i32, expect_2: i32) {
+    let result = get_ordered_int(value1, value2);
     assert_eq!(result.0, expect_1);
     assert_eq!(result.1, expect_2);
 }

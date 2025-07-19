@@ -1,17 +1,17 @@
+use anyhow::Result;
+use async_trait::async_trait;
+use mockall::mock;
+
 use super::{DbSongSyncRepository, SongSync};
 use crate::{
-    db_wrapper::TransactionWrapper,
+    db::DbTransaction,
     folder::{DbFolderRepository, FolderIdMayRoot},
     path::LibSongPath,
     playlist::DbPlaylistRepository,
 };
-use anyhow::Result;
-use chrono::NaiveDate;
-use mockall::automock;
-use std::rc::Rc;
 
 /// DB・PC連携のUseCase
-#[automock]
+#[async_trait]
 pub trait SyncUsecase {
     /// DBに曲データを新規登録する
     ///
@@ -20,23 +20,33 @@ pub trait SyncUsecase {
     /// - song_path: 登録する曲のライブラリ内パス
     /// - song_sync: 登録する曲のデータ
     /// - entry_date: 登録日
-    fn register_db<'c>(
+    async fn register_db<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         song_path: &LibSongPath,
         song_sync: &mut SongSync,
-        entry_date: NaiveDate,
     ) -> Result<()>;
 }
 
 /// SyncUsecaseの本実装
 #[derive(new)]
-pub struct SyncUsecaseImpl {
-    db_folder_repository: Rc<dyn DbFolderRepository>,
-    db_playlist_repository: Rc<dyn DbPlaylistRepository>,
-    db_song_sync_repository: Rc<dyn DbSongSyncRepository>,
+pub struct SyncUsecaseImpl<FR, PR, SSR>
+where
+    FR: DbFolderRepository + Sync + Send,
+    PR: DbPlaylistRepository + Sync + Send,
+    SSR: DbSongSyncRepository + Sync + Send,
+{
+    db_folder_repository: FR,
+    db_playlist_repository: PR,
+    db_song_sync_repository: SSR,
 }
-impl SyncUsecase for SyncUsecaseImpl {
+#[async_trait]
+impl<FR, PR, SSR> SyncUsecase for SyncUsecaseImpl<FR, PR, SSR>
+where
+    FR: DbFolderRepository + Sync + Send,
+    PR: DbPlaylistRepository + Sync + Send,
+    SSR: DbSongSyncRepository + Sync + Send,
+{
     /// DBに曲データを新規登録する
     ///
     /// # Arguments
@@ -44,12 +54,11 @@ impl SyncUsecase for SyncUsecaseImpl {
     /// - song_path: 登録する曲のライブラリ内パス
     /// - song_sync: 登録する曲のデータ
     /// - entry_date: 登録日
-    fn register_db(
+    async fn register_db<'c>(
         &self,
-        tx: &TransactionWrapper,
+        tx: &mut DbTransaction<'c>,
         song_path: &LibSongPath,
         song_sync: &mut SongSync,
-        entry_date: NaiveDate,
     ) -> Result<()> {
         //曲名が空なら、ファイル名から取得
         if song_sync.title.is_none() {
@@ -62,27 +71,56 @@ impl SyncUsecase for SyncUsecaseImpl {
             FolderIdMayRoot::Root
         } else {
             self.db_folder_repository
-                .register_not_exists(tx, &parent_path)?
+                .register_not_exists(tx, &parent_path)
+                .await?
         };
 
         //DBに書き込み
         self.db_song_sync_repository
-            .register(tx, song_path, song_sync, folder_id, entry_date)?;
+            .register(tx, song_path, song_sync, folder_id)
+            .await?;
 
         //プレイリストのリストアップ済みフラグを解除
-        self.db_playlist_repository.reset_listuped_flag(tx)?;
+        self.db_playlist_repository.reset_listuped_flag(tx).await?;
 
         Ok(())
     }
 }
 
+#[derive(Default)]
+pub struct MockSyncUsecase {
+    pub inner: MockSyncUsecaseInner,
+}
+#[async_trait]
+impl SyncUsecase for MockSyncUsecase {
+    async fn register_db<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        song_path: &LibSongPath,
+        song_sync: &mut SongSync,
+    ) -> Result<()> {
+        self.inner.register_db(song_path, song_sync)
+    }
+}
+mock! {
+    pub SyncUsecaseInner {
+        pub fn register_db(
+            &self,
+            song_path: &LibSongPath,
+            song_sync: &mut SongSync,
+        ) -> Result<()>;
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::super::MockDbSongSyncRepository;
     use super::*;
     use crate::{
-        artwork::SongArtwork, db_wrapper::ConnectionFactory, folder::MockDbFolderRepository, mocks,
-        path::LibDirPath, playlist::MockDbPlaylistRepository,
+        artwork::SongArtwork, folder::MockDbFolderRepository, mocks, path::LibDirPath,
+        playlist::MockDbPlaylistRepository,
     };
     use media::picture::Picture;
     use paste::paste;
@@ -109,7 +147,7 @@ mod tests {
             memo: Some("メモ".to_owned()),
             lyrics: Some("歌詞".to_owned()),
             artworks: vec![SongArtwork {
-                picture: Rc::new(Picture {
+                picture: Arc::new(Picture {
                     bytes: vec![1, 2, 3, 4],
                     mime_type: "image/jpeg".to_owned(),
                 }),
@@ -147,12 +185,11 @@ mod tests {
                 .returning(|_| Ok(()));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
             let mut s = song_sync();
-            t.register_db(&tx, &song_path(), &mut s, entry_date())
+            t.register_db(&mut tx, &song_path(), &mut s, entry_date())
                 .unwrap();
 
             assert_eq!(s.title.as_deref(), Some("曲名"));
@@ -191,14 +228,13 @@ mod tests {
                 .returning(|_| Ok(()));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
             let mut s = song_sync();
             s.title = None;
 
-            t.register_db(&tx, &song_path(), &mut s, entry_date())
+            t.register_db(&mut tx, &song_path(), &mut s, entry_date())
                 .unwrap();
 
             assert_eq!(s.title.as_deref(), Some("fuga"));

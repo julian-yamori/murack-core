@@ -1,6 +1,8 @@
-use crate::{db_wrapper::TransactionWrapper, path::LibSongPath, playlist::Playlist};
 use anyhow::Result;
-use mockall::automock;
+use async_trait::async_trait;
+use mockall::mock;
+
+use crate::{db::DbTransaction, path::LibSongPath, playlist::Playlist};
 
 /// 曲データの検索機能
 /// #todo
@@ -9,14 +11,37 @@ use mockall::automock;
 /// 整理したいやつ。
 ///
 /// とりあえずdapモジュールに定義
-#[automock]
+#[async_trait]
 pub trait SongFinder {
     /// プレイリストに含まれる曲のパスリストを取得
     /// # Arguments
     /// - plist 取得対象のプレイリスト情報
-    fn get_song_path_list<'c>(
+    async fn get_song_path_list<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<LibSongPath>>;
+}
+
+#[derive(Default)]
+pub struct MockSongFinder {
+    pub inner: MockSongFinderInner,
+}
+#[async_trait]
+impl SongFinder for MockSongFinder {
+    async fn get_song_path_list<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        plist: &Playlist,
+    ) -> Result<Vec<LibSongPath>> {
+        self.inner.get_song_path_list(plist)
+    }
+}
+mock! {
+    pub SongFinderInner {
+        pub fn get_song_path_list(
+            &self,
+            plist: &Playlist,
+        ) -> Result<Vec<LibSongPath>>;
+    }
 }

@@ -4,7 +4,7 @@ use std::fmt;
 #[derive(PartialEq)]
 pub struct ArtworkImageRow {
     /// アートワークID
-    pub rowid: i32,
+    pub id: i32,
 
     /// 画像データ
     pub image: Vec<u8>,

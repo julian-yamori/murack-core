@@ -1,127 +1,148 @@
-use super::FolderPathRow;
-use crate::{
-    converts::{DbFolderIdMayRoot, DbLibDirPathRef},
-    sql_func,
-};
 use anyhow::Result;
-use domain::{db_wrapper::TransactionWrapper, folder::FolderIdMayRoot, path::LibDirPath};
-use mockall::automock;
-use rusqlite::{Row, params};
+use async_trait::async_trait;
+use domain::{db::DbTransaction, folder::FolderIdMayRoot, path::LibDirPath};
+use mockall::mock;
+
+use super::FolderPathRow;
+use crate::converts::{DbOptionString, enums::db_from_folder_id_may_root};
 
 /// folder_pathテーブルのDAO
-#[automock]
+#[async_trait]
 pub trait FolderPathDao {
     /// IDを指定して検索
-    fn select_by_id<'c>(
+    async fn select_by_id<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         folder_id: i32,
     ) -> Result<Option<FolderPathRow>>;
 
     /// パスを指定して検索
-    fn select_by_path<'c>(
+    async fn select_by_path<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<FolderPathRow>>;
 
     /// パスを指定し、IDを取得
-    fn select_id_by_path<'c>(
+    async fn select_id_by_path<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<i32>>;
 
     /// 全レコード数を取得
-    fn count_all<'c>(&self, tx: &TransactionWrapper<'c>) -> Result<u32>;
+    async fn count_all<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<u32>;
 
     /// 親フォルダIDを指定してレコード数を取得
-    fn count_by_parent_id<'c>(
+    async fn count_by_parent_id<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         parent_id: FolderIdMayRoot,
     ) -> Result<u32>;
 
     /// 指定されたpathのレコードが存在するか確認
-    fn exists_path<'c>(&self, tx: &TransactionWrapper<'c>, path: &LibDirPath) -> Result<bool>;
+    async fn exists_path<'c>(&self, tx: &mut DbTransaction<'c>, path: &LibDirPath) -> Result<bool>;
 
     /// 新規登録
     ///
     /// # Return
     /// 登録されたレコードのrowid
-    fn insert<'c>(
+    async fn insert<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
         name: &str,
         parent_id: FolderIdMayRoot,
     ) -> Result<i32>;
 
     /// IDを指定してフォルダを削除
-    fn delete_by_id<'c>(&self, tx: &TransactionWrapper<'c>, folder_id: i32) -> Result<()>;
+    async fn delete_by_id<'c>(&self, tx: &mut DbTransaction<'c>, folder_id: i32) -> Result<()>;
 }
 
 /// FolderPathDaoの本実装
 pub struct FolderPathDaoImpl {}
 
+#[async_trait]
 impl FolderPathDao for FolderPathDaoImpl {
     /// IDを指定して検索
-    fn select_by_id<'c>(
+    async fn select_by_id<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         folder_id: i32,
     ) -> Result<Option<FolderPathRow>> {
-        let sql = format!("select {ALL_COLUMNS} from [folder_path] where [id] = ?");
-        sql_func::select_opt(tx, &sql, params![folder_id], map_all)
+        let row = sqlx::query_as!(
+            FolderPathRow,
+            r#"SELECT id, path, name AS "name: DbOptionString", parent_id FROM folder_paths WHERE id = $1"#,
+            folder_id
+        )
+        .fetch_optional(&mut **tx.get()).await?;
+
+        Ok(row)
     }
 
     /// パスを指定して検索
-    fn select_by_path<'c>(
+    async fn select_by_path<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<FolderPathRow>> {
-        let sql = format!("select {ALL_COLUMNS} from [folder_path] where [path] = ?");
-        sql_func::select_opt(tx, &sql, params![DbLibDirPathRef::from(path)], map_all)
+        let row = sqlx::query_as!(
+            FolderPathRow,
+            "SELECT id, path, name, parent_id FROM folder_paths WHERE path = $1",
+            path.as_str()
+        )
+        .fetch_optional(&mut **tx.get())
+        .await?;
+
+        Ok(row)
     }
 
     /// パスを指定し、IDを取得
-    fn select_id_by_path<'c>(
+    async fn select_id_by_path<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<i32>> {
-        let sql = "select [id] from [folder_path] where [path] = ?";
-        sql_func::select_opt(tx, sql, params![DbLibDirPathRef::from(path)], |row| {
-            row.get(0)
-        })
+        let id = sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
+            .fetch_optional(&mut **tx.get())
+            .await?;
+
+        Ok(id)
     }
 
     /// 全レコード数を取得
-    fn count_all<'c>(&self, tx: &TransactionWrapper<'c>) -> Result<u32> {
-        sql_func::select_val(tx, "select count(*) from [folder_path]", [])
+    async fn count_all<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<u32> {
+        let count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM folder_paths"#)
+            .fetch_one(&mut **tx.get())
+            .await?;
+
+        Ok(count.try_into()?)
     }
 
     /// 親フォルダIDを指定してレコード数を取得
-    fn count_by_parent_id<'c>(
+    async fn count_by_parent_id<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         parent_id: FolderIdMayRoot,
     ) -> Result<u32> {
-        sql_func::select_val(
-            tx,
-            "select count(*) from folder_path where [parent_id] is ?",
-            params![DbFolderIdMayRoot::from(parent_id)],
+        let count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE parent_id IS NOT DISTINCT FROM $1"#,
+            db_from_folder_id_may_root(parent_id),
         )
+        .fetch_one(&mut **tx.get()).await?;
+
+        Ok(count.try_into()?)
     }
 
     /// 指定されたpathのレコードが存在するか確認
-    fn exists_path<'c>(&self, tx: &TransactionWrapper<'c>, path: &LibDirPath) -> Result<bool> {
-        let count: u32 = sql_func::select_val(
-            tx,
-            "select count(*) from [folder_path] where [path] = ?",
-            params![DbLibDirPathRef::from(path)],
-        )?;
+    async fn exists_path<'c>(&self, tx: &mut DbTransaction<'c>, path: &LibDirPath) -> Result<bool> {
+        let count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE path = $1"#,
+            path.as_str(),
+        )
+        .fetch_one(&mut **tx.get())
+        .await?;
+
         Ok(count > 0)
     }
 
@@ -129,52 +150,132 @@ impl FolderPathDao for FolderPathDaoImpl {
     ///
     /// # Return
     /// 登録されたレコードのrowid
-    fn insert<'c>(
+    async fn insert<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
         name: &str,
         parent_id: FolderIdMayRoot,
     ) -> Result<i32> {
-        //新規登録するIDを取得(autoincrementではないので手動で)
-        let sql = "select COALESCE(max([id]),0) from [folder_path]";
-        let before_id: i32 = sql_func::select_val(tx, sql, [])?;
-        let next_id = before_id + 1;
+        let id = sqlx::query_scalar!(
+            "INSERT INTO folder_paths (path, name, parent_id) VALUES($1, $2, $3) RETURNING id",
+            path.as_str(),
+            name,
+            db_from_folder_id_may_root(parent_id)
+        )
+        .fetch_one(&mut **tx.get())
+        .await?;
 
-        //このフォルダのパス情報を登録
-        sql_func::execute(
-            tx,
-            "insert into [folder_path]([id],[path],[name],[parent_id]) values(?,?,?,?)",
-            params![
-                next_id,
-                DbLibDirPathRef::from(path),
-                name,
-                DbFolderIdMayRoot::from(parent_id)
-            ],
-        )?;
-
-        Ok(next_id)
+        Ok(id)
     }
 
     /// IDを指定してフォルダを削除
-    fn delete_by_id<'c>(&self, tx: &TransactionWrapper<'c>, folder_id: i32) -> Result<()> {
-        sql_func::execute(
-            tx,
-            "delete from [folder_path] where [id] = ?",
-            params![folder_id],
-        )
+    async fn delete_by_id<'c>(&self, tx: &mut DbTransaction<'c>, folder_id: i32) -> Result<()> {
+        sqlx::query!("DELETE FROM folder_paths WHERE id = $1", folder_id,)
+            .execute(&mut **tx.get())
+            .await?;
+
+        Ok(())
     }
 }
 
-/// 全カラムの列名
-const ALL_COLUMNS: &str = "[id],[path],[name],[parent_id]";
+#[derive(Default)]
+pub struct MockFolderPathDao {
+    pub inner: MockFolderPathDaoInner,
+}
+#[async_trait]
+impl FolderPathDao for MockFolderPathDao {
+    async fn select_by_id<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        folder_id: i32,
+    ) -> Result<Option<FolderPathRow>> {
+        self.inner.select_by_id(folder_id)
+    }
 
-//全カラム取得時のマッパー
-fn map_all(row: &Row) -> rusqlite::Result<FolderPathRow> {
-    Ok(FolderPathRow {
-        rowid: row.get(0)?,
-        path: row.get(1)?,
-        name: row.get(2)?,
-        parent_id: row.get(3)?,
-    })
+    async fn select_by_path<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        path: &LibDirPath,
+    ) -> Result<Option<FolderPathRow>> {
+        self.inner.select_by_path(path)
+    }
+
+    async fn select_id_by_path<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        path: &LibDirPath,
+    ) -> Result<Option<i32>> {
+        self.inner.select_id_by_path(path)
+    }
+
+    async fn count_all<'c>(&self, _db: &mut DbTransaction<'c>) -> Result<u32> {
+        self.inner.count_all()
+    }
+
+    async fn count_by_parent_id<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        parent_id: FolderIdMayRoot,
+    ) -> Result<u32> {
+        self.inner.count_by_parent_id(parent_id)
+    }
+
+    async fn exists_path<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        path: &LibDirPath,
+    ) -> Result<bool> {
+        self.inner.exists_path(path)
+    }
+
+    async fn insert<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        path: &LibDirPath,
+        name: &str,
+        parent_id: FolderIdMayRoot,
+    ) -> Result<i32> {
+        self.inner.insert(path, name, parent_id)
+    }
+
+    async fn delete_by_id<'c>(&self, _db: &mut DbTransaction<'c>, folder_id: i32) -> Result<()> {
+        self.inner.delete_by_id(folder_id)
+    }
+}
+mock! {
+    pub FolderPathDaoInner {
+        pub fn select_by_id(
+            &self,
+            folder_id: i32,
+        ) -> Result<Option<FolderPathRow>>;
+
+        pub fn select_by_path(
+            &self,
+            path: &LibDirPath,
+        ) -> Result<Option<FolderPathRow>>;
+
+        pub fn select_id_by_path(
+            &self,
+            path: &LibDirPath,
+        ) -> Result<Option<i32>>;
+
+        pub fn count_all(&self) -> Result<u32>;
+
+        pub fn count_by_parent_id(
+            &self,
+            parent_id: FolderIdMayRoot,
+        ) -> Result<u32>;
+
+        pub fn exists_path(&self, path: &LibDirPath) -> Result<bool>;
+
+        pub fn insert(
+            &self,
+            path: &LibDirPath,
+            name: &str,
+            parent_id: FolderIdMayRoot,
+        ) -> Result<i32>;
+
+        pub fn delete_by_id(&self, folder_id: i32) -> Result<()>;
+    }
 }

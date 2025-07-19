@@ -1,24 +1,27 @@
+use std::path::Path;
+
+use anyhow::Result;
+use async_trait::async_trait;
+use mockall::mock;
+
 use super::DbSongRepository;
 use crate::{
     Error, FileLibraryRepository,
     artwork::DbArtworkRepository,
-    db_wrapper::TransactionWrapper,
+    db::DbTransaction,
     folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
     path::{LibPathStr, LibSongPath, RelativeSongPath},
     playlist::{DbPlaylistRepository, DbPlaylistSongRepository},
     tag::DbSongTagRepository,
 };
-use anyhow::Result;
-use mockall::automock;
-use std::{path::Path, rc::Rc};
 
 /// 曲関係のUsecase
-#[automock]
+#[async_trait]
 pub trait SongUsecase {
     /// パス文字列を指定してDBの曲パスを移動
-    fn move_path_str_db<'c>(
+    async fn move_path_str_db<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         src: &LibPathStr,
         dest: &LibPathStr,
     ) -> Result<()>;
@@ -41,7 +44,11 @@ pub trait SongUsecase {
     ///
     /// # Arguments
     /// - path: 削除する曲のパス
-    fn delete_song_db<'c>(&self, tx: &TransactionWrapper<'c>, path: &LibSongPath) -> Result<()>;
+    async fn delete_song_db<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        path: &LibSongPath,
+    ) -> Result<()>;
 
     /// パス文字列を指定してPCから削除
     ///
@@ -64,9 +71,9 @@ pub trait SongUsecase {
     ///
     /// # Returns
     /// 削除した曲のパスリスト
-    fn delete_path_str_db<'c>(
+    async fn delete_path_str_db<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         path_str: &LibPathStr,
     ) -> Result<Vec<LibSongPath>>;
 }
@@ -74,29 +81,56 @@ pub trait SongUsecase {
 /// SongUsecaseの本実装
 #[allow(clippy::too_many_arguments)] // todo とりあえず後で整理
 #[derive(new)]
-pub struct SongUsecaseImpl {
-    file_library_repository: Rc<dyn FileLibraryRepository>,
-    db_artwork_repository: Rc<dyn DbArtworkRepository>,
-    db_folder_repository: Rc<dyn DbFolderRepository>,
-    db_playlist_repository: Rc<dyn DbPlaylistRepository>,
-    db_playlist_song_repository: Rc<dyn DbPlaylistSongRepository>,
-    db_song_repository: Rc<dyn DbSongRepository>,
-    db_song_tag_repository: Rc<dyn DbSongTagRepository>,
-    folder_usecase: Rc<dyn FolderUsecase>,
+pub struct SongUsecaseImpl<FLR, AR, FR, PR, PSR, SR, STR, FU>
+where
+    FLR: FileLibraryRepository + Sync + Send,
+    AR: DbArtworkRepository + Sync + Send,
+    FR: DbFolderRepository + Sync + Send,
+    PR: DbPlaylistRepository + Sync + Send,
+    PSR: DbPlaylistSongRepository + Sync + Send,
+    SR: DbSongRepository + Sync + Send,
+    STR: DbSongTagRepository + Sync + Send,
+    FU: FolderUsecase + Sync + Send,
+{
+    file_library_repository: FLR,
+    db_artwork_repository: AR,
+    db_folder_repository: FR,
+    db_playlist_repository: PR,
+    db_playlist_song_repository: PSR,
+    db_song_repository: SR,
+    db_song_tag_repository: STR,
+    folder_usecase: FU,
 }
 
-impl SongUsecase for SongUsecaseImpl {
+#[async_trait]
+impl<FLR, AR, FR, PR, PSR, SR, STR, FU> SongUsecase
+    for SongUsecaseImpl<FLR, AR, FR, PR, PSR, SR, STR, FU>
+where
+    FLR: FileLibraryRepository + Sync + Send,
+    AR: DbArtworkRepository + Sync + Send,
+    FR: DbFolderRepository + Sync + Send,
+    PR: DbPlaylistRepository + Sync + Send,
+    PSR: DbPlaylistSongRepository + Sync + Send,
+    SR: DbSongRepository + Sync + Send,
+    STR: DbSongTagRepository + Sync + Send,
+    FU: FolderUsecase + Sync + Send,
+{
     /// パス文字列を指定してDBの曲パスを移動
-    fn move_path_str_db<'c>(
+    async fn move_path_str_db<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         src: &LibPathStr,
         dest: &LibPathStr,
     ) -> Result<()> {
         //指定パスが曲ファイル自体なら、1曲だけ処理
         let src_as_song = src.to_song_path();
-        if self.db_song_repository.is_exist_path(tx, &src_as_song)? {
-            self.move_song_db_unit(tx, &src_as_song, &dest.to_song_path())?;
+        if self
+            .db_song_repository
+            .is_exist_path(tx, &src_as_song)
+            .await?
+        {
+            self.move_song_db_unit(tx, &src_as_song, &dest.to_song_path())
+                .await?;
         }
         //指定パス以下の全ての曲について、パスの変更を反映
         else {
@@ -105,12 +139,13 @@ impl SongUsecase for SongUsecaseImpl {
 
             for src_song in self
                 .db_song_repository
-                .get_path_by_directory(tx, &src_as_dir)?
+                .get_path_by_directory(tx, &src_as_dir)
+                .await?
             {
                 let relative_path = RelativeSongPath::from_song_and_parent(&src_song, &src_as_dir)?;
                 let dest_song = relative_path.concat_lib_dir(&dest_as_dir);
 
-                self.move_song_db_unit(tx, &src_song, &dest_song)?;
+                self.move_song_db_unit(tx, &src_song, &dest_song).await?;
             }
         };
 
@@ -140,33 +175,43 @@ impl SongUsecase for SongUsecaseImpl {
     ///
     /// # Arguments
     /// - path: 削除する曲のパス
-    fn delete_song_db<'c>(&self, tx: &TransactionWrapper<'c>, path: &LibSongPath) -> Result<()> {
+    async fn delete_song_db<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        path: &LibSongPath,
+    ) -> Result<()> {
         let db_song_repository = &self.db_song_repository;
 
         //ID情報を取得
         let song_id = db_song_repository
-            .get_id_by_path(tx, path)?
+            .get_id_by_path(tx, path)
+            .await?
             .ok_or_else(|| Error::DbSongNotFound(path.clone()))?;
 
         //曲の削除
-        db_song_repository.delete(tx, song_id)?;
+        db_song_repository.delete(tx, song_id).await?;
 
         //プレイリストからこの曲を削除
         self.db_playlist_song_repository
-            .delete_song_from_all_playlists(tx, song_id)?;
+            .delete_song_from_all_playlists(tx, song_id)
+            .await?;
 
         //タグと曲の紐付けを削除
         self.db_song_tag_repository
-            .delete_all_tags_from_song(tx, song_id)?;
+            .delete_all_tags_from_song(tx, song_id)
+            .await?;
 
         //他に使用する曲がなければ、アートワークを削除
         self.db_artwork_repository
-            .unregister_song_artworks(tx, song_id)?;
+            .unregister_song_artworks(tx, song_id)
+            .await?;
 
         //他に使用する曲がなければ、フォルダを削除
-        self.folder_usecase.delete_db_if_empty(tx, &path.parent())?;
+        self.folder_usecase
+            .delete_db_if_empty(tx, &path.parent())
+            .await?;
 
-        self.db_playlist_repository.reset_listuped_flag(tx)?;
+        self.db_playlist_repository.reset_listuped_flag(tx).await?;
 
         Ok(())
     }
@@ -204,30 +249,43 @@ impl SongUsecase for SongUsecaseImpl {
     ///
     /// # Returns
     /// 削除した曲のパスリスト
-    fn delete_path_str_db<'c>(
+    async fn delete_path_str_db<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         path_str: &LibPathStr,
     ) -> Result<Vec<LibSongPath>> {
-        let song_path_list = self.db_song_repository.get_path_by_path_str(tx, path_str)?;
+        let song_path_list = self
+            .db_song_repository
+            .get_path_by_path_str(tx, path_str)
+            .await?;
 
         for path in &song_path_list {
-            self.delete_song_db(tx, path)?;
+            self.delete_song_db(tx, path).await?;
         }
 
         Ok(song_path_list)
     }
 }
 
-impl SongUsecaseImpl {
+impl<FLR, AR, FR, PR, PSR, SR, STR, FU> SongUsecaseImpl<FLR, AR, FR, PR, PSR, SR, STR, FU>
+where
+    FLR: FileLibraryRepository + Sync + Send,
+    AR: DbArtworkRepository + Sync + Send,
+    FR: DbFolderRepository + Sync + Send,
+    PR: DbPlaylistRepository + Sync + Send,
+    PSR: DbPlaylistSongRepository + Sync + Send,
+    SR: DbSongRepository + Sync + Send,
+    STR: DbSongTagRepository + Sync + Send,
+    FU: FolderUsecase + Sync + Send,
+{
     /// 曲一つのDB内パス移動処理
-    fn move_song_db_unit<'c>(
+    async fn move_song_db_unit<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         src: &LibSongPath,
         dest: &LibSongPath,
     ) -> Result<()> {
-        if self.db_song_repository.is_exist_path(tx, dest)? {
+        if self.db_song_repository.is_exist_path(tx, dest).await? {
             return Err(Error::DbSongAlreadyExists(dest.to_owned()).into());
         }
 
@@ -237,25 +295,102 @@ impl SongUsecaseImpl {
             FolderIdMayRoot::Root
         } else {
             self.db_folder_repository
-                .register_not_exists(tx, &dest_parent)?
+                .register_not_exists(tx, &dest_parent)
+                .await?
         };
 
         //曲のパス情報を変更
         self.db_song_repository
-            .update_path(tx, src, dest, new_folder_id)?;
+            .update_path(tx, src, dest, new_folder_id)
+            .await?;
 
         //子要素がなくなった親フォルダを削除
-        self.folder_usecase.delete_db_if_empty(tx, &src.parent())?;
+        self.folder_usecase
+            .delete_db_if_empty(tx, &src.parent())
+            .await?;
 
         //パスを使用したフィルタがあるかもしれないので、
         //プレイリストのリストアップ済みフラグを解除
-        self.db_playlist_repository.reset_listuped_flag(tx)?;
+        self.db_playlist_repository.reset_listuped_flag(tx).await?;
         //プレイリストファイル内のパスだけ変わるので、
         //DAP変更フラグを立てる
         self.db_playlist_repository
-            .set_dap_change_flag_all(tx, true)?;
+            .set_dap_change_flag_all(tx, true)
+            .await?;
 
         Ok(())
+    }
+}
+
+#[derive(Default)]
+pub struct MockSongUsecase {
+    pub inner: MockSongUsecaseInner,
+}
+#[async_trait]
+impl SongUsecase for MockSongUsecase {
+    async fn move_path_str_db<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        src: &LibPathStr,
+        dest: &LibPathStr,
+    ) -> Result<()> {
+        self.inner.move_path_str_db(src, dest)
+    }
+
+    fn delete_song_pc(&self, pc_lib: &Path, song_path: &LibSongPath) -> Result<()> {
+        self.inner.delete_song_pc(pc_lib, song_path)
+    }
+
+    fn delete_song_dap(&self, dap_lib: &Path, song_path: &LibSongPath) -> Result<()> {
+        self.inner.delete_song_dap(dap_lib, song_path)
+    }
+
+    async fn delete_song_db<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        path: &LibSongPath,
+    ) -> Result<()> {
+        self.inner.delete_song_db(path)
+    }
+
+    fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &LibPathStr) -> Result<()> {
+        self.inner.delete_path_str_pc(pc_lib, path_str)
+    }
+
+    fn delete_path_str_dap(&self, dap_lib: &Path, path_str: &LibPathStr) -> Result<()> {
+        self.inner.delete_path_str_dap(dap_lib, path_str)
+    }
+
+    async fn delete_path_str_db<'c>(
+        &self,
+        _db: &mut DbTransaction<'c>,
+        path_str: &LibPathStr,
+    ) -> Result<Vec<LibSongPath>> {
+        self.inner.delete_path_str_db(path_str)
+    }
+}
+mock! {
+    pub SongUsecaseInner {
+        pub fn move_path_str_db(
+            &self,
+            src: &LibPathStr,
+            dest: &LibPathStr,
+        ) -> Result<()>;
+
+        pub fn delete_song_pc(&self, pc_lib: &Path, song_path: &LibSongPath) -> Result<()>;
+
+        pub fn delete_song_dap(&self, dap_lib: &Path, song_path: &LibSongPath) -> Result<()>;
+
+        pub fn delete_song_db(&self, path: &LibSongPath) -> Result<()>;
+
+        pub fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &LibPathStr) -> Result<()>;
+
+        pub fn delete_path_str_dap(&self, dap_lib: &Path, path_str: &LibPathStr) -> Result<()>;
+
+        pub fn delete_path_str_db(
+            &self,
+            path_str: &LibPathStr,
+        ) -> Result<Vec<LibSongPath>>;
     }
 }
 
@@ -265,7 +400,6 @@ mod tests {
     use crate::{
         MockFileLibraryRepository,
         artwork::MockDbArtworkRepository,
-        db_wrapper::ConnectionFactory,
         folder::{MockDbFolderRepository, MockFolderUsecase},
         mocks,
         path::LibDirPath,
@@ -335,11 +469,10 @@ mod tests {
                 .returning(|_| Ok(()));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
-            t.delete_song_db(&tx, &song_path()).unwrap();
+            t.delete_song_db(&mut tx, &song_path()).unwrap();
         });
     }
     #[test]
@@ -373,12 +506,11 @@ mod tests {
             m.expect_reset_listuped_flag().times(0);
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
             assert!(match t
-                .delete_song_db(&tx, &song_path())
+                .delete_song_db(&mut tx, &song_path())
                 .unwrap_err()
                 .downcast_ref()
             {
@@ -434,11 +566,10 @@ mod tests {
                 .returning(|_| Ok(()));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
-            t.delete_song_db(&tx, &song_path()).unwrap();
+            t.delete_song_db(&mut tx, &song_path()).unwrap();
         });
     }
 }

@@ -1,41 +1,57 @@
-use super::{PlaylistDao, PlaylistRow};
-use crate::{Error, converts::DbPlaylistType, error::PlaylistNoParentsDetectedItem, sql_func};
 use anyhow::Result;
+use async_trait::async_trait;
 use domain::{
-    db_wrapper::TransactionWrapper,
+    db::DbTransaction,
     playlist::{DbPlaylistRepository, Playlist, PlaylistType},
 };
-use rusqlite::params;
-use std::rc::Rc;
+
+use super::{PlaylistDao, PlaylistRow};
+use crate::{Error, error::PlaylistNoParentsDetectedItem};
 
 /// DbPlaylistRepositoryの本実装
 #[derive(new)]
-pub struct DbPlaylistRepositoryImpl {
-    playlist_dao: Rc<dyn PlaylistDao>,
+pub struct DbPlaylistRepositoryImpl<PD>
+where
+    PD: PlaylistDao + Sync + Send,
+{
+    playlist_dao: PD,
 }
 
-impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
+#[async_trait]
+impl<PD> DbPlaylistRepository for DbPlaylistRepositoryImpl<PD>
+where
+    PD: PlaylistDao + Sync + Send,
+{
     /// IDを指定してプレイリストを検索
     /// # Arguments
     /// id: playlist.rowid
-    fn get_playlist<'c>(&self, tx: &TransactionWrapper<'c>, id: i32) -> Result<Option<Playlist>> {
-        Ok(self.playlist_dao.select_by_id(tx, id)?.map(Playlist::from))
+    async fn get_playlist<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        id: i32,
+    ) -> Result<Option<Playlist>> {
+        let opt = self.playlist_dao.select_by_id(tx, id).await?;
+
+        match opt {
+            Some(row) => Ok(Some(row.try_into()?)),
+            None => Ok(None),
+        }
     }
 
     /// プレイリストのツリー構造を取得
     /// # Returns
     /// 最上位プレイリストのリスト
-    fn get_playlist_tree<'c>(&self, tx: &TransactionWrapper<'c>) -> Result<Vec<Playlist>> {
-        let remain_pool = self.playlist_dao.select_all_order_folder(tx)?;
+    async fn get_playlist_tree<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<Playlist>> {
+        let remain_pool = self.playlist_dao.select_all_order_folder(tx).await?;
 
-        let (root_list, remain_pool) = build_plist_children_recursive(None, remain_pool);
+        let (root_list, remain_pool) = build_plist_children_recursive(None, remain_pool)?;
 
         if !remain_pool.is_empty() {
             return Err(Error::PlaylistNoParentsDetected(
                 remain_pool
                     .into_iter()
                     .map(|row| PlaylistNoParentsDetectedItem {
-                        playlist_id: row.rowid,
+                        playlist_id: row.id,
                         name: row.name,
                         parent_id: row.parent_id,
                     })
@@ -48,31 +64,32 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     }
 
     /// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
-    fn reset_listuped_flag(&self, tx: &TransactionWrapper) -> Result<()> {
-        sql_func::execute(
-            tx,
-            "update [playlist] set [listuped_flag] = ? where [type] in (?,?)",
-            params![
-                false,
-                DbPlaylistType::from(PlaylistType::Filter),
-                DbPlaylistType::from(PlaylistType::Folder)
-            ],
+    async fn reset_listuped_flag<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<()> {
+        sqlx::query!(
+            "UPDATE playlists SET listuped_flag = $1 WHERE playlist_type IN ($2::playlist_type, $3::playlist_type)",
+            false,
+            PlaylistType::Filter as PlaylistType,
+            PlaylistType::Folder as PlaylistType
         )
+        .execute(&mut **tx.get())
+        .await?;
+
+        Ok(())
     }
 
     /// 全プレイリストの、DAPに保存してからの変更フラグを設定
     /// # Arguments
     /// - is_changed: 変更されたか
-    fn set_dap_change_flag_all<'c>(
+    async fn set_dap_change_flag_all<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         is_changed: bool,
     ) -> Result<()> {
-        sql_func::execute(
-            tx,
-            "update [playlist] set [dap_changed] = ?",
-            params![is_changed],
-        )
+        sqlx::query!("UPDATE playlists SET dap_changed = $1", is_changed,)
+            .execute(&mut **tx.get())
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -86,7 +103,7 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
 fn build_plist_children_recursive(
     parent: Option<&Playlist>,
     remain_pool: Vec<PlaylistRow>,
-) -> (Vec<Playlist>, Vec<PlaylistRow>) {
+) -> anyhow::Result<(Vec<Playlist>, Vec<PlaylistRow>)> {
     //親プレイリストが対象のものと、それ以外を分ける
     let (targets, mut remain_pool): (Vec<PlaylistRow>, Vec<PlaylistRow>) = remain_pool
         .into_iter()
@@ -95,7 +112,7 @@ fn build_plist_children_recursive(
     let mut result_list = Vec::new();
 
     for target in targets {
-        let mut plist = Playlist::from(target);
+        let mut plist = Playlist::try_from(target)?;
 
         //親プレイリスト名を親から繋げる
         if let Some(p) = parent {
@@ -104,21 +121,21 @@ fn build_plist_children_recursive(
         }
 
         //再帰実行して子プレイリスト一覧を取得
-        let tuple = build_plist_children_recursive(Some(&plist), remain_pool);
+        let tuple = build_plist_children_recursive(Some(&plist), remain_pool)?;
         plist.children = tuple.0;
         remain_pool = tuple.1;
 
         result_list.push(plist);
     }
 
-    (result_list, remain_pool)
+    Ok((result_list, remain_pool))
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::MockPlaylistDao;
     use super::*;
-    use domain::{db_wrapper::ConnectionFactory, mocks, playlist::SortType};
+    use domain::{mocks, playlist::SortType};
     use paste::paste;
 
     mocks! {
@@ -160,7 +177,7 @@ mod tests {
 
             playlist_type: PlaylistType::Normal,
             in_folder_order: 0,
-            filter_root_id: None,
+            filter: None,
             sort_type: SortType::Artist,
             sort_desc: false,
             save_dap: true,
@@ -176,11 +193,10 @@ mod tests {
             m.expect_select_all_order_folder().returning(|_| Ok(vec![]));
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
-            let result = t.get_playlist_tree(&tx).unwrap();
+            let result = t.get_playlist_tree(&mut tx).unwrap();
             assert_eq!(result, vec![]);
         });
     }
@@ -198,11 +214,10 @@ mod tests {
             });
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
-            let result = t.get_playlist_tree(&tx).unwrap();
+            let result = t.get_playlist_tree(&mut tx).unwrap();
             pretty_assertions::assert_eq!(
                 result,
                 vec![
@@ -232,11 +247,10 @@ mod tests {
             });
         });
 
-        let mut db = ConnectionFactory::Dummy.open().unwrap();
-        let tx = db.transaction().unwrap();
+        let mut tx = DbTransaction::Dummy;
 
         mocks.run_target(|t| {
-            let result = t.get_playlist_tree(&tx).unwrap();
+            let result = t.get_playlist_tree(&mut tx).unwrap();
             pretty_assertions::assert_eq!(
                 result,
                 vec![

@@ -1,9 +1,9 @@
-use crate::converts::DbDate;
+use chrono::NaiveDate;
 
 ///SongSyncRowの登録用データ
 pub struct SongSyncEntry<'a> {
     /// 曲の長さ(ミリ秒)
-    pub duration: u32,
+    pub duration: i32,
 
     /// 曲名
     pub title: &'a str,
@@ -30,7 +30,7 @@ pub struct SongSyncEntry<'a> {
     pub disc_max: Option<i32>,
 
     /// リリース日
-    pub release_date: Option<DbDate>,
+    pub release_date: Option<NaiveDate>,
 
     /// メモ
     pub memo: &'a str,

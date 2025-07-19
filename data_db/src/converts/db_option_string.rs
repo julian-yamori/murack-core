@@ -1,10 +1,10 @@
-use rusqlite::types::{FromSql, FromSqlResult, ValueRef};
 
 /// DBに登録される、Nullableな文字列値
 ///
 /// DBに登録する際はnull不許可で、空文字列をNone扱いとする。
-#[derive(Debug, PartialEq, Clone, Default)]
-pub struct DbOptionString(String);
+#[derive(Debug, PartialEq, Clone, Default, sqlx::Type)]
+#[sqlx(transparent)]
+pub struct DbOptionString(pub String);
 
 impl DbOptionString {
     /// 空値のインスタンスを作成
@@ -30,8 +30,8 @@ impl From<DbOptionString> for Option<String> {
     }
 }
 
-impl FromSql for DbOptionString {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        Ok(Self(value.as_str()?.to_owned()))
+impl From<String> for DbOptionString {
+    fn from(s: String) -> Self {
+        Self(s)
     }
 }

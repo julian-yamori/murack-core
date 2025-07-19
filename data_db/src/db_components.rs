@@ -1,9 +1,11 @@
-use super::{
+use std::sync::{Arc, Mutex};
+
+use once_cell::sync::Lazy;
+
+use crate::{
     artwork::{
-        ArtworkCache, ArtworkDaoImpl, ArtworkImageDaoImpl, DbArtworkRepositoryImpl,
-        SongArtworkDaoImpl,
+        ArtworkCache, ArtworkDao, ArtworkImageDaoImpl, DbArtworkRepositoryImpl, SongArtworkDaoImpl,
     },
-    filter::{DbFilterRepositoryImpl, FilterDaoImpl},
     folder::{DbFolderRepositoryImpl, FolderPathDaoImpl},
     playlist::{
         DbPlaylistRepositoryImpl, DbPlaylistSongRepositoryImpl, PlaylistDaoImpl,
@@ -13,89 +15,62 @@ use super::{
     song_lister::{SongFinderImpl, SongListerFilterImpl},
     tag::{DbSongTagRepositoryImpl, SongTagsDaoImpl},
 };
-use domain::{
-    artwork::DbArtworkRepository,
-    dap::SongFinder,
-    folder::DbFolderRepository,
-    playlist::{DbPlaylistRepository, DbPlaylistSongRepository},
-    song::DbSongRepository,
-    sync::DbSongSyncRepository,
-    tag::DbSongTagRepository,
-};
-use paste::paste;
-use std::{cell::RefCell, rc::Rc};
 
-macro_rules! struct_define {
-    ($($t: ident),*) => {
-        paste! {
-            /// data層DB機能のDIを解決するオブジェクト
-            #[derive(Getters)]
-            pub struct DbComponents {
-                $(
-                    [<$t:snake>]: Rc<dyn $t>,
-                )*
-            }
-        }
-    };
+/// data層DB機能のDIを解決するオブジェクト
+pub struct DbComponents {
+    artwork_cache: Lazy<Arc<Mutex<ArtworkCache>>>,
 }
-struct_define![
-    DbArtworkRepository,
-    DbFolderRepository,
-    DbPlaylistRepository,
-    DbPlaylistSongRepository,
-    DbSongRepository,
-    DbSongSyncRepository,
-    DbSongTagRepository,
-    SongFinder
-];
 
 impl DbComponents {
     pub fn new() -> Self {
-        let artwork_cache = Rc::new(RefCell::new(ArtworkCache::new()));
-
-        let artwork_dao = Rc::new(ArtworkDaoImpl {});
-        let artwork_image_dao = Rc::new(ArtworkImageDaoImpl {});
-        let filter_dao = Rc::new(FilterDaoImpl {});
-        let folder_path_dao = Rc::new(FolderPathDaoImpl {});
-        let playlist_dao = Rc::new(PlaylistDaoImpl {});
-        let playlist_song_dao = Rc::new(PlaylistSongDaoImpl {});
-        let song_dao = Rc::new(SongDaoImpl {});
-        let song_artwork_dao = Rc::new(SongArtworkDaoImpl {});
-        let song_sync_dao = Rc::new(SongSyncDaoImpl {});
-        let song_tags_dao = Rc::new(SongTagsDaoImpl {});
-
-        let db_artwork_repository = Rc::new(DbArtworkRepositoryImpl::new(
-            artwork_cache,
-            artwork_dao,
-            artwork_image_dao,
-            song_artwork_dao,
-        ));
-        let db_filter_repository = Rc::new(DbFilterRepositoryImpl::new(filter_dao));
-
-        let song_lister_filter = Rc::new(SongListerFilterImpl {});
-
         Self {
-            song_finder: Rc::new(SongFinderImpl::new(
-                playlist_dao.clone(),
-                playlist_song_dao.clone(),
-                db_filter_repository,
-                song_lister_filter,
-            )),
-            db_folder_repository: Rc::new(DbFolderRepositoryImpl::new(folder_path_dao)),
-            db_playlist_repository: Rc::new(DbPlaylistRepositoryImpl::new(playlist_dao.clone())),
-            db_playlist_song_repository: Rc::new(DbPlaylistSongRepositoryImpl::new(
-                playlist_dao,
-                playlist_song_dao,
-            )),
-            db_song_repository: Rc::new(DbSongRepositoryImpl::new(song_dao.clone())),
-            db_song_sync_repository: Rc::new(DbSongSyncRepositoryImpl::new(
-                db_artwork_repository.clone(),
-                song_dao,
-                song_sync_dao,
-            )),
-            db_song_tag_repository: Rc::new(DbSongTagRepositoryImpl::new(song_tags_dao)),
-            db_artwork_repository,
+            artwork_cache: Lazy::new(|| Arc::new(Mutex::new(ArtworkCache::new()))),
         }
+    }
+
+    pub fn song_finder(&self) -> TypeSongFinder {
+        SongFinderImpl::new(
+            PlaylistDaoImpl {},
+            PlaylistSongDaoImpl {},
+            SongListerFilterImpl {},
+        )
+    }
+
+    pub fn db_artwork_repository(&self) -> TypeDbArtworkRepository {
+        DbArtworkRepositoryImpl::new(
+            self.artwork_cache.clone(),
+            ArtworkDao {},
+            ArtworkImageDaoImpl {},
+            SongArtworkDaoImpl {},
+        )
+    }
+
+    pub fn db_folder_repository(&self) -> TypeDbFolderRepository {
+        DbFolderRepositoryImpl::new(FolderPathDaoImpl {})
+    }
+
+    pub fn db_playlist_repository(&self) -> TypeDbPlaylistRepository {
+        DbPlaylistRepositoryImpl::new(PlaylistDaoImpl {})
+    }
+
+    pub fn db_playlist_song_repository(&self) -> TypeDbPlaylistSongRepository {
+        DbPlaylistSongRepositoryImpl::new(PlaylistDaoImpl {}, PlaylistSongDaoImpl {})
+    }
+
+    pub fn db_song_repository(&self) -> TypeDbSongRepository {
+        DbSongRepositoryImpl::new(SongDaoImpl {})
+    }
+
+    pub fn db_song_sync_repository(&self) -> TypeDbSongSyncRepository {
+        DbSongSyncRepositoryImpl::new(
+            self.db_artwork_repository(),
+            SongDaoImpl {},
+            SongSyncDaoImpl {},
+        )
+    }
+
+    pub fn db_song_tag_repository(&self) -> TypeDbSongTagRepository {
+        DbSongTagRepositoryImpl::new(SongTagsDaoImpl {})
     }
 }
 
@@ -104,3 +79,15 @@ impl Default for DbComponents {
         Self::new()
     }
 }
+
+pub type TypeSongFinder =
+    SongFinderImpl<PlaylistDaoImpl, PlaylistSongDaoImpl, SongListerFilterImpl>;
+pub type TypeDbArtworkRepository = DbArtworkRepositoryImpl<ArtworkImageDaoImpl, SongArtworkDaoImpl>;
+pub type TypeDbFolderRepository = DbFolderRepositoryImpl<FolderPathDaoImpl>;
+pub type TypeDbPlaylistRepository = DbPlaylistRepositoryImpl<PlaylistDaoImpl>;
+pub type TypeDbPlaylistSongRepository =
+    DbPlaylistSongRepositoryImpl<PlaylistDaoImpl, PlaylistSongDaoImpl>;
+pub type TypeDbSongRepository = DbSongRepositoryImpl<SongDaoImpl>;
+pub type TypeDbSongSyncRepository =
+    DbSongSyncRepositoryImpl<TypeDbArtworkRepository, SongDaoImpl, SongSyncDaoImpl>;
+pub type TypeDbSongTagRepository = DbSongTagRepositoryImpl<SongTagsDaoImpl>;

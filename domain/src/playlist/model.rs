@@ -1,3 +1,5 @@
+use crate::filter::RootFilter;
+
 use super::{PlaylistType, SortType};
 
 /// プレイリスト情報
@@ -26,11 +28,8 @@ pub struct Playlist {
     /// 親プレイリスト内でのインデックス
     pub in_folder_order: u32,
 
-    /// このプレイリスト用フィルタの基底ノードの、FilterData.Id
-    ///
-    /// PlaylistType::Filter用。
-    /// フィルタがなければNone。
-    pub filter_root_id: Option<i32>,
+    /// PlaylistType::Filter で使うフィルタ
+    pub filter: Option<RootFilter>,
 
     /// ソート対象
     pub sort_type: SortType,

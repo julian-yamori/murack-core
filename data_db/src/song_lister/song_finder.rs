@@ -1,87 +1,106 @@
-use super::{SongListerFilter, esc::esci};
-use crate::{
-    Error,
-    converts::DbLibSongPath,
-    playlist::{PlaylistDao, PlaylistSongDao},
-    sql_func,
-};
+use std::collections::{BTreeSet, HashSet};
+
 use anyhow::Result;
+use async_recursion::async_recursion;
+use async_trait::async_trait;
 use domain::{
     dap::SongFinder,
-    db_wrapper::TransactionWrapper,
-    filter::DbFilterRepository,
+    db::DbTransaction,
     path::LibSongPath,
     playlist::{Playlist, PlaylistType, SortType},
 };
-use rusqlite::params;
-use std::{
-    collections::{BTreeSet, HashSet},
-    rc::Rc,
+use sqlx::{Row, postgres::PgRow};
+
+use super::{SongListerFilter, esc::esci};
+use crate::{
+    Error,
+    playlist::{PlaylistDao, PlaylistSongDao},
 };
 
 /// SongFinderの本実装
 #[derive(new)]
-pub struct SongFinderImpl {
-    playlist_dao: Rc<dyn PlaylistDao>,
-    playlist_song_dao: Rc<dyn PlaylistSongDao>,
-    db_filter_repository: Rc<dyn DbFilterRepository>,
-    song_lister_filter: Rc<dyn SongListerFilter>,
+pub struct SongFinderImpl<PD, PSD, SLF>
+where
+    PD: PlaylistDao + Sync + Send,
+    PSD: PlaylistSongDao + Sync + Send,
+    SLF: SongListerFilter + Sync + Send,
+{
+    playlist_dao: PD,
+    playlist_song_dao: PSD,
+    song_lister_filter: SLF,
 }
 
-impl SongFinder for SongFinderImpl {
+#[async_trait]
+impl<PD, PSD, SLF> SongFinder for SongFinderImpl<PD, PSD, SLF>
+where
+    PD: PlaylistDao + Sync + Send,
+    PSD: PlaylistSongDao + Sync + Send,
+    SLF: SongListerFilter + Sync + Send,
+{
     /// プレイリストに含まれる曲のパスリストを取得
     /// # Arguments
     /// - plist 取得対象のプレイリスト情報(※childrenは不要)
-    fn get_song_path_list<'c>(
+    async fn get_song_path_list<'c>(
         &self,
-        tx: &TransactionWrapper<'c>,
+        tx: &mut DbTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<LibSongPath>> {
         //対象プレイリストのクエリ(from,join,where句)を取得
-        let fjw_query = self.get_query_by_playlist(tx, plist)?;
+        let fjw_query = self.get_query_by_playlist(tx, plist).await?;
 
         //取得するカラム
-        let mut clms_query = "[song].[path]".to_owned();
+        let mut clms_query = "tracks.path".to_owned();
 
         //プレイリスト順なら、取得カラムを一つ追加
         if plist.sort_type == SortType::Playlist {
             clms_query =
-                format!("{clms_query}, [playlist_song].[order] as [{PLIST_SONG_IDX_COLUMN}]");
+                format!("{clms_query}, playlist_tracks.order_index AS {PLIST_SONG_IDX_COLUMN}");
         }
 
         //select句とorder byを結合
         let query = format!(
-            "select {}{}{}",
+            "SELECT {}{}{}",
             clms_query,
             fjw_query,
             get_order_query(plist.sort_type, plist.sort_desc)
         );
 
-        sql_func::select_list(tx, &query, [], |row| {
-            let p: DbLibSongPath = row.get(0)?;
-            Ok(p.into())
-        })
+        let list: Vec<LibSongPath> = sqlx::query(&query)
+            .map(|row: PgRow| LibSongPath::new(row.get::<&str, _>(0)))
+            .fetch_all(&mut **tx.get())
+            .await?;
+
+        Ok(list)
     }
 }
 
 /// playlist_song.orderカラムに付ける別名
 const PLIST_SONG_IDX_COLUMN: &str = "playlist_index";
 
-impl SongFinderImpl {
+impl<PD, PSD, SLF> SongFinderImpl<PD, PSD, SLF>
+where
+    PD: PlaylistDao + Sync + Send,
+    PSD: PlaylistSongDao + Sync + Send,
+    SLF: SongListerFilter + Sync + Send,
+{
     /// プレイリストに含まれる曲を検索するクエリを作成
     /// # Arguments
     /// - plist: 対象プレイリスト情報
     /// # Result
     /// from,join,where句のクエリ
-    fn get_query_by_playlist(&self, tx: &TransactionWrapper, plist: &Playlist) -> Result<String> {
+    async fn get_query_by_playlist<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        plist: &Playlist,
+    ) -> Result<String> {
         //リストアップされていなければ、まずリストアップする
         if !plist.listuped_flag {
-            self.listup_songs(tx, plist)?;
+            self.listup_songs(tx, plist).await?;
         }
         //プレイリストに含まれる曲の検索クエリを返す
 
         Ok(format!(
-            " from [playlist_song] join [song] on [playlist_song].[song_id] = [song].[rowid] where [playlist_song].[playlist_id] = {}",
+            " FROM playlist_trakcs JOIN tracks ON playlist_tracks.track_id = tracks.id WHERE playlist_tracks.playlist_id = {}",
             esci(Some(plist.rowid))
         ))
     }
@@ -89,28 +108,31 @@ impl SongFinderImpl {
     /// プレイリストの曲をリストアップし、playlist_songテーブルを更新する
     /// # Arguments
     /// - plist: 対象プレイリスト情報
-    fn listup_songs(&self, tx: &TransactionWrapper, plist: &Playlist) -> Result<()> {
+    async fn listup_songs<'c>(&self, tx: &mut DbTransaction<'c>, plist: &Playlist) -> Result<()> {
         //通常プレイリストなら、リストアップ済みフラグを立てるのみ
         if plist.playlist_type != PlaylistType::Normal {
             //元々保存されていた曲リストを取得
             let old_id_list: BTreeSet<_> = self
                 .playlist_song_dao
-                .select_song_id_by_playlist_id(tx, plist.rowid)?
+                .select_song_id_by_playlist_id(tx, plist.rowid)
+                .await?
                 .into_iter()
                 .collect();
 
             let new_id_list = match plist.playlist_type {
-                PlaylistType::Filter => self.search_plist_songs_filter(tx, plist)?,
-                PlaylistType::Folder => self.search_plist_songs_folder(tx, plist)?,
+                PlaylistType::Filter => self.search_plist_songs_filter(tx, plist).await?,
+                PlaylistType::Folder => self.search_plist_songs_folder(tx, plist).await?,
                 _ => unreachable!(),
             };
 
             //PlaylistSongテーブルを更新
             self.playlist_song_dao
-                .delete_by_playlist_id(tx, plist.rowid)?;
+                .delete_by_playlist_id(tx, plist.rowid)
+                .await?;
             for (idx, song_id) in new_id_list.iter().enumerate() {
                 self.playlist_song_dao
-                    .insert(tx, plist.rowid, *song_id, idx as i32)?;
+                    .insert(tx, plist.rowid, *song_id, idx as i32)
+                    .await?;
             }
 
             //古いリストから変更があったか確認
@@ -128,48 +150,58 @@ impl SongFinderImpl {
 
             //変更があれば、DAP変更フラグを立てる
             if changed {
-                sql_func::execute(
-                    tx,
-                    "update [playlist] set [dap_changed] = 1 where [rowid] = ?",
-                    params![plist.rowid],
-                )?;
+                sqlx::query!(
+                    "UPDATE playlists SET dap_changed = true WHERE id = $1",
+                    plist.rowid,
+                )
+                .execute(&mut **tx.get())
+                .await?;
             }
         }
 
         //リストアップ済みに更新
-        sql_func::execute(
-            tx,
-            "update [playlist] set [listuped_flag] = ? where [rowid] = ?",
-            params![true, plist.rowid],
+        sqlx::query!(
+            "UPDATE playlists SET listuped_flag = $1 WHERE id = $2",
+            true,
+            plist.rowid,
         )
+        .execute(&mut **tx.get())
+        .await?;
+
+        Ok(())
     }
 
     /// プレイリストの設定に基づき、曲リストを取得：フォルダプレイリスト
     /// # Arguments
     /// - plist: 対象プレイリスト情報
-    fn search_plist_songs_folder(
+    #[async_recursion]
+    async fn search_plist_songs_folder<'c>(
         &self,
-        tx: &TransactionWrapper,
+        tx: &mut DbTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<i32>> {
         //直下の子のプレイリストを取得
         let children = self
             .playlist_dao
-            .get_child_playlists(tx, Some(plist.rowid))?
+            .get_child_playlists(tx, Some(plist.rowid))
+            .await?
             .into_iter()
-            .map(Playlist::from);
+            .map(Playlist::try_from);
 
         //子プレイリストの曲IDを追加していくSet
         let mut add_song_ids = HashSet::<i32>::new();
 
         for child in children {
+            let child = child?;
+
             //子プレイリストの曲リストを取得
             let child_query = format!(
-                "select [song].[rowid] {}",
-                self.get_query_by_playlist(tx, &child)?
+                "SELECT tracks.id {}",
+                self.get_query_by_playlist(tx, &child).await?
             );
-            let child_songs: Vec<i32> =
-                sql_func::select_list(tx, &child_query, [], |row| row.get(0))?;
+            let child_songs: Vec<i32> = sqlx::query_scalar(&child_query)
+                .fetch_all(&mut **tx.get())
+                .await?;
 
             //Setに追加
             for song_id in child_songs {
@@ -183,24 +215,19 @@ impl SongFinderImpl {
     /// プレイリストの設定に基づき、曲リストを取得：フィルタプレイリスト
     /// # Arguments
     /// - plist: 対象プレイリスト情報
-    fn search_plist_songs_filter(
+    async fn search_plist_songs_filter<'c>(
         &self,
-        tx: &TransactionWrapper,
+        tx: &mut DbTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<i32>> {
-        let filter_id = plist
-            .filter_root_id
-            .ok_or(Error::FilterPlaylistFilterIdNone {
+        let filter = plist
+            .filter
+            .as_ref()
+            .ok_or(Error::FilterPlaylistHasNoFilter {
                 plist_id: plist.rowid,
             })?;
 
-        //該当フィルタを取得
-        let filter = self
-            .db_filter_repository
-            .get_filter_tree(tx, filter_id)?
-            .ok_or(Error::RootFilterNotFound { root_id: filter_id })?;
-
-        self.song_lister_filter.list_song_id(tx, &filter)
+        self.song_lister_filter.list_song_id(tx, filter).await
     }
 }
 
@@ -215,9 +242,9 @@ fn get_order_query(sort_type: SortType, is_desc: bool) -> String {
 
     //降順ならASC → DESC
     if is_desc {
-        format!(" order by {}", order.replace("asc", "desc"))
+        format!(" ORDER BY {}", order.replace("ASC", "DESC"))
     } else {
-        format!(" order by {order}")
+        format!(" ORDER BY {order}")
     }
 }
 
@@ -228,18 +255,18 @@ fn get_order_query(sort_type: SortType, is_desc: bool) -> String {
 /// order byに繋がる文字列。全ての列にasc付き
 fn get_sort_column_query(sort_type: SortType) -> String {
     match sort_type {
-	SortType::SongName => "[title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::Artist => "[artist_order] asc, [album_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::Album => "[album_order] asc, [artist_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::Genre => "[genre] asc, [artist_order] asc, [album_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::Playlist => format!("[{PLIST_SONG_IDX_COLUMN}] asc"),
-	SortType::Composer => "[composer_order] asc, [artist_order] asc, [album_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::Duration => "[duration] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::TrackIndex => "[track_number] asc, [artist_order] asc, [album_order] asc, [disc_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::DiscIndex => "[disc_number] asc, [artist_order] asc, [album_order] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::ReleaseDate => "[release_date] asc, [artist_order] asc, [album_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::Rating => "[rating] asc, [artist_order] asc, [album_order] asc, [disc_number] asc, [track_number] asc, [title_order] asc, [song].[rowid] asc".to_owned(),
-	SortType::EntryDate => "[entry_date] asc, [path] asc".to_owned(),
-	SortType::Path => "[path] asc".to_owned(),
+	SortType::SongName => "title_order ASC, tracks.id ASC".to_owned(),
+	SortType::Artist => "artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
+	SortType::Album => "album_order ASC, artist_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
+	SortType::Genre => "genre ASC, artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, trakcs.id ASC".to_owned(),
+	SortType::Playlist => format!("[{PLIST_SONG_IDX_COLUMN}] ASC"),
+	SortType::Composer => "composer_order ASC, artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
+	SortType::Duration => "duration ASC, title_order ASC, tracks.id ASC".to_owned(),
+	SortType::TrackIndex => "track_number ASC, artist_order ASC, album_order ASC, disc_number ASC, title_order ASC, tracks.id ASC".to_owned(),
+	SortType::DiscIndex => "disc_number ASC, artist_order ASC, album_order ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
+	SortType::ReleaseDate => "release_date ASC, artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
+	SortType::Rating => "rating ASC, artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
+	SortType::EntryDate => "created_at ASC, path ASC".to_owned(),
+	SortType::Path => "path ASC".to_owned(),
 	}
 }

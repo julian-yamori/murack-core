@@ -7,7 +7,7 @@ mod artwork_image_row;
 use artwork_image_row::ArtworkImageRow;
 
 mod artwork_dao;
-pub use artwork_dao::{ArtworkDao, ArtworkDaoImpl};
+pub use artwork_dao::ArtworkDao;
 mod artwork_image_dao;
 pub use artwork_image_dao::{ArtworkImageDao, ArtworkImageDaoImpl};
 mod song_artwork_dao;

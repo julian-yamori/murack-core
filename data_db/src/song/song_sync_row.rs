@@ -1,12 +1,14 @@
-use crate::converts::{DbDate, DbOptionString};
+use chrono::NaiveDate;
+
+use crate::converts::DbOptionString;
 
 /// SongSyncの、songテーブルレコードの部分
 pub struct SongSyncRow {
     /// 曲ID
-    pub rowid: i32,
+    pub id: i32,
 
     /// 曲の長さ(ミリ秒)
-    pub duration: u32,
+    pub duration: i32,
 
     /// 曲名
     pub title: DbOptionString,
@@ -33,7 +35,7 @@ pub struct SongSyncRow {
     pub disc_max: Option<i32>,
 
     /// リリース日
-    pub release_date: Option<DbDate>,
+    pub release_date: Option<NaiveDate>,
 
     /// メモ
     pub memo: DbOptionString,

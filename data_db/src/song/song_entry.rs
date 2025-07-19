@@ -1,16 +1,17 @@
+use chrono::NaiveDate;
+
 use super::SongRow;
-use crate::converts::{DbDate, DbFolderIdMayRoot, DbLibSongPathRef};
 
 /// songテーブルの登録用の行データ
 pub struct SongEntry<'a> {
     /// 曲の長さ(ミリ秒)
-    pub duration: u32,
+    pub duration: i32,
 
     /// 曲ファイルのライブラリ内パス
-    pub path: DbLibSongPathRef<'a>,
+    pub path: &'a str,
 
     /// フォルダID
-    pub folder_id: DbFolderIdMayRoot,
+    pub folder_id: Option<i32>,
 
     /// 曲名
     pub title: &'a str,
@@ -37,10 +38,10 @@ pub struct SongEntry<'a> {
     pub disc_max: Option<i32>,
 
     /// リリース日
-    pub release_date: Option<DbDate>,
+    pub release_date: Option<NaiveDate>,
 
     /// レート
-    pub rating: u8,
+    pub rating: i16,
 
     /// 原曲
     pub original_song: &'a str,
@@ -69,16 +70,13 @@ pub struct SongEntry<'a> {
     pub composer_order: &'a str,
     /// ジャンル(並び替え用)
     pub genre_order: &'a str,
-
-    /// 登録日
-    pub entry_date: DbDate,
 }
 
 impl SongEntry<'_> {
     /// SongRowの値と等しいことを確認
     pub fn assert_eq_row(&self, row: &SongRow) {
         assert_eq!(self.duration, row.duration);
-        self.path.assert_eq_buf(&row.path);
+        assert_eq!(self.path, &row.path);
         assert_eq!(self.folder_id, row.folder_id);
         assert_eq!(self.title, row.title.as_nonnull_str());
         assert_eq!(self.artist, row.artist.as_nonnull_str());
@@ -92,7 +90,7 @@ impl SongEntry<'_> {
         assert_eq!(self.disc_max, row.disc_max);
         assert_eq!(self.release_date, row.release_date);
         assert_eq!(self.rating, row.rating);
-        assert_eq!(self.original_song, row.original_song.as_nonnull_str());
+        assert_eq!(self.original_song, row.original_track.as_nonnull_str());
         assert_eq!(self.suggest_target, row.suggest_target);
         assert_eq!(self.memo, row.memo.as_nonnull_str());
         assert_eq!(self.memo_manage, row.memo_manage.as_nonnull_str());
@@ -103,6 +101,5 @@ impl SongEntry<'_> {
         assert_eq!(self.album_artist_order, &row.album_artist_order);
         assert_eq!(self.composer_order, &row.composer_order);
         assert_eq!(self.genre_order, &row.genre_order);
-        assert_eq!(self.entry_date, row.entry_date);
     }
 }

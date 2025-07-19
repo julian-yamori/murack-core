@@ -1,42 +1,59 @@
 #[cfg(test)]
 mod tests;
 
-use super::esc::escs;
-use crate::{Error, like_esc, sql_func};
 use anyhow::Result;
+use async_trait::async_trait;
+use chrono::NaiveDate;
 use domain::{
-    db_wrapper::TransactionWrapper,
-    filter::{Filter, FilterTarget, FilterValueRange, FilterValueType},
+    db::DbTransaction,
+    filter::{
+        ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,
+        IntFilterRange, RootFilter, StringFilterRange, TagsFilterRange,
+    },
 };
-use mockall::automock;
-use std::str::FromStr;
+
+use super::esc::escs;
+use crate::like_esc;
 
 /// フィルタを使用した曲データ列挙
-#[automock]
+#[async_trait]
 pub trait SongListerFilter {
     /// 曲IDを列挙
     /// # Arguments
     /// - filter: 検索に使用するフィルタ情報
-    fn list_song_id<'c>(&self, tx: &TransactionWrapper<'c>, filter: &Filter) -> Result<Vec<i32>>;
+    async fn list_song_id<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        filter: &RootFilter,
+    ) -> Result<Vec<i32>>;
 }
 
 /// SongListerFilterの本実装
 pub struct SongListerFilterImpl {}
 
+#[async_trait]
 impl SongListerFilter for SongListerFilterImpl {
     /// 曲IDを列挙
     /// # Arguments
     /// - filter: 検索に使用するフィルタ情報
-    fn list_song_id<'c>(&self, tx: &TransactionWrapper<'c>, filter: &Filter) -> Result<Vec<i32>> {
-        let mut query_base = "select [song].[rowid] from [song]".to_owned();
+    async fn list_song_id<'c>(
+        &self,
+        tx: &mut DbTransaction<'c>,
+        filter: &RootFilter,
+    ) -> Result<Vec<i32>> {
+        let mut query_base = "SELECT tracks.id FROM tracks".to_owned();
 
         //フィルタから条件を取得して追加
-        let query_where = get_query_filter_where(filter)?;
+        let query_where = get_query_filter_where(filter);
         if !query_where.is_empty() {
-            query_base = format!("{query_base} where {query_where}");
+            query_base = format!("{query_base} WHERE {query_where}");
         }
 
-        sql_func::select_list(tx, &query_base, [], |row| row.get(0))
+        let list = sqlx::query_scalar(&query_base)
+            .fetch_all(&mut **tx.get())
+            .await?;
+
+        Ok(list)
     }
 }
 
@@ -45,25 +62,35 @@ impl SongListerFilter for SongListerFilterImpl {
 /// - filter: 対象のフィルタ
 /// # Returns
 /// 条件文(空文字列なら条件なし)
-fn get_query_filter_where(filter: &Filter) -> Result<String> {
-    Ok(match filter.target.value_type() {
-        //グループ
-        FilterValueType::FilterGroup => get_query_filter_where_group(filter)?,
-        //文字列
-        FilterValueType::String => get_query_filter_where_str(filter)?,
-        //数値
-        FilterValueType::Int => get_query_filter_where_int(filter)?,
-        //ID
-        FilterValueType::Id => get_query_filter_where_id(filter)?,
-        //タグ
-        FilterValueType::Tags => get_query_filter_where_tag(filter)?,
-        //フラグ
-        FilterValueType::Bool => get_query_filter_where_bool(filter)?,
-        //アートワーク
-        FilterValueType::Artwork => get_query_filter_where_artwork(filter)?,
-        //日付
-        FilterValueType::Date => get_query_filter_where_date(filter)?,
-    })
+fn get_query_filter_where(filter_target: &FilterTarget) -> String {
+    match filter_target {
+        FilterTarget::FilterGroup { op, children } => get_query_filter_where_group(op, children),
+        FilterTarget::Tags { range } => get_query_filter_where_tag(range),
+        FilterTarget::Rating { range } => get_query_filter_where_int("rating", range),
+        FilterTarget::Genre { range } => get_query_filter_where_str("genre", range),
+        FilterTarget::Artist { range } => get_query_filter_where_str("artist", range),
+        FilterTarget::Albumartist { range } => get_query_filter_where_str("album_artist", range),
+        FilterTarget::Album { range } => get_query_filter_where_str("album", range),
+        FilterTarget::Composer { range } => get_query_filter_where_str("composer", range),
+        FilterTarget::Title { range } => get_query_filter_where_str("title", range),
+        FilterTarget::Artwork { range } => get_query_filter_where_artwork(range),
+        FilterTarget::Duration { range } => get_query_filter_where_int("duration", range),
+        FilterTarget::ReleaseDate { range } => get_query_filter_where_date("release_date", range),
+        FilterTarget::TrackNumber { range } => get_query_filter_where_int("disc_number", range),
+        FilterTarget::TrackMax { range } => get_query_filter_where_int("track_max", range),
+        FilterTarget::DiscNumber { range } => get_query_filter_where_int("disc_number", range),
+        FilterTarget::DiscMax { range } => get_query_filter_where_int("disc_max", range),
+        FilterTarget::Memo { range } => get_query_filter_where_str("memo", range),
+        FilterTarget::MemoManage { range } => get_query_filter_where_str("memo_manage", range),
+
+        // TODO DateTime との比較は危なそう #17
+        FilterTarget::EntryDate { range } => get_query_filter_where_date("created_at", range),
+
+        FilterTarget::OriginalSong { range } => get_query_filter_where_str("original_track", range),
+        FilterTarget::SuggestTarget { range } => {
+            get_query_filter_where_bool("suggest_target", range)
+        }
+    }
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得(グループ用)
@@ -71,27 +98,25 @@ fn get_query_filter_where(filter: &Filter) -> Result<String> {
 /// - filter 対象のフィルタ
 /// # Returns
 /// 条件文(空文字列なら条件なし)
-fn get_query_filter_where_group(filter: &Filter) -> Result<String> {
+fn get_query_filter_where_group(op: &GroupOperand, children: &[FilterTarget]) -> String {
     //各フィルタのクエリを連結
-    let ope = if filter.range == FilterValueRange::GroupOr {
-        " or "
-    } else {
-        " and "
+    let ope = match op {
+        GroupOperand::And => " and ",
+        GroupOperand::Or => " or ",
     };
 
-    let combined_query = filter
-        .children
+    let combined_query = children
         .iter()
         .map(get_query_filter_where)
-        .collect::<Result<Vec<String>>>()?
+        .collect::<Vec<String>>()
         .join(ope);
 
     if combined_query.is_empty() {
-        return Ok(combined_query);
+        return combined_query;
     }
 
     //クエリ文字列は()で囲む
-    Ok(format!("({combined_query})"))
+    format!("({combined_query})")
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得(文字列用)
@@ -99,42 +124,34 @@ fn get_query_filter_where_group(filter: &Filter) -> Result<String> {
 /// - filter 対象のフィルタ
 /// # Returns
 /// 条件文(空文字列なら条件なし)
-fn get_query_filter_where_str(filter: &Filter) -> Result<String> {
+fn get_query_filter_where_str(column_name: &str, range: &StringFilterRange) -> String {
     //演算子〜値の左側、値の右側、LIKE区を使うか
     //範囲指定により分岐
-    let (left, right, use_like) = match filter.range {
+    let (left, right, use_like, filter_value) = match range {
         //指定文字列と等しい
-        FilterValueRange::StrEqual => (" = ", "", false),
+        StringFilterRange::Equal { value } => (" = ", "", false, value),
         //指定文字列と等しくない
-        FilterValueRange::StrNotEqual => (" != ", "", false),
+        StringFilterRange::NotEqual { value } => (" != ", "", false, value),
         //指定文字列を含む
-        FilterValueRange::StrContain => (" like '%' || ", " || '%'", true),
+        StringFilterRange::Contain { value } => (" like '%' || ", " || '%'", true, value),
         //指定文字列を含まない
-        FilterValueRange::StrNotContain => (" not like '%' || ", " || '%'", true),
+        StringFilterRange::NotContain { value } => (" not like '%' || ", " || '%'", true, value),
         //指定文字列から始まる
-        FilterValueRange::StrStart => (" like ", " || '%'", true),
+        StringFilterRange::Start { value } => (" like ", " || '%'", true, value),
         //指定文字列で終わる
-        FilterValueRange::StrEnd => (" like '%' || ", "", true),
-
-        _ => return Err(invalid_filter_range_for_target(filter)),
+        StringFilterRange::End { value } => (" like '%' || ", "", true, value),
     };
     let mut r_string = right.to_owned();
 
     //必要ならlike文のエスケープ処理
-    let cmp_value = if use_like && like_esc::is_need(&filter.str_value) {
+    let cmp_value = if use_like && like_esc::is_need(filter_value) {
         r_string = format!("{r_string} escape '$'");
-        like_esc::escape(&filter.str_value)
+        like_esc::escape(filter_value)
     } else {
-        filter.str_value.to_owned()
+        filter_value.to_owned()
     };
 
-    Ok(format!(
-        "{}{}{}{}",
-        target_to_clm_name(filter.target),
-        left,
-        escs(&cmp_value),
-        r_string
-    ))
+    format!("{column_name}{left}{}{r_string}", escs(&cmp_value))
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得(整数用)
@@ -142,70 +159,28 @@ fn get_query_filter_where_str(filter: &Filter) -> Result<String> {
 /// - filter 対象のフィルタ
 /// # Returns
 /// 条件文(空文字列なら条件なし)
-fn get_query_filter_where_int(filter: &Filter) -> Result<String> {
-    let clm_name = target_to_clm_name(filter.target);
-
-    //第一入力値が未入力の場合
-    if filter.str_value.is_empty() {
-        //一部範囲は、nullであるかどうかでフィルタリングする
-        return Ok(match filter.range {
-            //nullと等しい
-            FilterValueRange::IntEqual => format!("{clm_name} is null"),
-            //nullと等しくない
-            FilterValueRange::IntNotEqual => format!("{clm_name} is not null"),
-            //それ以外は必ずfalse
-            _ => FALSE_QUERY.to_owned(),
-        });
-    }
-    Ok(match filter.range {
+fn get_query_filter_where_int(clm_name: &str, range: &IntFilterRange) -> String {
+    match range {
         //指定値と等しい
-        FilterValueRange::IntEqual => format!("{} = {}", clm_name, filter.str_value),
+        IntFilterRange::Equal { value } => format!("{clm_name} = {value}"),
         //指定値と等しくない
         //※nullは含めない仕様(WalkBase1がそうなっていたので)
-        FilterValueRange::IntNotEqual => format!("{} <> {}", clm_name, filter.str_value),
+        IntFilterRange::NotEqual { value } => format!("{clm_name} <> {value}"),
         //指定値以上
-        FilterValueRange::IntLargeEqual => format!("{} >= {}", clm_name, filter.str_value),
+        IntFilterRange::LargeEqual { value } => format!("{clm_name} >= {value}"),
         //指定値以下
-        FilterValueRange::IntSmallEqual => format!("{} <= {}", clm_name, filter.str_value),
+        IntFilterRange::SmallEqual { value } => format!("{clm_name} <= {value}"),
         //指定範囲内
-        FilterValueRange::IntRangeIn => {
-            //第二入力値もチェック
-            if filter.str_value2.is_empty() {
-                FALSE_QUERY.to_owned()
-            } else {
-                let (small, large) = get_ordered_int(filter)?;
-                format!("({clm_name} >= {small} and {clm_name} <= {large})")
-            }
+        IntFilterRange::RangeIn { min, max } => {
+            let (small, large) = get_ordered_int(*min, *max);
+            format!("({clm_name} >= {small} and {clm_name} <= {large})")
         }
         //指定範囲外
-        FilterValueRange::IntRangeOut => {
-            //第二入力値もチェック
-            if filter.str_value2.is_empty() {
-                FALSE_QUERY.to_owned()
-            } else {
-                let (small, large) = get_ordered_int(filter)?;
-                format!("({clm_name} < {small} or {clm_name} > {large})")
-            }
+        IntFilterRange::RangeOut { min, max } => {
+            let (small, large) = get_ordered_int(*min, *max);
+            format!("({clm_name} < {small} or {clm_name} > {large})")
         }
-        _ => return Err(invalid_filter_range_for_target(filter)),
-    })
-}
-
-/// 指定されたフィルターに相当するSQL文のWHERE条件を取得(ID用)
-/// # Arguments
-/// - filter 対象のフィルタ
-/// # Returns
-/// 条件文(空文字列なら条件なし)
-fn get_query_filter_where_id(filter: &Filter) -> Result<String> {
-    let clm_name = target_to_clm_name(filter.target);
-
-    Ok(match filter.range {
-        //有効(null以外)
-        FilterValueRange::IdValid => format!("{clm_name} is not null"),
-        //無効(null)
-        FilterValueRange::IdInvalid => format!("{clm_name} is null"),
-        _ => return Err(invalid_filter_range_for_target(filter)),
-    })
+    }
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得(タグ用)
@@ -213,32 +188,26 @@ fn get_query_filter_where_id(filter: &Filter) -> Result<String> {
 /// - filter 対象のフィルタ
 /// # Returns
 /// 条件文(空文字列なら条件なし)
-fn get_query_filter_where_tag(filter: &Filter) -> Result<String> {
-    //空なら、「持たない」以外はfalse
-    if filter.str_value.is_empty() && filter.range != FilterValueRange::TagNone {
-        return Ok(FALSE_QUERY.to_owned());
-    }
-
+fn get_query_filter_where_tag(range: &TagsFilterRange) -> String {
     //タグで検索するクエリを取得する関数
-    fn get_query_where_by_tag(tag_id: &str) -> String {
+    fn get_query_where_by_tag(tag_id: i32) -> String {
         format!(
-            "exists(select * from [song_tags] AS t where t.[song_id] = song.[rowid] and t.[tag_id] = {tag_id})"
+            "EXISTS(SELECT * FROM track_tags AS t WHERE t.track_id = tracks.id AND t.tag_id = {tag_id})"
         )
     }
 
-    Ok(match filter.range {
+    match range {
         //タグ：含む
-        FilterValueRange::TagContain => get_query_where_by_tag(&filter.str_value),
+        TagsFilterRange::Contain { value } => get_query_where_by_tag(*value),
         //タグ：含まない
-        FilterValueRange::TagNotContain => {
-            format!("not {}", get_query_where_by_tag(&filter.str_value))
+        TagsFilterRange::NotContain { value } => {
+            format!("NOT {}", get_query_where_by_tag(*value))
         }
         //タグ：タグを持たない
-        FilterValueRange::TagNone => {
-            "not exists(select * from [song_tags] AS t where t.[song_id] = song.[rowid])".to_owned()
+        TagsFilterRange::None => {
+            "NOT EXISTS(SELECT * FROM track_tags AS t WHERE t.track_id = tracks.id)".to_owned()
         }
-        _ => return Err(invalid_filter_range_for_target(filter)),
-    })
+    }
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得(フラグ用)
@@ -246,16 +215,13 @@ fn get_query_filter_where_tag(filter: &Filter) -> Result<String> {
 /// - filter 対象のフィルタ
 /// # Returns
 /// 条件文(空文字列なら条件なし)
-fn get_query_filter_where_bool(filter: &Filter) -> Result<String> {
-    let clm_name = target_to_clm_name(filter.target);
-
-    Ok(match filter.range {
+fn get_query_filter_where_bool(clm_name: &str, range: &BoolFilterRange) -> String {
+    match range {
         //true
-        FilterValueRange::BoolTrue => format!("{clm_name} <> 0"),
+        BoolFilterRange::True => format!("{clm_name} <> 0"),
         //false
-        FilterValueRange::BoolFalse => format!("{clm_name} = 0"),
-        _ => return Err(invalid_filter_range_for_target(filter)),
-    })
+        BoolFilterRange::False => format!("{clm_name} = 0"),
+    }
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得(アートワーク用)
@@ -263,17 +229,16 @@ fn get_query_filter_where_bool(filter: &Filter) -> Result<String> {
 /// - filter 対象のフィルタ
 /// # Returns
 /// 条件文(空文字列なら条件なし)
-fn get_query_filter_where_artwork(filter: &Filter) -> Result<String> {
+fn get_query_filter_where_artwork(range: &ArtworkFilterRange) -> String {
     //存在すればtrueのsql
-    let base_sql = "exists(select * from [song_artwork] as a where a.[song_id] = song.[rowid])";
+    let base_sql = "EXISTS(SELECT * FROM track_artworks AS a WHERE a.track_id = tracks.id)";
 
-    Ok(match filter.range {
+    match range {
         //アートワーク：ある
-        FilterValueRange::ArtworkHas => base_sql.to_owned(),
+        ArtworkFilterRange::Has => base_sql.to_owned(),
         //アートワーク：ない
-        FilterValueRange::ArtworkNone => format!("not {base_sql}"),
-        _ => return Err(invalid_filter_range_for_target(filter)),
-    })
+        ArtworkFilterRange::None => format!("NOT {base_sql}"),
+    }
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得(日付用)
@@ -281,97 +246,42 @@ fn get_query_filter_where_artwork(filter: &Filter) -> Result<String> {
 /// - filter 対象のフィルタ
 /// # Returns
 /// 条件文(空文字列なら条件なし)
-fn get_query_filter_where_date(filter: &Filter) -> Result<String> {
-    let clm_name = target_to_clm_name(filter.target);
-
-    Ok(match filter.range {
+fn get_query_filter_where_date(clm_name: &str, range: &DateFilterRange) -> String {
+    match range {
         //指定値と等しい
-        FilterValueRange::DateEqual => {
-            if !filter.str_value.is_empty() {
-                format!("{} = {}", clm_name, escs(&filter.str_value))
-            } else {
-                format!("{clm_name} is null")
-            }
+        DateFilterRange::Equal { value } => {
+            format!("{} = {}", clm_name, escs(&date_to_str(value)))
         }
         //指定値と等しくない
         //※nullは含めない仕様(WalkBase1がそうなっていたので)
-        FilterValueRange::DateNotEqual => {
-            if !filter.str_value.is_empty() {
-                format!("{} <> {}", clm_name, escs(&filter.str_value))
-            } else {
-                format!("{clm_name} is not null")
-            }
+        DateFilterRange::NotEqual { value } => {
+            format!("{} <> {}", clm_name, escs(&date_to_str(value)))
         }
         //指定値以前
-        FilterValueRange::DateBefore => {
-            if !filter.str_value.is_empty() {
-                format!("{} <= {}", clm_name, escs(&filter.str_value))
-            } else {
-                FALSE_QUERY.to_owned()
-            }
+        DateFilterRange::Before { value } => {
+            format!("{} <= {}", clm_name, escs(&date_to_str(value)))
         }
         //指定値以後
-        FilterValueRange::DateAfter => {
-            if !filter.str_value.is_empty() {
-                format!("{} >= {}", clm_name, escs(&filter.str_value))
-            } else {
-                FALSE_QUERY.to_owned()
-            }
+        DateFilterRange::After { value } => {
+            format!("{} >= {}", clm_name, escs(&date_to_str(value)))
         }
         //なし
-        FilterValueRange::DateNone => format!("{clm_name} is null"),
-        _ => return Err(invalid_filter_range_for_target(filter)),
-    })
-}
-
-/// フィルタ対象列挙値を、songテーブルのカラム名に変換
-fn target_to_clm_name(target: FilterTarget) -> &'static str {
-    match target {
-        FilterTarget::Title => "[title]",
-        FilterTarget::Artist => "[artist]",
-        FilterTarget::Album => "[album]",
-        FilterTarget::Genre => "[genre]",
-        FilterTarget::Albumartist => "[album_artist]",
-        FilterTarget::Composer => "[composer]",
-        FilterTarget::TrackNumber => "[track_number]",
-        FilterTarget::TrackMax => "[track_max]",
-        FilterTarget::DiscNumber => "[disc_number]",
-        FilterTarget::DiscMax => "[disc_max]",
-        FilterTarget::ReleaseDate => "[release_date]",
-        FilterTarget::Rating => "[rating]",
-        FilterTarget::Duration => "[duration]",
-        FilterTarget::Memo => "[memo]",
-        FilterTarget::MemoManage => "[memo_manage]",
-        FilterTarget::EntryDate => "[entry_date]",
-        FilterTarget::OriginalSong => "[original_song]",
-        FilterTarget::SuggestTarget => "[suggest_target]",
-        FilterTarget::FilterGroup | FilterTarget::Tags | FilterTarget::Artwork => unreachable!(),
+        DateFilterRange::None => format!("{clm_name} is null"),
     }
 }
 
-/// strValue1とstrValue2の数値の並び順を判別
+fn date_to_str(date: &NaiveDate) -> String {
+    date.format("%Y-%m-%d").to_string()
+}
+
+/// IntFilterRange の min と max を念のため大小比較
 /// # Returns
 /// - .0: 小さい方の値
 /// - .1: 大きい方の値
-fn get_ordered_int(filter: &Filter) -> Result<(i32, i32)> {
-    let val1 = i32::from_str(&filter.str_value)?;
-    let val2 = i32::from_str(&filter.str_value2)?;
+fn get_ordered_int(val1: i32, val2: i32) -> (i32, i32) {
     if val1 <= val2 {
-        Ok((val1, val2))
+        (val1, val2)
     } else {
-        Ok((val2, val1))
+        (val2, val1)
     }
-}
-
-/// 必ずfalseを返す条件文
-const FALSE_QUERY: &str = "0 = 1";
-
-/// Error::InvalidFilterRangeForTargetのエラーを作成
-fn invalid_filter_range_for_target(filter: &Filter) -> anyhow::Error {
-    Error::InvalidFilterRangeForTarget {
-        filter_id: filter.rowid,
-        target: filter.target,
-        range: filter.range,
-    }
-    .into()
 }

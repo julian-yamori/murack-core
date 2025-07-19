@@ -1,5 +1,5 @@
 use media::picture::Picture;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// キャッシュされるアートワークのデータ
 pub struct ArtworkCachedData {
@@ -7,7 +7,7 @@ pub struct ArtworkCachedData {
     pub artwork_id: i32,
 
     /// アートワーク画像データ
-    pub picture: Rc<Picture>,
+    pub picture: Arc<Picture>,
 }
 
 /// アートワークのキャッシュ管理

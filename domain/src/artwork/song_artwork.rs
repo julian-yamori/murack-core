@@ -1,14 +1,15 @@
+use std::sync::Arc;
+
 use media::{
     audio_meta::{AudioPicture, AudioPictureEntry},
     picture::Picture,
 };
-use std::rc::Rc;
 
 /// 曲に紐付いたアートワーク1つの情報
 #[derive(Debug, PartialEq, Clone)]
 pub struct SongArtwork {
     /// 画像データ
-    pub picture: Rc<Picture>,
+    pub picture: Arc<Picture>,
 
     /// 画像タイプ
     ///
@@ -22,7 +23,7 @@ pub struct SongArtwork {
 impl From<AudioPicture> for SongArtwork {
     fn from(p: AudioPicture) -> Self {
         Self {
-            picture: Rc::new(Picture {
+            picture: Arc::new(Picture {
                 bytes: p.bytes,
                 mime_type: p.mime_type,
             }),
