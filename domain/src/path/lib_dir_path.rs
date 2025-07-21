@@ -56,12 +56,6 @@ impl LibDirPath {
     pub fn as_str(&self) -> &str {
         &self.inner
     }
-    /// パスをPathBufとして取得
-    ///
-    /// ライブラリルートからの相対パスを示す。
-    pub fn as_path(&self) -> PathBuf {
-        PathBuf::from(&self.inner)
-    }
 
     /// ディレクトリの絶対パスを取得
     ///

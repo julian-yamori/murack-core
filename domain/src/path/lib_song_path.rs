@@ -31,12 +31,6 @@ impl LibSongPath {
     pub fn as_str(&self) -> &str {
         &self.inner
     }
-    /// パスをPathBufとして取得
-    ///
-    /// ライブラリルートからの相対パスを示す。
-    pub fn as_path(&self) -> PathBuf {
-        PathBuf::from(&self.inner)
-    }
 
     /// オーディオファイルの絶対パスを取得
     ///
