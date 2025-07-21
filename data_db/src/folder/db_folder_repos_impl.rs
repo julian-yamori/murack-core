@@ -137,7 +137,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_not_exists_2dir() {
+    async fn test_register_not_exists_2dir() -> anyhow::Result<()> {
         fn lib_dir_path() -> LibDirPath {
             LibDirPath::new("test/hoge/fuga")
         }
@@ -198,17 +198,15 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        let result = target
-            .register_not_exists(&mut tx, &lib_dir_path())
-            .await
-            .unwrap();
+        let result = target.register_not_exists(&mut tx, &lib_dir_path()).await?;
         assert_eq!(result, FolderIdMayRoot::Folder(5));
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_register_not_exists_register_root() {
+    async fn test_register_not_exists_register_root() -> anyhow::Result<()> {
         fn lib_dir_path() -> LibDirPath {
             LibDirPath::new("test")
         }
@@ -246,17 +244,15 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        let result = target
-            .register_not_exists(&mut tx, &lib_dir_path())
-            .await
-            .unwrap();
+        let result = target.register_not_exists(&mut tx, &lib_dir_path()).await?;
         assert_eq!(result, FolderIdMayRoot::Folder(99));
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_register_not_exists_exists() {
+    async fn test_register_not_exists_exists() -> anyhow::Result<()> {
         fn lib_dir_path() -> LibDirPath {
             LibDirPath::new("test/hoge/fuga")
         }
@@ -272,12 +268,10 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        let result = target
-            .register_not_exists(&mut tx, &lib_dir_path())
-            .await
-            .unwrap();
+        let result = target.register_not_exists(&mut tx, &lib_dir_path()).await?;
         assert_eq!(result, FolderIdMayRoot::Folder(12));
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 }

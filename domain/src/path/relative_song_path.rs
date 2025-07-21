@@ -49,15 +49,20 @@ mod tests {
     #[test_case("hoge/fuga/piyo.flac", "hoge/fuga", "piyo.flac" ; "3")]
     #[test_case("piyo.flac", "", "piyo.flac" ; "root")]
     #[test_case("hoge/piyo.flac", "", "hoge/piyo.flac" ; "in_dir_from_root")]
-    fn test_from_song_and_parent_valid(song: &str, parent: &str, expect: &str) {
+    fn test_from_song_and_parent_valid(
+        song: &str,
+        parent: &str,
+        expect: &str,
+    ) -> anyhow::Result<()> {
         assert_eq!(
             RelativeSongPath::from_song_and_parent(
                 &LibSongPath::new(song),
                 &LibDirPath::new(parent)
-            )
-            .unwrap(),
+            )?,
             RelativeSongPath(expect.to_owned())
-        )
+        );
+
+        Ok(())
     }
 
     #[test]

@@ -305,8 +305,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_id3_get_release_date() {
-        fn comm_valid(year: Option<&str>, date: Option<&str>, r: Option<NaiveDate>) {
+    fn test_id3_get_release_date() -> anyhow::Result<()> {
+        fn comm_valid(
+            year: Option<&str>,
+            date: Option<&str>,
+            r: Option<NaiveDate>,
+        ) -> anyhow::Result<()> {
             let mut tag = Tag::new();
             if let Some(y) = year {
                 tag.set_text("TYER", y);
@@ -314,7 +318,9 @@ mod tests {
             if let Some(d) = date {
                 tag.set_text(KEY_DATE, d);
             }
-            assert_eq!(id3_get_release_date(&tag).unwrap(), r);
+            assert_eq!(id3_get_release_date(&tag)?, r);
+
+            Ok(())
         }
         fn comm_invalid(year: Option<&str>, date: Option<&str>, value_info: &str) {
             let mut tag = Tag::new();
@@ -336,12 +342,12 @@ mod tests {
             Some("2021"),
             Some("2403"),
             Some(NaiveDate::from_ymd_opt(2021, 3, 24).unwrap()),
-        );
+        )?;
         comm_valid(
             Some("123"),
             Some("0706"),
             Some(NaiveDate::from_ymd_opt(123, 6, 7).unwrap()),
-        );
+        )?;
         comm_invalid(Some("350"), Some("219"), "TYER: 350, TDAT: 219");
         comm_invalid(Some("2001"), Some("211"), "TYER: 2001, TDAT: 211");
         comm_invalid(Some("2001"), Some("11"), "TYER: 2001, TDAT: 11");
@@ -349,7 +355,9 @@ mod tests {
         comm_invalid(Some("2003"), Some("3013"), "TYER: 2003, TDAT: 3013");
         comm_invalid(Some("2003"), None, "TYER: 2003, TDAT: None");
         comm_invalid(None, Some("1407"), "TYER: None, TDAT: 1407");
-        comm_valid(None, None, None);
+        comm_valid(None, None, None)?;
+
+        Ok(())
     }
 
     #[test]

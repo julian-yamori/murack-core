@@ -170,10 +170,12 @@ mod tests {
         current_idx: usize,
         all_count: usize,
         expect: &str,
-    ) {
+    ) -> anyhow::Result<()> {
         assert_eq!(
-            make_output_path(&PathBuf::from(dest), mime_type, current_idx, all_count).unwrap(),
+            make_output_path(&PathBuf::from(dest), mime_type, current_idx, all_count)?,
             PathBuf::from(expect)
         );
+
+        Ok(())
     }
 }

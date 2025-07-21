@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_delete_db_if_empty_trans_once() {
+    async fn test_delete_db_if_empty_trans_once() -> anyhow::Result<()> {
         let mut target = target();
         target
             .db_song_repository
@@ -205,13 +205,14 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        target.delete_db_if_empty_by_id(&mut tx, 15).await.unwrap();
+        target.delete_db_if_empty_by_id(&mut tx, 15).await?;
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_delete_db_if_empty_folder_exists() {
+    async fn test_delete_db_if_empty_folder_exists() -> anyhow::Result<()> {
         let mut target = target();
         target
             .db_song_repository
@@ -231,13 +232,14 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        target.delete_db_if_empty_by_id(&mut tx, 15).await.unwrap();
+        target.delete_db_if_empty_by_id(&mut tx, 15).await?;
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_delete_db_if_empty_trans_root_check() {
+    async fn test_delete_db_if_empty_trans_root_check() -> anyhow::Result<()> {
         let mut target = target();
         target
             .db_song_repository
@@ -276,8 +278,9 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        target.delete_db_if_empty_by_id(&mut tx, 15).await.unwrap();
+        target.delete_db_if_empty_by_id(&mut tx, 15).await?;
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 }

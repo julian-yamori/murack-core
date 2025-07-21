@@ -175,7 +175,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_db_root_folder() {
+    async fn test_register_db_root_folder() -> anyhow::Result<()> {
         fn song_path() -> LibSongPath {
             LibSongPath::new("song.flac")
         }
@@ -208,18 +208,16 @@ mod tests {
         let mut tx = DbTransaction::Dummy;
 
         let mut s = song_sync();
-        target
-            .register_db(&mut tx, &song_path(), &mut s)
-            .await
-            .unwrap();
+        target.register_db(&mut tx, &song_path(), &mut s).await?;
 
         assert_eq!(s.title.as_deref(), Some("曲名"));
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_register_db_no_title() {
+    async fn test_register_db_no_title() -> anyhow::Result<()> {
         fn song_path() -> LibSongPath {
             LibSongPath::new("test/hoge/fuga.mp3")
         }
@@ -258,13 +256,11 @@ mod tests {
         let mut s = song_sync();
         s.title = None;
 
-        target
-            .register_db(&mut tx, &song_path(), &mut s)
-            .await
-            .unwrap();
+        target.register_db(&mut tx, &song_path(), &mut s).await?;
 
         assert_eq!(s.title.as_deref(), Some("fuga"));
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 }

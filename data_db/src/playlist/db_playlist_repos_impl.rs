@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_playlist_tree_empty() {
+    async fn test_get_playlist_tree_empty() -> anyhow::Result<()> {
         let mut target = target();
         target
             .playlist_dao
@@ -201,14 +201,15 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        let result = target.get_playlist_tree(&mut tx).await.unwrap();
+        let result = target.get_playlist_tree(&mut tx).await?;
         assert_eq!(result, vec![]);
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_playlist_tree_flat() {
+    async fn test_get_playlist_tree_flat() -> anyhow::Result<()> {
         let mut target = target();
         target
             .playlist_dao
@@ -224,7 +225,7 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        let result = target.get_playlist_tree(&mut tx).await.unwrap();
+        let result = target.get_playlist_tree(&mut tx).await?;
         pretty_assertions::assert_eq!(
             result,
             vec![
@@ -235,10 +236,11 @@ mod tests {
         );
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_playlist_tree_treed() {
+    async fn test_get_playlist_tree_treed() -> anyhow::Result<()> {
         let mut target = target();
         target
             .playlist_dao
@@ -259,7 +261,7 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        let result = target.get_playlist_tree(&mut tx).await.unwrap();
+        let result = target.get_playlist_tree(&mut tx).await?;
         pretty_assertions::assert_eq!(
             result,
             vec![
@@ -294,5 +296,6 @@ mod tests {
         );
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 }

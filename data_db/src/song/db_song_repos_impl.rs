@@ -150,7 +150,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_path_by_path_str_directory() {
+    async fn test_get_path_by_path_str_directory() -> anyhow::Result<()> {
         const DIR_PATH_STR: &str = "test/hoge";
         fn expect() -> Vec<LibSongPath> {
             vec![
@@ -180,15 +180,15 @@ mod tests {
 
         let result = target
             .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
-            .await
-            .unwrap();
+            .await?;
         assert_eq!(result, expect());
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_path_by_path_str_not_found() {
+    async fn test_get_path_by_path_str_not_found() -> anyhow::Result<()> {
         const DIR_PATH_STR: &str = "test/hoge";
 
         let mut target = target();
@@ -211,15 +211,15 @@ mod tests {
 
         let result = target
             .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
-            .await
-            .unwrap();
+            .await?;
         assert_eq!(result, vec![]);
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_path_by_path_str_song() {
+    async fn test_get_path_by_path_str_song() -> anyhow::Result<()> {
         const DIR_PATH_STR: &str = "test/hoge.flac";
 
         let mut target = target();
@@ -242,15 +242,15 @@ mod tests {
 
         let result = target
             .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
-            .await
-            .unwrap();
+            .await?;
         assert_eq!(result, vec![LibSongPath::new("test/hoge.flac")]);
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_path_by_path_str_root() {
+    async fn test_get_path_by_path_str_root() -> anyhow::Result<()> {
         fn expect() -> Vec<LibSongPath> {
             vec![
                 LibSongPath::new("song1.mp3"),
@@ -278,10 +278,10 @@ mod tests {
 
         let result = target
             .get_path_by_path_str(&mut tx, &LibPathStr::root())
-            .await
-            .unwrap();
+            .await?;
         assert_eq!(result, expect());
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 }

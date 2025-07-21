@@ -452,7 +452,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_delete_db_ok() {
+    async fn test_delete_db_ok() -> anyhow::Result<()> {
         fn song_path() -> LibSongPath {
             LibSongPath::new("hoge/fuga.flac")
         }
@@ -513,13 +513,14 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        target.delete_song_db(&mut tx, &song_path()).await.unwrap();
+        target.delete_song_db(&mut tx, &song_path()).await?;
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_delete_db_no_song() {
+    async fn test_delete_db_no_song() -> anyhow::Result<()> {
         fn song_path() -> LibSongPath {
             LibSongPath::new("hoge.mp3")
         }
@@ -576,10 +577,11 @@ mod tests {
             _ => false,
         });
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_delete_db_root_folder() {
+    async fn test_delete_db_root_folder() -> anyhow::Result<()> {
         fn song_path() -> LibSongPath {
             LibSongPath::new("fuga.mp3")
         }
@@ -640,8 +642,10 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        target.delete_song_db(&mut tx, &song_path()).await.unwrap();
+        target.delete_song_db(&mut tx, &song_path()).await?;
 
         checkpoint_all(&mut target);
+
+        Ok(())
     }
 }

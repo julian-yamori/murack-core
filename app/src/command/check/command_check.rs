@@ -346,7 +346,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn test_listup_song_path_green(db_pool: PgPool) {
+    fn test_listup_song_path_green(db_pool: PgPool) -> anyhow::Result<()> {
         fn search_path() -> LibPathStr {
             "test/hoge".to_owned().into()
         }
@@ -390,16 +390,14 @@ mod tests {
                 Ok(song_paths().into_iter().rev().collect())
             });
 
-        assert_eq!(
-            target.listup_song_path(&db_pool).await.unwrap(),
-            song_paths()
-        );
+        assert_eq!(target.listup_song_path(&db_pool).await?, song_paths());
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[sqlx::test]
-    fn test_listup_song_path_conflict(db_pool: PgPool) {
+    fn test_listup_song_path_conflict(db_pool: PgPool) -> anyhow::Result<()> {
         let mut target = target("test/hoge".to_owned().into(), false);
 
         target
@@ -438,7 +436,7 @@ mod tests {
             });
 
         assert_eq!(
-            target.listup_song_path(&db_pool).await.unwrap(),
+            target.listup_song_path(&db_pool).await?,
             vec![
                 LibSongPath::new("test/hoge/child/dap1.flac"),
                 LibSongPath::new("test/hoge/child/pc1.flac"),
@@ -450,5 +448,6 @@ mod tests {
         );
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 }

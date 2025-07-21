@@ -366,7 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn test_write_playlist_file() {
+    fn test_write_playlist_file() -> anyhow::Result<()> {
         let song_path_list = vec![
             LibSongPath::new("test/hoge/song1.flac"),
             LibSongPath::new("test/song3.m4a"),
@@ -390,11 +390,10 @@ mod tests {
                     Ok(())
                 });
 
-        target
-            .write_playlist_file(&root(), FILE_NAME, &song_path_list)
-            .unwrap();
+        target.write_playlist_file(&root(), FILE_NAME, &song_path_list)?;
 
         checkpoint_all(&mut target);
+        Ok(())
     }
 
     #[test_case(1, 1 ; "1")]

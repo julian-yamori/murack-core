@@ -44,41 +44,43 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse() {
+    fn test_parse() -> anyhow::Result<()> {
         assert_eq!(
-            Args::parse(&["tgt".to_owned()]).unwrap(),
+            Args::parse(&["tgt".to_owned()])?,
             Args {
                 path: "tgt".to_owned().into(),
                 ignore_dap_content: false,
             }
         );
         assert_eq!(
-            Args::parse(&["tgt/file".to_owned(), "-i".to_owned()]).unwrap(),
+            Args::parse(&["tgt/file".to_owned(), "-i".to_owned()])?,
             Args {
                 path: "tgt/file".to_owned().into(),
                 ignore_dap_content: true,
             }
         );
         assert_eq!(
-            Args::parse(&["-i".to_owned()]).unwrap(),
+            Args::parse(&["-i".to_owned()])?,
             Args {
                 path: LibPathStr::root(),
                 ignore_dap_content: true,
             }
         );
         assert_eq!(
-            Args::parse(&["-i".to_owned(), "tgt/file".to_owned()]).unwrap(),
+            Args::parse(&["-i".to_owned(), "tgt/file".to_owned()])?,
             Args {
                 path: "tgt/file".to_owned().into(),
                 ignore_dap_content: true,
             }
         );
         assert_eq!(
-            Args::parse(&[]).unwrap(),
+            Args::parse(&[])?,
             Args {
                 path: LibPathStr::root(),
                 ignore_dap_content: false,
             }
         );
+
+        Ok(())
     }
 }

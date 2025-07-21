@@ -478,89 +478,87 @@ mod tests {
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_insert_select_fill(db_pool: PgPool) {
+    fn test_insert_select_fill(db_pool: PgPool) -> anyhow::Result<()> {
         let song_path = LibSongPath::new("test/hoge.flac");
         let entry = entry_fill(&song_path);
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
-        let rowid = target.insert(&mut tx, &entry).await.unwrap();
-        let row = target.select_by_id(&mut tx, rowid).await.unwrap().unwrap();
+        let rowid = target.insert(&mut tx, &entry).await?;
+        let row = target.select_by_id(&mut tx, rowid).await?.unwrap();
 
         assert_eq!(row.id, rowid);
         entry.assert_eq_row(&row);
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_insert_select_empty(db_pool: PgPool) {
+    fn test_insert_select_empty(db_pool: PgPool) -> anyhow::Result<()> {
         let song_path = LibSongPath::new("fuga.flac");
         let entry = entry_empty(&song_path);
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
-        let rowid = target.insert(&mut tx, &entry).await.unwrap();
-        let row = target.select_by_id(&mut tx, rowid).await.unwrap().unwrap();
+        let rowid = target.insert(&mut tx, &entry).await?;
+        let row = target.select_by_id(&mut tx, rowid).await?.unwrap();
 
         assert_eq!(row.id, rowid);
         entry.assert_eq_row(&row);
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_select_id_by_path(db_pool: PgPool) {
+    fn test_select_id_by_path(db_pool: PgPool) -> anyhow::Result<()> {
         let song_path = LibSongPath::new("test/hoge.flac");
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
-        let rowid = target
-            .insert(&mut tx, &entry_fill(&song_path))
-            .await
-            .unwrap();
+        let rowid = target.insert(&mut tx, &entry_fill(&song_path)).await?;
 
         assert_eq!(
             target
                 .select_id_by_path(&mut tx, &song_path)
-                .await
-                .unwrap()
+                .await?
                 .unwrap(),
             rowid
         );
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_select_path_all(db_pool: PgPool) {
+    fn test_select_path_all(db_pool: PgPool) -> anyhow::Result<()> {
         let song_paths = vec![
             LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
         ];
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
-        target
-            .insert(&mut tx, &entry_fill(&song_paths[0]))
-            .await
-            .unwrap();
-        target
-            .insert(&mut tx, &entry_fill(&song_paths[1]))
-            .await
-            .unwrap();
+        target.insert(&mut tx, &entry_fill(&song_paths[0])).await?;
+        target.insert(&mut tx, &entry_fill(&song_paths[1])).await?;
 
-        assert_eq!(target.select_path_all(&mut tx).await.unwrap(), song_paths);
+        assert_eq!(target.select_path_all(&mut tx).await?, song_paths);
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_select_path_begins_directory(db_pool: PgPool) {
+    fn test_select_path_begins_directory(db_pool: PgPool) -> anyhow::Result<()> {
         let song_paths = vec![
             LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("test/hoge2.flac"),
@@ -571,19 +569,18 @@ mod tests {
         ];
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
         for path in &song_paths {
-            target.insert(&mut tx, &entry_fill(path)).await.unwrap();
+            target.insert(&mut tx, &entry_fill(path)).await?;
         }
 
         assert_eq!(
             target
                 .select_path_begins_directory(&mut tx, &LibDirPath::new("test"))
-                .await
-                .unwrap(),
+                .await?,
             vec![
                 LibSongPath::new("test/hoge.flac"),
                 LibSongPath::new("test/hoge2.flac"),
@@ -593,21 +590,21 @@ mod tests {
         assert_eq!(
             target
                 .select_path_begins_directory(&mut tx, &LibDirPath::new("test/dir"))
-                .await
-                .unwrap(),
+                .await?,
             vec![LibSongPath::new("test/dir/hoge3.flac"),]
         );
         assert_eq!(
             target
                 .select_path_begins_directory(&mut tx, &LibDirPath::new(""))
-                .await
-                .unwrap(),
+                .await?,
             song_paths
         );
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_select_path_begins_directory_esc(db_pool: PgPool) {
+    fn test_select_path_begins_directory_esc(db_pool: PgPool) -> anyhow::Result<()> {
         let song_paths = vec![
             LibSongPath::new("test/d%i_r$/hoge.flac"),
             LibSongPath::new("test/dZi_r$/dummy.flac"),
@@ -616,25 +613,26 @@ mod tests {
         ];
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
         for path in song_paths {
-            target.insert(&mut tx, &entry_fill(&path)).await.unwrap();
+            target.insert(&mut tx, &entry_fill(&path)).await?;
         }
 
         assert_eq!(
             target
                 .select_path_begins_directory(&mut tx, &LibDirPath::new("test/d%i_r$"))
-                .await
-                .unwrap(),
+                .await?,
             vec![LibSongPath::new("test/d%i_r$/hoge.flac"),]
         );
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_count_all_3(db_pool: PgPool) {
+    fn test_count_all_3(db_pool: PgPool) -> anyhow::Result<()> {
         let song_paths = [
             LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
@@ -642,41 +640,36 @@ mod tests {
         ];
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
-        target
-            .insert(&mut tx, &entry_fill(&song_paths[0]))
-            .await
-            .unwrap();
-        target
-            .insert(&mut tx, &entry_fill(&song_paths[1]))
-            .await
-            .unwrap();
-        target
-            .insert(&mut tx, &entry_empty(&song_paths[2]))
-            .await
-            .unwrap();
+        target.insert(&mut tx, &entry_fill(&song_paths[0])).await?;
+        target.insert(&mut tx, &entry_fill(&song_paths[1])).await?;
+        target.insert(&mut tx, &entry_empty(&song_paths[2])).await?;
 
-        assert_eq!(target.count_all(&mut tx).await.unwrap(), 3);
+        assert_eq!(target.count_all(&mut tx).await?, 3);
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_count_all_none(db_pool: PgPool) {
+    fn test_count_all_none(db_pool: PgPool) -> anyhow::Result<()> {
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
 
-        assert_eq!(target.count_all(&mut tx).await.unwrap(), 0);
+        assert_eq!(target.count_all(&mut tx).await?, 0);
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_count_by_folder_id(db_pool: PgPool) {
+    fn test_count_by_folder_id(db_pool: PgPool) -> anyhow::Result<()> {
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
@@ -684,41 +677,41 @@ mod tests {
         let path = LibSongPath::new("test/hoge.flac");
         let mut entry = entry_fill(&path);
         entry.folder_id = Some(11);
-        target.insert(&mut tx, &entry).await.unwrap();
+        target.insert(&mut tx, &entry).await?;
 
         let path = LibSongPath::new("dummy/fuga.flac");
         let mut entry = entry_fill(&path);
         entry.folder_id = Some(22);
-        target.insert(&mut tx, &entry).await.unwrap();
+        target.insert(&mut tx, &entry).await?;
 
         let path = LibSongPath::new("test/piyo.flac");
         let mut entry = entry_fill(&path);
         entry.folder_id = Some(11);
-        target.insert(&mut tx, &entry).await.unwrap();
+        target.insert(&mut tx, &entry).await?;
 
         let path = LibSongPath::new("piyo.flac");
         let mut entry = entry_fill(&path);
         entry.folder_id = None;
-        target.insert(&mut tx, &entry).await.unwrap();
+        target.insert(&mut tx, &entry).await?;
 
         assert_eq!(
             target
                 .count_by_folder_id(&mut tx, FolderIdMayRoot::Folder(11))
-                .await
-                .unwrap(),
+                .await?,
             2
         );
         assert_eq!(
             target
                 .count_by_folder_id(&mut tx, FolderIdMayRoot::Root)
-                .await
-                .unwrap(),
+                .await?,
             1
         );
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_exists_path(db_pool: PgPool) {
+    fn test_exists_path(db_pool: PgPool) -> anyhow::Result<()> {
         let song_paths = [
             LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
@@ -726,39 +719,30 @@ mod tests {
         ];
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
-        target
-            .insert(&mut tx, &entry_fill(&song_paths[0]))
-            .await
-            .unwrap();
-        target
-            .insert(&mut tx, &entry_fill(&song_paths[1]))
-            .await
-            .unwrap();
-        target
-            .insert(&mut tx, &entry_empty(&song_paths[2]))
-            .await
-            .unwrap();
+        target.insert(&mut tx, &entry_fill(&song_paths[0])).await?;
+        target.insert(&mut tx, &entry_fill(&song_paths[1])).await?;
+        target.insert(&mut tx, &entry_empty(&song_paths[2])).await?;
 
         assert!(
             target
                 .exists_path(&mut tx, &LibSongPath::new("test/hoge.flac"))
-                .await
-                .unwrap()
+                .await?
         );
         assert!(
             !target
                 .exists_path(&mut tx, &LibSongPath::new("none.m4a"))
-                .await
-                .unwrap()
+                .await?
         );
+
+        Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_delete(db_pool: PgPool) {
+    fn test_delete(db_pool: PgPool) -> anyhow::Result<()> {
         let song_paths = [
             LibSongPath::new("test/hoge.flac"),
             LibSongPath::new("fuga.flac"),
@@ -766,26 +750,19 @@ mod tests {
         ];
 
         let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await.unwrap(),
+            tx: db_pool.begin().await?,
         };
 
         let target = SongDaoImpl {};
-        target
-            .insert(&mut tx, &entry_fill(&song_paths[0]))
-            .await
-            .unwrap();
-        let id1 = target
-            .insert(&mut tx, &entry_fill(&song_paths[1]))
-            .await
-            .unwrap();
-        target
-            .insert(&mut tx, &entry_empty(&song_paths[2]))
-            .await
-            .unwrap();
+        target.insert(&mut tx, &entry_fill(&song_paths[0])).await?;
+        let id1 = target.insert(&mut tx, &entry_fill(&song_paths[1])).await?;
+        target.insert(&mut tx, &entry_empty(&song_paths[2])).await?;
 
-        target.delete(&mut tx, id1).await.unwrap();
+        target.delete(&mut tx, id1).await?;
 
-        assert_eq!(target.select_by_id(&mut tx, id1).await.unwrap(), None);
-        assert_eq!(target.count_all(&mut tx).await.unwrap(), 2);
+        assert_eq!(target.select_by_id(&mut tx, id1).await?, None);
+        assert_eq!(target.count_all(&mut tx).await?, 2);
+
+        Ok(())
     }
 }
