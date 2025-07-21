@@ -24,7 +24,7 @@ impl BufferCui {
     fn lock_buffer(&self) -> Result<MutexGuard<BufferCuiData>> {
         self.buffer
             .lock()
-            .map_err(|_| anyhow!("artwork cache lock error"))
+            .map_err(|_| anyhow!("buffer cache lock error"))
     }
 }
 
