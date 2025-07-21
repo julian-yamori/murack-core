@@ -1,35 +1,34 @@
-use num_derive::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::Type;
 
 /// ソートの種類
-#[derive(Debug, PartialEq, Eq, Clone, Copy, FromPrimitive, Serialize, Deserialize, Type)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "playlist_type", rename_all = "lowercase")]
 pub enum SortType {
     /// 曲名
-    SongName = 0,
+    SongName,
     /// アーティスト
-    Artist = 1,
+    Artist,
     /// アルバム
-    Album = 2,
+    Album,
     /// ジャンル
-    Genre = 3,
+    Genre,
     /// プレイリスト並び順
-    Playlist = 4,
+    Playlist,
     /// 作曲者
-    Composer = 5,
+    Composer,
     /// 再生時間
-    Duration = 6,
+    Duration,
     /// トラック番号
-    TrackIndex = 7,
+    TrackIndex,
     /// ディスク番号
-    DiscIndex = 8,
+    DiscIndex,
     /// リリース日
-    ReleaseDate = 9,
+    ReleaseDate,
     /// レート
-    Rating = 10,
+    Rating,
     /// 登録日
-    EntryDate = 11,
+    EntryDate,
     /// パス
-    Path = 12,
+    Path,
 }
