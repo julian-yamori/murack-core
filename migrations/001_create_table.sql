@@ -31,7 +31,7 @@ CREATE TABLE tag_groups (
 CREATE TABLE tags (
     id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
-    group_id INTEGER NOT NULL REFERENCES tag_groups(id),
+    group_id INTEGER NOT NULL,
     order_index INTEGER NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -43,7 +43,7 @@ CREATE TABLE folder_paths (
     id SERIAL PRIMARY KEY,
     path VARCHAR NOT NULL,
     name VARCHAR NOT NULL,
-    parent_id INTEGER REFERENCES folder_paths(id),
+    parent_id INTEGER,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -53,7 +53,7 @@ CREATE TABLE tracks (
     id SERIAL PRIMARY KEY,
     duration INTEGER NOT NULL,
     path VARCHAR NOT NULL,
-    folder_id INTEGER REFERENCES folder_paths(id),
+    folder_id INTEGER,
     title VARCHAR NOT NULL,
 
     -- このあたりの並び順は、この機に GUI に合わせて整理する
@@ -89,7 +89,7 @@ CREATE TABLE playlists (
     id SERIAL PRIMARY KEY,
     playlist_type playlist_type NOT NULL,
     name VARCHAR NOT NULL,
-    parent_id INTEGER REFERENCES playlists(id),
+    parent_id INTEGER,
     in_folder_order INTEGER NOT NULL,
     filter_json JSONB,
     sort_type sort_type NOT NULL,
@@ -126,7 +126,7 @@ CREATE TABLE artworks (
 CREATE TABLE track_artworks (
     track_id INTEGER NOT NULL REFERENCES tracks(id),
     order_index INTEGER NOT NULL,
-    artwork_id INTEGER NOT NULL REFERENCES artworks(id),
+    artwork_id INTEGER NOT NULL,
     picture_type INTEGER NOT NULL,
     description TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -137,7 +137,7 @@ CREATE TABLE track_artworks (
 -- Track tags association table
 CREATE TABLE track_tags (
     track_id INTEGER NOT NULL REFERENCES tracks(id),
-    tag_id INTEGER NOT NULL REFERENCES tags(id),
+    tag_id INTEGER NOT NULL,
     PRIMARY KEY (track_id, tag_id)
 );
 
@@ -145,7 +145,7 @@ CREATE TABLE track_tags (
 CREATE TABLE playlist_tracks (
     playlist_id INTEGER NOT NULL REFERENCES playlists(id),
     order_index INTEGER NOT NULL,
-    track_id INTEGER NOT NULL REFERENCES tracks(id),
+    track_id INTEGER NOT NULL,
     PRIMARY KEY (playlist_id, order_index)
 );
 
