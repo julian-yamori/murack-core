@@ -477,7 +477,7 @@ mod tests {
         }
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_insert_select_fill(db_pool: PgPool) {
         let song_path = LibSongPath::new("test/hoge.flac");
         let entry = entry_fill(&song_path);
@@ -494,7 +494,7 @@ mod tests {
         entry.assert_eq_row(&row);
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_insert_select_empty(db_pool: PgPool) {
         let song_path = LibSongPath::new("fuga.flac");
         let entry = entry_empty(&song_path);
@@ -511,7 +511,7 @@ mod tests {
         entry.assert_eq_row(&row);
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_select_id_by_path(db_pool: PgPool) {
         let song_path = LibSongPath::new("test/hoge.flac");
 
@@ -535,7 +535,7 @@ mod tests {
         );
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_select_path_all(db_pool: PgPool) {
         let song_paths = vec![
             LibSongPath::new("test/hoge.flac"),
@@ -559,7 +559,7 @@ mod tests {
         assert_eq!(target.select_path_all(&mut tx).await.unwrap(), song_paths);
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_select_path_begins_directory(db_pool: PgPool) {
         let song_paths = vec![
             LibSongPath::new("test/hoge.flac"),
@@ -606,7 +606,7 @@ mod tests {
         );
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_select_path_begins_directory_esc(db_pool: PgPool) {
         let song_paths = vec![
             LibSongPath::new("test/d%i_r$/hoge.flac"),
@@ -633,7 +633,7 @@ mod tests {
         );
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_count_all_3(db_pool: PgPool) {
         let song_paths = [
             LibSongPath::new("test/hoge.flac"),
@@ -662,7 +662,7 @@ mod tests {
         assert_eq!(target.count_all(&mut tx).await.unwrap(), 3);
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_count_all_none(db_pool: PgPool) {
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await.unwrap(),
@@ -673,7 +673,7 @@ mod tests {
         assert_eq!(target.count_all(&mut tx).await.unwrap(), 0);
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_count_by_folder_id(db_pool: PgPool) {
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await.unwrap(),
@@ -717,7 +717,7 @@ mod tests {
         );
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_exists_path(db_pool: PgPool) {
         let song_paths = [
             LibSongPath::new("test/hoge.flac"),
@@ -757,7 +757,7 @@ mod tests {
         );
     }
 
-    #[sqlx::test()]
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_delete(db_pool: PgPool) {
         let song_paths = [
             LibSongPath::new("test/hoge.flac"),

@@ -18,3 +18,6 @@ mod like_esc;
 #[macro_use]
 extern crate derive_new;
 extern crate domain;
+
+#[cfg(test)]
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../migrations");

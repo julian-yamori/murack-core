@@ -79,7 +79,7 @@ fn dummy_song() -> SongEntry<'static> {
     }
 }
 
-#[sqlx::test()]
+#[sqlx::test(migrator = "crate::MIGRATOR")]
 fn test_group(db_pool: PgPool) {
     async fn insert_song(
         test_db: &mut TestDb,
@@ -180,7 +180,7 @@ fn test_group(db_pool: PgPool) {
     )
 }
 
-#[sqlx::test()]
+#[sqlx::test(migrator = "crate::MIGRATOR")]
 fn test_str(db_pool: PgPool) {
     async fn insert_song(test_db: &mut TestDb, artist: &str) -> i32 {
         let mut song = dummy_song();
@@ -306,7 +306,7 @@ fn test_str(db_pool: PgPool) {
     );
 }
 
-#[sqlx::test()]
+#[sqlx::test(migrator = "crate::MIGRATOR")]
 fn test_int(db_pool: PgPool) {
     async fn insert_song(test_db: &mut TestDb, track_number: Option<i32>) -> i32 {
         let mut song = dummy_song();
@@ -439,7 +439,7 @@ fn test_int(db_pool: PgPool) {
     // );
 }
 
-#[sqlx::test()]
+#[sqlx::test(migrator = "crate::MIGRATOR")]
 fn test_tag(db_pool: PgPool) {
     async fn insert_song(test_db: &mut TestDb, tags: &[i32]) -> i32 {
         let song_id = test_db.insert_song(&dummy_song()).await;
@@ -552,7 +552,7 @@ fn test_tag(db_pool: PgPool) {
     );
 }
 
-#[sqlx::test()]
+#[sqlx::test(migrator = "crate::MIGRATOR")]
 fn test_bool(db_pool: PgPool) {
     async fn insert_song(test_db: &mut TestDb, suggest_target: bool) -> i32 {
         let mut song = dummy_song();
@@ -586,7 +586,7 @@ fn test_bool(db_pool: PgPool) {
     );
 }
 
-#[sqlx::test()]
+#[sqlx::test(migrator = "crate::MIGRATOR")]
 fn test_artwork(db_pool: PgPool) {
     async fn insert_song(test_db: &mut TestDb, artworks: &[i32]) -> i32 {
         let song_id = test_db.insert_song(&dummy_song()).await;
@@ -634,7 +634,7 @@ fn test_artwork(db_pool: PgPool) {
     );
 }
 
-#[sqlx::test()]
+#[sqlx::test(migrator = "crate::MIGRATOR")]
 fn test_date(db_pool: PgPool) {
     async fn insert_song(test_db: &mut TestDb, release_date: Option<NaiveDate>) -> i32 {
         let mut song = dummy_song();
