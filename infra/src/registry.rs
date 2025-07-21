@@ -1,27 +1,35 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Result;
-use walk_base_2_app::{command::{CommandAdd, CommandArtworkGet, CommandCheck, CommandHelp, CommandMove, CommandPlaylist, CommandRemove, ResolveDapImpl, ResolveDataMatchImpl, ResolveExistanceImpl}, cui::Cui, Config};
-use walk_base_2_data_db::db_components::{DbComponents, TypeDbArtworkRepository, TypeDbFolderRepository, TypeDbPlaylistRepository, TypeDbPlaylistSongRepository, TypeDbSongRepository, TypeDbSongSyncRepository, TypeDbSongTagRepository, TypeSongFinder};
+use walk_base_2_app::{
+    Config,
+    command::{
+        CommandAdd, CommandArtworkGet, CommandCheck, CommandHelp, CommandMove, CommandPlaylist,
+        CommandRemove, ResolveDapImpl, ResolveDataMatchImpl, ResolveExistanceImpl,
+    },
+    cui::Cui,
+};
+use walk_base_2_data_db::db_components::{
+    DbComponents, TypeDbArtworkRepository, TypeDbFolderRepository, TypeDbPlaylistRepository,
+    TypeDbPlaylistSongRepository, TypeDbSongRepository, TypeDbSongSyncRepository,
+    TypeDbSongTagRepository, TypeSongFinder,
+};
 use walk_base_2_data_file::{DapRepositoryImpl, FileLibraryRepositoryImpl};
 use walk_base_2_domain::{
-    check::{ CheckUsecaseImpl},
-    dap::{ DapPlaylistUsecaseImpl},
-    folder::{ FolderUsecaseImpl},
-    song::{ SongUsecaseImpl},
-    sync::{ SyncUsecaseImpl},
+    check::CheckUsecaseImpl, dap::DapPlaylistUsecaseImpl, folder::FolderUsecaseImpl,
+    song::SongUsecaseImpl, sync::SyncUsecaseImpl,
 };
 
 pub struct Registry<CUI>
 where
     CUI: Cui + Send + Sync,
- {
+{
     cui: CUI,
     config: Config,
     db_registry: DbComponents,
 }
 
-impl<CUI> Registry<CUI> 
+impl<CUI> Registry<CUI>
 where
     CUI: Cui + Send + Sync,
 {

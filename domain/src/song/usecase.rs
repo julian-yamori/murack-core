@@ -401,175 +401,247 @@ mod tests {
         MockFileLibraryRepository,
         artwork::MockDbArtworkRepository,
         folder::{MockDbFolderRepository, MockFolderUsecase},
-        mocks,
         path::LibDirPath,
         playlist::{MockDbPlaylistRepository, MockDbPlaylistSongRepository},
         song::MockDbSongRepository,
         tag::MockDbSongTagRepository,
     };
-    use paste::paste;
 
-    mocks! {
-        SongUsecaseImpl,
-        [
-            FileLibraryRepository,
-            DbArtworkRepository,
-            DbFolderRepository,
-            DbPlaylistRepository,
-            DbPlaylistSongRepository,
-            DbSongRepository,
-            DbSongTagRepository,
-            FolderUsecase
-        ]
+    fn target() -> SongUsecaseImpl<
+        MockFileLibraryRepository,
+        MockDbArtworkRepository,
+        MockDbFolderRepository,
+        MockDbPlaylistRepository,
+        MockDbPlaylistSongRepository,
+        MockDbSongRepository,
+        MockDbSongTagRepository,
+        MockFolderUsecase,
+    > {
+        SongUsecaseImpl {
+            file_library_repository: MockFileLibraryRepository::default(),
+            db_artwork_repository: MockDbArtworkRepository::default(),
+            db_folder_repository: MockDbFolderRepository::default(),
+            db_playlist_repository: MockDbPlaylistRepository::default(),
+            db_playlist_song_repository: MockDbPlaylistSongRepository::default(),
+            db_song_repository: MockDbSongRepository::default(),
+            db_song_tag_repository: MockDbSongTagRepository::default(),
+            folder_usecase: MockFolderUsecase::default(),
+        }
     }
 
-    #[test]
-    fn test_delete_db_ok() {
+    fn checkpoint_all(
+        target: &mut SongUsecaseImpl<
+            MockFileLibraryRepository,
+            MockDbArtworkRepository,
+            MockDbFolderRepository,
+            MockDbPlaylistRepository,
+            MockDbPlaylistSongRepository,
+            MockDbSongRepository,
+            MockDbSongTagRepository,
+            MockFolderUsecase,
+        >,
+    ) {
+        target.file_library_repository.checkpoint();
+        target.db_artwork_repository.inner.checkpoint();
+        target.db_folder_repository.inner.checkpoint();
+        target.db_playlist_repository.inner.checkpoint();
+        target.db_playlist_song_repository.inner.checkpoint();
+        target.db_song_repository.inner.checkpoint();
+        target.db_song_tag_repository.inner.checkpoint();
+        target.folder_usecase.inner.checkpoint();
+    }
+
+    #[tokio::test]
+    async fn test_delete_db_ok() {
         fn song_path() -> LibSongPath {
             LibSongPath::new("hoge/fuga.flac")
         }
 
-        let mut mocks = Mocks::new();
-        mocks.db_song_repository(|m| {
-            m.expect_get_id_by_path()
-                .withf(|_, a_path| a_path == &song_path())
-                .returning(|_, _| Ok(Some(73)));
-            m.expect_delete()
-                .withf(|_, song_id| *song_id == 73)
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.db_playlist_song_repository(|m| {
-            m.expect_delete_song_from_all_playlists()
-                .withf(|_, song_id| *song_id == 73)
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.db_song_tag_repository(|m| {
-            m.expect_delete_all_tags_from_song()
-                .withf(|_, song_id| *song_id == 73)
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.db_artwork_repository(|m| {
-            m.expect_unregister_song_artworks()
-                .withf(|_, song_id| *song_id == 73)
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.folder_usecase(|m| {
-            m.expect_delete_db_if_empty()
-                .withf(|_, folder_path| folder_path == &LibDirPath::new("hoge"))
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.db_playlist_repository(|m| {
-            m.expect_reset_listuped_flag()
-                .times(1)
-                .returning(|_| Ok(()));
-        });
+        let mut target = target();
+        target
+            .db_song_repository
+            .inner
+            .expect_get_id_by_path()
+            .withf(|a_path| a_path == &song_path())
+            .returning(|_| Ok(Some(73)));
+        target
+            .db_song_repository
+            .inner
+            .expect_delete()
+            .withf(|song_id| *song_id == 73)
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .db_playlist_song_repository
+            .inner
+            .expect_delete_song_from_all_playlists()
+            .withf(|song_id| *song_id == 73)
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .db_song_tag_repository
+            .inner
+            .expect_delete_all_tags_from_song()
+            .withf(|song_id| *song_id == 73)
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .db_artwork_repository
+            .inner
+            .expect_unregister_song_artworks()
+            .withf(|song_id| *song_id == 73)
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .folder_usecase
+            .inner
+            .expect_delete_db_if_empty()
+            .withf(|folder_path| folder_path == &LibDirPath::new("hoge"))
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .db_playlist_repository
+            .inner
+            .expect_reset_listuped_flag()
+            .times(1)
+            .returning(|| Ok(()));
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            t.delete_song_db(&mut tx, &song_path()).unwrap();
-        });
+        target.delete_song_db(&mut tx, &song_path()).await.unwrap();
+
+        checkpoint_all(&mut target);
     }
-    #[test]
-    fn test_delete_db_no_song() {
+
+    #[tokio::test]
+    async fn test_delete_db_no_song() {
         fn song_path() -> LibSongPath {
             LibSongPath::new("hoge.mp3")
         }
 
-        let mut mocks = Mocks::new();
-        mocks.db_song_repository(|m| {
-            m.expect_get_id_by_path()
-                .withf(|_, a_path| a_path == &song_path())
-                .returning(|_, _| Ok(None));
-        });
-        mocks.db_song_repository(|m| {
-            m.expect_delete().times(0);
-        });
-        mocks.db_playlist_song_repository(|m| {
-            m.expect_delete_song_from_all_playlists().times(0);
-        });
-        mocks.db_song_tag_repository(|m| {
-            m.expect_delete_all_tags_from_song().times(0);
-        });
-        mocks.db_artwork_repository(|m| {
-            m.expect_unregister_song_artworks().times(0);
-        });
-        mocks.folder_usecase(|m| {
-            m.expect_delete_db_if_empty().times(0);
-        });
-        mocks.db_playlist_repository(|m| {
-            m.expect_reset_listuped_flag().times(0);
-        });
+        let mut target = target();
+        target
+            .db_song_repository
+            .inner
+            .expect_get_id_by_path()
+            .withf(|a_path| a_path == &song_path())
+            .returning(|_| Ok(None));
+
+        target.db_song_repository.inner.expect_delete().times(0);
+
+        target
+            .db_playlist_song_repository
+            .inner
+            .expect_delete_song_from_all_playlists()
+            .times(0);
+
+        target
+            .db_song_tag_repository
+            .inner
+            .expect_delete_all_tags_from_song()
+            .times(0);
+
+        target
+            .db_artwork_repository
+            .inner
+            .expect_unregister_song_artworks()
+            .times(0);
+
+        target
+            .folder_usecase
+            .inner
+            .expect_delete_db_if_empty()
+            .times(0);
+
+        target
+            .db_playlist_repository
+            .inner
+            .expect_reset_listuped_flag()
+            .times(0);
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            assert!(match t
-                .delete_song_db(&mut tx, &song_path())
-                .unwrap_err()
-                .downcast_ref()
-            {
-                Some(Error::DbSongNotFound(path)) => path == &song_path(),
-                _ => false,
-            });
+        assert!(match target
+            .delete_song_db(&mut tx, &song_path())
+            .await
+            .unwrap_err()
+            .downcast_ref()
+        {
+            Some(Error::DbSongNotFound(path)) => path == &song_path(),
+            _ => false,
         });
+        checkpoint_all(&mut target);
     }
-    #[test]
-    fn test_delete_db_root_folder() {
+
+    #[tokio::test]
+    async fn test_delete_db_root_folder() {
         fn song_path() -> LibSongPath {
             LibSongPath::new("fuga.mp3")
         }
 
-        let mut mocks = Mocks::new();
-        mocks.db_song_repository(|m| {
-            m.expect_get_id_by_path()
-                .withf(|_, a_path| a_path == &song_path())
-                .times(1)
-                .returning(|_, _| Ok(Some(73)));
-            m.expect_delete()
-                .withf(|_, song_id| *song_id == 73)
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.db_playlist_song_repository(|m| {
-            m.expect_delete_song_from_all_playlists()
-                .withf(|_, song_id| *song_id == 73)
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.db_song_tag_repository(|m| {
-            m.expect_delete_all_tags_from_song()
-                .withf(|_, song_id| *song_id == 73)
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.db_artwork_repository(|m| {
-            m.expect_unregister_song_artworks()
-                .withf(|_, song_id| *song_id == 73)
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.folder_usecase(|m| {
-            m.expect_delete_db_if_empty()
-                .withf(|_, folder_path| folder_path == &LibDirPath::root())
-                .times(1)
-                .returning(|_, _| Ok(()));
-        });
-        mocks.db_playlist_repository(|m| {
-            m.expect_reset_listuped_flag()
-                .times(1)
-                .returning(|_| Ok(()));
-        });
+        let mut target = target();
+        target
+            .db_song_repository
+            .inner
+            .expect_get_id_by_path()
+            .withf(|a_path| a_path == &song_path())
+            .times(1)
+            .returning(|_| Ok(Some(73)));
+        target
+            .db_song_repository
+            .inner
+            .expect_delete()
+            .withf(|song_id| *song_id == 73)
+            .times(1)
+            .returning(|_| Ok(()));
+        target
+            .db_playlist_song_repository
+            .inner
+            .expect_delete_song_from_all_playlists()
+            .withf(|song_id| *song_id == 73)
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .db_song_tag_repository
+            .inner
+            .expect_delete_all_tags_from_song()
+            .withf(|song_id| *song_id == 73)
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .db_artwork_repository
+            .inner
+            .expect_unregister_song_artworks()
+            .withf(|song_id| *song_id == 73)
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .folder_usecase
+            .inner
+            .expect_delete_db_if_empty()
+            .withf(|folder_path| folder_path == &LibDirPath::root())
+            .times(1)
+            .returning(|_| Ok(()));
+
+        target
+            .db_playlist_repository
+            .inner
+            .expect_reset_listuped_flag()
+            .times(1)
+            .returning(|| Ok(()));
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            t.delete_song_db(&mut tx, &song_path()).unwrap();
-        });
+        target.delete_song_db(&mut tx, &song_path()).await.unwrap();
+
+        checkpoint_all(&mut target);
     }
 }

@@ -25,14 +25,18 @@ pub async fn run(args: impl Iterator<Item = String>, cui: impl Cui + Sync + Send
             }
             "check" => {
                 registry
-                    .command_check(&app_args.sub_args[..])?.run().await?;
+                    .command_check(&app_args.sub_args[..])?
+                    .run()
+                    .await?;
             }
             "move" => {
                 registry.command_move(&app_args.sub_args[..])?.run().await?;
             }
             "remove" => {
                 registry
-                    .command_remove(&app_args.sub_args[..])?.run().await?;
+                    .command_remove(&app_args.sub_args[..])?
+                    .run()
+                    .await?;
             }
             "playlist" => {
                 registry.command_playlist().run().await?;
@@ -44,7 +48,8 @@ pub async fn run(args: impl Iterator<Item = String>, cui: impl Cui + Sync + Send
             }
             "aw-get" => {
                 registry
-                    .command_artwork_get(&app_args.sub_args[..])?.run()?;
+                    .command_artwork_get(&app_args.sub_args[..])?
+                    .run()?;
             }
             "help" => {
                 registry.command_help(&app_args.sub_args[..])?.run()?;

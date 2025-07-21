@@ -419,8 +419,8 @@ mod tests {
     fn entry_fill(song_path: &LibSongPath) -> SongEntry {
         SongEntry {
             duration: 123,
-            path: song_path.into(),
-            folder_id: FolderIdMayRoot::Folder(34).into(),
+            path: song_path.as_str(),
+            folder_id: Some(34),
             title: "曲名",
             artist: "アーティスト",
             album: "The Album",
@@ -431,7 +431,7 @@ mod tests {
             track_max: Some(34),
             disc_number: Some(56),
             disc_max: Some(789),
-            release_date: Some(NaiveDate::from_ymd_opt(1998, 8, 31).unwrap().into()),
+            release_date: Some(NaiveDate::from_ymd_opt(1998, 8, 31).unwrap()),
             rating: 5,
             original_song: "原曲",
             suggest_target: true,
@@ -444,14 +444,13 @@ mod tests {
             album_artist_order: "あるばむあーてぃすと",
             composer_order: "さっきょくしゃ",
             genre_order: "じゃんる",
-            entry_date: NaiveDate::from_ymd_opt(2021, 9, 20).unwrap().into(),
         }
     }
     fn entry_empty(song_path: &LibSongPath) -> SongEntry {
         SongEntry {
             duration: 0,
-            path: song_path.into(),
-            folder_id: FolderIdMayRoot::Root.into(),
+            path: song_path.as_str(),
+            folder_id: None,
             title: "",
             artist: "",
             album: "",
@@ -475,7 +474,6 @@ mod tests {
             album_artist_order: "",
             composer_order: "",
             genre_order: "",
-            entry_date: NaiveDate::from_ymd_opt(2021, 9, 20).unwrap().into(),
         }
     }
 
@@ -685,22 +683,22 @@ mod tests {
 
         let path = LibSongPath::new("test/hoge.flac");
         let mut entry = entry_fill(&path);
-        entry.folder_id = FolderIdMayRoot::Folder(11).into();
+        entry.folder_id = Some(11);
         target.insert(&mut tx, &entry).await.unwrap();
 
         let path = LibSongPath::new("dummy/fuga.flac");
         let mut entry = entry_fill(&path);
-        entry.folder_id = FolderIdMayRoot::Folder(22).into();
+        entry.folder_id = Some(22);
         target.insert(&mut tx, &entry).await.unwrap();
 
         let path = LibSongPath::new("test/piyo.flac");
         let mut entry = entry_fill(&path);
-        entry.folder_id = FolderIdMayRoot::Folder(11).into();
+        entry.folder_id = Some(11);
         target.insert(&mut tx, &entry).await.unwrap();
 
         let path = LibSongPath::new("piyo.flac");
         let mut entry = entry_fill(&path);
-        entry.folder_id = FolderIdMayRoot::Root.into();
+        entry.folder_id = None;
         target.insert(&mut tx, &entry).await.unwrap();
 
         assert_eq!(

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::{env};
+use std::env;
 use walk_base_2_app::cui::StdCui;
 
 #[tokio::main]

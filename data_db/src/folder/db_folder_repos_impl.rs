@@ -126,16 +126,18 @@ where
 mod tests {
     use super::super::MockFolderPathDao;
     use super::*;
-    use domain::mocks;
-    use paste::paste;
 
-    mocks! {
-        DbFolderRepositoryImpl,
-        [FolderPathDao]
+    fn target() -> DbFolderRepositoryImpl<MockFolderPathDao> {
+        DbFolderRepositoryImpl {
+            folder_path_dao: MockFolderPathDao::default(),
+        }
+    }
+    fn checkpoint_all(target: &mut DbFolderRepositoryImpl<MockFolderPathDao>) {
+        target.folder_path_dao.inner.checkpoint();
     }
 
-    #[test]
-    fn test_register_not_exists_2dir() {
+    #[tokio::test]
+    async fn test_register_not_exists_2dir() {
         fn lib_dir_path() -> LibDirPath {
             LibDirPath::new("test/hoge/fuga")
         }
@@ -146,100 +148,136 @@ mod tests {
             LibDirPath::new("test")
         }
 
-        let mut mocks = Mocks::new();
-        mocks.folder_path_dao(|m| {
-            m.expect_select_id_by_path()
-                .withf(|_, a_path| a_path == &lib_dir_path())
-                .returning(|_, _| Ok(None));
-            m.expect_select_id_by_path()
-                .withf(|_, a_path| a_path == &lib_dir_path_p1())
-                .returning(|_, _| Ok(None));
-            m.expect_select_id_by_path()
-                .withf(|_, a_path| a_path == &lib_dir_path_p2())
-                .returning(|_, _| Ok(Some(2)));
-
-            m.expect_insert()
-                .withf(|_, a_path, _, _| a_path == &lib_dir_path())
-                .times(1)
-                .returning(|_, _, a_name, a_parent_id| {
-                    assert_eq!(a_name, "fuga");
-                    assert_eq!(a_parent_id, FolderIdMayRoot::Folder(4));
-                    Ok(5)
-                });
-            m.expect_insert()
-                .withf(|_, a_path, _, _| a_path == &lib_dir_path_p1())
-                .times(1)
-                .returning(|_, _, a_name, a_parent_id| {
-                    assert_eq!(a_parent_id, FolderIdMayRoot::Folder(2));
-                    assert_eq!(a_name, "hoge");
-                    Ok(4)
-                });
-            m.expect_insert()
-                .withf(|_, a_path, _, _| a_path == &lib_dir_path_p2())
-                .times(0);
-        });
+        let mut target = target();
+        target
+            .folder_path_dao
+            .inner
+            .expect_select_id_by_path()
+            .withf(|a_path| a_path == &lib_dir_path())
+            .returning(|_| Ok(None));
+        target
+            .folder_path_dao
+            .inner
+            .expect_select_id_by_path()
+            .withf(|a_path| a_path == &lib_dir_path_p1())
+            .returning(|_| Ok(None));
+        target
+            .folder_path_dao
+            .inner
+            .expect_select_id_by_path()
+            .withf(|a_path| a_path == &lib_dir_path_p2())
+            .returning(|_| Ok(Some(2)));
+        target
+            .folder_path_dao
+            .inner
+            .expect_insert()
+            .withf(|a_path, _, _| a_path == &lib_dir_path())
+            .times(1)
+            .returning(|_, a_name, a_parent_id| {
+                assert_eq!(a_name, "fuga");
+                assert_eq!(a_parent_id, FolderIdMayRoot::Folder(4));
+                Ok(5)
+            });
+        target
+            .folder_path_dao
+            .inner
+            .expect_insert()
+            .withf(|a_path, _, _| a_path == &lib_dir_path_p1())
+            .times(1)
+            .returning(|_, a_name, a_parent_id| {
+                assert_eq!(a_parent_id, FolderIdMayRoot::Folder(2));
+                assert_eq!(a_name, "hoge");
+                Ok(4)
+            });
+        target
+            .folder_path_dao
+            .inner
+            .expect_insert()
+            .withf(|a_path, _, _| a_path == &lib_dir_path_p2())
+            .times(0);
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let result = t.register_not_exists(&mut tx, &lib_dir_path()).unwrap();
-            assert_eq!(result, FolderIdMayRoot::Folder(5));
-        });
+        let result = target
+            .register_not_exists(&mut tx, &lib_dir_path())
+            .await
+            .unwrap();
+        assert_eq!(result, FolderIdMayRoot::Folder(5));
+
+        checkpoint_all(&mut target);
     }
-    #[test]
-    fn test_register_not_exists_register_root() {
+
+    #[tokio::test]
+    async fn test_register_not_exists_register_root() {
         fn lib_dir_path() -> LibDirPath {
             LibDirPath::new("test")
         }
 
-        let mut mocks = Mocks::new();
-        mocks.folder_path_dao(|m| {
-            m.expect_select_id_by_path()
-                .withf(|_, a_path| a_path == &lib_dir_path())
-                .returning(|_, _| Ok(None));
-            m.expect_select_id_by_path()
-                .withf(|_, a_path| a_path == &LibDirPath::new(""))
-                .times(0);
-
-            m.expect_insert()
-                .withf(|_, a_path, _, _| a_path == &lib_dir_path())
-                .times(1)
-                .returning(|_, _, a_name, a_parent_id| {
-                    assert_eq!(a_name, "test");
-                    assert_eq!(a_parent_id, FolderIdMayRoot::Root);
-                    Ok(99)
-                });
-            m.expect_insert()
-                .withf(|_, a_path, _, _| a_path == &LibDirPath::new(""))
-                .times(0);
-        });
+        let mut target = target();
+        target
+            .folder_path_dao
+            .inner
+            .expect_select_id_by_path()
+            .withf(|a_path| a_path == &lib_dir_path())
+            .returning(|_| Ok(None));
+        target
+            .folder_path_dao
+            .inner
+            .expect_select_id_by_path()
+            .withf(|a_path| a_path == &LibDirPath::new(""))
+            .times(0);
+        target
+            .folder_path_dao
+            .inner
+            .expect_insert()
+            .withf(|a_path, _, _| a_path == &lib_dir_path())
+            .times(1)
+            .returning(|_, a_name, a_parent_id| {
+                assert_eq!(a_name, "test");
+                assert_eq!(a_parent_id, FolderIdMayRoot::Root);
+                Ok(99)
+            });
+        target
+            .folder_path_dao
+            .inner
+            .expect_insert()
+            .withf(|a_path, _, _| a_path == &LibDirPath::new(""))
+            .times(0);
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let result = t.register_not_exists(&mut tx, &lib_dir_path()).unwrap();
-            assert_eq!(result, FolderIdMayRoot::Folder(99));
-        });
+        let result = target
+            .register_not_exists(&mut tx, &lib_dir_path())
+            .await
+            .unwrap();
+        assert_eq!(result, FolderIdMayRoot::Folder(99));
+
+        checkpoint_all(&mut target);
     }
-    #[test]
-    fn test_register_not_exists_exists() {
+
+    #[tokio::test]
+    async fn test_register_not_exists_exists() {
         fn lib_dir_path() -> LibDirPath {
             LibDirPath::new("test/hoge/fuga")
         }
 
-        let mut mocks = Mocks::new();
-        mocks.folder_path_dao(|m| {
-            m.expect_select_id_by_path()
-                .withf(|_, a_path| a_path == &lib_dir_path())
-                .returning(|_, _| Ok(Some(12)));
-            m.expect_insert().times(0);
-        });
+        let mut target = target();
+        target
+            .folder_path_dao
+            .inner
+            .expect_select_id_by_path()
+            .withf(|a_path| a_path == &lib_dir_path())
+            .returning(|_| Ok(Some(12)));
+        target.folder_path_dao.inner.expect_insert().times(0);
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let result = t.register_not_exists(&mut tx, &lib_dir_path()).unwrap();
-            assert_eq!(result, FolderIdMayRoot::Folder(12));
-        });
+        let result = target
+            .register_not_exists(&mut tx, &lib_dir_path())
+            .await
+            .unwrap();
+        assert_eq!(result, FolderIdMayRoot::Folder(12));
+
+        checkpoint_all(&mut target);
     }
 }

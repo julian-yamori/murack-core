@@ -139,15 +139,18 @@ where
 mod tests {
     use super::super::MockSongDao;
     use super::*;
-    use domain::mocks;
-    use paste::paste;
 
-    mocks! {DbSongRepositoryImpl, [
-        SongDao
-    ]}
+    fn target() -> DbSongRepositoryImpl<MockSongDao> {
+        DbSongRepositoryImpl {
+            song_dao: MockSongDao::default(),
+        }
+    }
+    fn checkpoint_all(target: &mut DbSongRepositoryImpl<MockSongDao>) {
+        target.song_dao.inner.checkpoint();
+    }
 
-    #[test]
-    fn test_get_path_by_path_str_directory() {
+    #[tokio::test]
+    async fn test_get_path_by_path_str_directory() {
         const DIR_PATH_STR: &str = "test/hoge";
         fn expect() -> Vec<LibSongPath> {
             vec![
@@ -157,82 +160,97 @@ mod tests {
             ]
         }
 
-        let mut mocks = Mocks::new();
-        mocks.song_dao(|m| {
-            m.expect_select_path_begins_directory()
-                .withf(|_, a_path| a_path == &LibDirPath::new(DIR_PATH_STR))
-                .times(1)
-                .returning(|_, _| Ok(expect()));
-            m.expect_exists_path()
-                .withf(|_, a_path| a_path == &LibSongPath::new(DIR_PATH_STR))
-                .times(1)
-                .returning(|_, _| Ok(false));
-        });
+        let mut target = target();
+        target
+            .song_dao
+            .inner
+            .expect_select_path_begins_directory()
+            .withf(|a_path| a_path == &LibDirPath::new(DIR_PATH_STR))
+            .times(1)
+            .returning(|_| Ok(expect()));
+        target
+            .song_dao
+            .inner
+            .expect_exists_path()
+            .withf(|a_path| a_path == &LibSongPath::new(DIR_PATH_STR))
+            .times(1)
+            .returning(|_| Ok(false));
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let result = t
-                .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
-                .unwrap();
-            assert_eq!(result, expect());
-        });
+        let result = target
+            .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
+            .await
+            .unwrap();
+        assert_eq!(result, expect());
+
+        checkpoint_all(&mut target);
     }
 
-    #[test]
-    fn test_get_path_by_path_str_not_found() {
+    #[tokio::test]
+    async fn test_get_path_by_path_str_not_found() {
         const DIR_PATH_STR: &str = "test/hoge";
 
-        let mut mocks = Mocks::new();
-        mocks.song_dao(|m| {
-            m.expect_select_path_begins_directory()
-                .withf(|_, a_path| a_path == &LibDirPath::new(DIR_PATH_STR))
-                .times(1)
-                .returning(|_, _| Ok(vec![]));
-            m.expect_exists_path()
-                .withf(|_, a_path| a_path == &LibSongPath::new(DIR_PATH_STR))
-                .times(1)
-                .returning(|_, _| Ok(false));
-        });
+        let mut target = target();
+        target
+            .song_dao
+            .inner
+            .expect_select_path_begins_directory()
+            .withf(|a_path| a_path == &LibDirPath::new(DIR_PATH_STR))
+            .times(1)
+            .returning(|_| Ok(vec![]));
+        target
+            .song_dao
+            .inner
+            .expect_exists_path()
+            .withf(|a_path| a_path == &LibSongPath::new(DIR_PATH_STR))
+            .times(1)
+            .returning(|_| Ok(false));
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let result = t
-                .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
-                .unwrap();
-            assert_eq!(result, vec![]);
-        });
+        let result = target
+            .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
+            .await
+            .unwrap();
+        assert_eq!(result, vec![]);
+
+        checkpoint_all(&mut target);
     }
 
-    #[test]
-    fn test_get_path_by_path_str_song() {
+    #[tokio::test]
+    async fn test_get_path_by_path_str_song() {
         const DIR_PATH_STR: &str = "test/hoge.flac";
 
-        let mut mocks = Mocks::new();
-        mocks.song_dao(|m| {
-            m.expect_select_path_begins_directory()
-                .withf(|_, a_path| a_path == &LibDirPath::new(DIR_PATH_STR))
-                .times(1)
-                .returning(|_, _| Ok(vec![]));
-            m.expect_exists_path()
-                .withf(|_, a_path| a_path == &LibSongPath::new(DIR_PATH_STR))
-                .times(1)
-                .returning(|_, _| Ok(true));
-        });
+        let mut target = target();
+        target
+            .song_dao
+            .inner
+            .expect_select_path_begins_directory()
+            .withf(|a_path| a_path == &LibDirPath::new(DIR_PATH_STR))
+            .times(1)
+            .returning(|_| Ok(vec![]));
+        target
+            .song_dao
+            .inner
+            .expect_exists_path()
+            .withf(|a_path| a_path == &LibSongPath::new(DIR_PATH_STR))
+            .times(1)
+            .returning(|_| Ok(true));
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let result = t
-                .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
-                .unwrap();
-            assert_eq!(result, vec![LibSongPath::new("test/hoge.flac")]);
-        });
+        let result = target
+            .get_path_by_path_str(&mut tx, &LibPathStr::from(DIR_PATH_STR.to_owned()))
+            .await
+            .unwrap();
+        assert_eq!(result, vec![LibSongPath::new("test/hoge.flac")]);
+
+        checkpoint_all(&mut target);
     }
 
-    #[test]
-    fn test_get_path_by_path_str_root() {
+    #[tokio::test]
+    async fn test_get_path_by_path_str_root() {
         fn expect() -> Vec<LibSongPath> {
             vec![
                 LibSongPath::new("song1.mp3"),
@@ -241,24 +259,29 @@ mod tests {
             ]
         }
 
-        let mut mocks = Mocks::new();
-        mocks.song_dao(|m| {
-            m.expect_select_path_all()
-                .times(1)
-                .returning(|_| Ok(expect()));
-            m.expect_exists_path()
-                .withf(|_, a_path| a_path == &LibSongPath::new(""))
-                .times(1)
-                .returning(|_, _| Ok(false));
-        });
+        let mut target = target();
+        target
+            .song_dao
+            .inner
+            .expect_select_path_all()
+            .times(1)
+            .returning(|| Ok(expect()));
+        target
+            .song_dao
+            .inner
+            .expect_exists_path()
+            .withf(|a_path| a_path == &LibSongPath::new(""))
+            .times(1)
+            .returning(|_| Ok(false));
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let result = t
-                .get_path_by_path_str(&mut tx, &LibPathStr::root())
-                .unwrap();
-            assert_eq!(result, expect());
-        });
+        let result = target
+            .get_path_by_path_str(&mut tx, &LibPathStr::root())
+            .await
+            .unwrap();
+        assert_eq!(result, expect());
+
+        checkpoint_all(&mut target);
     }
 }

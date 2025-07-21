@@ -143,108 +143,141 @@ mock! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{folder::MockDbFolderRepository, mocks, song::MockDbSongRepository};
-    use paste::paste;
+    use crate::{folder::MockDbFolderRepository, song::MockDbSongRepository};
 
-    mocks! {
-        FolderUsecaseImpl,
-        [DbFolderRepository, DbSongRepository]
+    fn target() -> FolderUsecaseImpl<MockDbFolderRepository, MockDbSongRepository> {
+        FolderUsecaseImpl {
+            db_folder_repository: MockDbFolderRepository::default(),
+            db_song_repository: MockDbSongRepository::default(),
+        }
+    }
+    fn checkpoint_all(
+        target: &mut FolderUsecaseImpl<MockDbFolderRepository, MockDbSongRepository>,
+    ) {
+        target.db_folder_repository.inner.checkpoint();
+        target.db_song_repository.inner.checkpoint();
     }
 
-    #[test]
-    fn test_delete_db_if_empty_trans_once() {
-        let mut mocks = Mocks::new();
-        mocks.db_song_repository(|m| {
-            m.expect_is_exist_in_folder()
-                .withf(|_, a_folder_id| *a_folder_id == 15)
-                .times(1)
-                .returning(|_, _| Ok(false));
-
-            m.expect_is_exist_in_folder()
-                .withf(|_, a_folder_id| *a_folder_id == 4)
-                .times(1)
-                .returning(|_, _| Ok(true));
-        });
-        mocks.db_folder_repository(|m| {
-            m.expect_is_exist_in_folder()
-                .withf(|_, a_folder_id| *a_folder_id == FolderIdMayRoot::Folder(15))
-                .times(1)
-                .returning(|_, _| Ok(false));
-            m.expect_get_parent()
-                .withf(|_, a_folder_id| *a_folder_id == 15)
-                .times(1)
-                .returning(|_, _| Ok(Some(FolderIdMayRoot::Folder(4))));
-            m.expect_delete()
-                .withf(|_, a_folder_id| *a_folder_id == 15)
-                .times(1)
-                .returning(|_, _| Ok(()));
-
-            m.expect_delete()
-                .withf(|_, a_folder_id| *a_folder_id == 4)
-                .times(0);
-        });
+    #[tokio::test]
+    async fn test_delete_db_if_empty_trans_once() {
+        let mut target = target();
+        target
+            .db_song_repository
+            .inner
+            .expect_is_exist_in_folder()
+            .withf(|a_folder_id| *a_folder_id == 15)
+            .times(1)
+            .returning(|_| Ok(false));
+        target
+            .db_song_repository
+            .inner
+            .expect_is_exist_in_folder()
+            .withf(|a_folder_id| *a_folder_id == 4)
+            .times(1)
+            .returning(|_| Ok(true));
+        target
+            .db_folder_repository
+            .inner
+            .expect_is_exist_in_folder()
+            .withf(|a_folder_id| *a_folder_id == FolderIdMayRoot::Folder(15))
+            .times(1)
+            .returning(|_| Ok(false));
+        target
+            .db_folder_repository
+            .inner
+            .expect_get_parent()
+            .withf(|a_folder_id| *a_folder_id == 15)
+            .times(1)
+            .returning(|_| Ok(Some(FolderIdMayRoot::Folder(4))));
+        target
+            .db_folder_repository
+            .inner
+            .expect_delete()
+            .withf(|a_folder_id| *a_folder_id == 15)
+            .times(1)
+            .returning(|_| Ok(()));
+        target
+            .db_folder_repository
+            .inner
+            .expect_delete()
+            .withf(|a_folder_id| *a_folder_id == 4)
+            .times(0);
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            t.delete_db_if_empty_by_id(&mut tx, 15).unwrap();
-        });
+        target.delete_db_if_empty_by_id(&mut tx, 15).await.unwrap();
+
+        checkpoint_all(&mut target);
     }
-    #[test]
-    fn test_delete_db_if_empty_folder_exists() {
-        let mut mocks = Mocks::new();
-        mocks.db_song_repository(|m| {
-            m.expect_is_exist_in_folder()
-                .withf(|_, a_folder_id| *a_folder_id == 15)
-                .times(1)
-                .returning(|_, _| Ok(false));
-        });
-        mocks.db_folder_repository(|m| {
-            m.expect_is_exist_in_folder()
-                .withf(|_, a_folder_id| *a_folder_id == FolderIdMayRoot::Folder(15))
-                .times(1)
-                .returning(|_, _| Ok(true));
-            m.expect_delete().times(0);
-        });
+
+    #[tokio::test]
+    async fn test_delete_db_if_empty_folder_exists() {
+        let mut target = target();
+        target
+            .db_song_repository
+            .inner
+            .expect_is_exist_in_folder()
+            .withf(|a_folder_id| *a_folder_id == 15)
+            .times(1)
+            .returning(|_| Ok(false));
+        target
+            .db_folder_repository
+            .inner
+            .expect_is_exist_in_folder()
+            .withf(|a_folder_id| *a_folder_id == FolderIdMayRoot::Folder(15))
+            .times(1)
+            .returning(|_| Ok(true));
+        target.db_folder_repository.inner.expect_delete().times(0);
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            t.delete_db_if_empty_by_id(&mut tx, 15).unwrap();
-        });
+        target.delete_db_if_empty_by_id(&mut tx, 15).await.unwrap();
+
+        checkpoint_all(&mut target);
     }
-    #[test]
-    fn test_delete_db_if_empty_trans_root_check() {
-        let mut mocks = Mocks::new();
-        mocks.db_song_repository(|m| {
-            m.expect_is_exist_in_folder()
-                .times(1)
-                .returning(|_, a_folder_id| {
-                    assert_eq!(a_folder_id, 15);
-                    Ok(false)
-                });
-        });
-        mocks.db_folder_repository(|m| {
-            m.expect_is_exist_in_folder()
-                .times(1)
-                .returning(|_, a_folder_id| {
-                    assert_eq!(a_folder_id, FolderIdMayRoot::Folder(15));
-                    Ok(false)
-                });
-            m.expect_get_parent()
-                .withf(|_, a_folder_id| *a_folder_id == 15)
-                .times(1)
-                .returning(|_, _| Ok(Some(FolderIdMayRoot::Root)));
-            m.expect_delete().times(1).returning(|_, a_folder_id| {
+
+    #[tokio::test]
+    async fn test_delete_db_if_empty_trans_root_check() {
+        let mut target = target();
+        target
+            .db_song_repository
+            .inner
+            .expect_is_exist_in_folder()
+            .times(1)
+            .returning(|a_folder_id| {
+                assert_eq!(a_folder_id, 15);
+                Ok(false)
+            });
+        target
+            .db_folder_repository
+            .inner
+            .expect_is_exist_in_folder()
+            .times(1)
+            .returning(|a_folder_id| {
+                assert_eq!(a_folder_id, FolderIdMayRoot::Folder(15));
+                Ok(false)
+            });
+        target
+            .db_folder_repository
+            .inner
+            .expect_get_parent()
+            .withf(|a_folder_id| *a_folder_id == 15)
+            .times(1)
+            .returning(|_| Ok(Some(FolderIdMayRoot::Root)));
+        target
+            .db_folder_repository
+            .inner
+            .expect_delete()
+            .times(1)
+            .returning(|a_folder_id| {
                 assert_eq!(a_folder_id, 15);
                 Ok(())
             });
-        });
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            t.delete_db_if_empty_by_id(&mut tx, 15).unwrap();
-        });
+        target.delete_db_if_empty_by_id(&mut tx, 15).await.unwrap();
+
+        checkpoint_all(&mut target);
     }
 }

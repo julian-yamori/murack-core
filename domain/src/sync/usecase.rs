@@ -116,18 +116,35 @@ mock! {
 mod tests {
     use std::sync::Arc;
 
+    use chrono::NaiveDate;
+    use media::picture::Picture;
+
     use super::super::MockDbSongSyncRepository;
     use super::*;
     use crate::{
-        artwork::SongArtwork, folder::MockDbFolderRepository, mocks, path::LibDirPath,
+        artwork::SongArtwork, folder::MockDbFolderRepository, path::LibDirPath,
         playlist::MockDbPlaylistRepository,
     };
-    use media::picture::Picture;
-    use paste::paste;
 
-    mocks! {
-        SyncUsecaseImpl,
-        [DbFolderRepository, DbPlaylistRepository, DbSongSyncRepository]
+    fn target()
+    -> SyncUsecaseImpl<MockDbFolderRepository, MockDbPlaylistRepository, MockDbSongSyncRepository>
+    {
+        SyncUsecaseImpl {
+            db_folder_repository: MockDbFolderRepository::default(),
+            db_playlist_repository: MockDbPlaylistRepository::default(),
+            db_song_sync_repository: MockDbSongSyncRepository::default(),
+        }
+    }
+    fn checkpoint_all(
+        target: &mut SyncUsecaseImpl<
+            MockDbFolderRepository,
+            MockDbPlaylistRepository,
+            MockDbSongSyncRepository,
+        >,
+    ) {
+        target.db_folder_repository.inner.checkpoint();
+        target.db_playlist_repository.inner.checkpoint();
+        target.db_song_sync_repository.inner.checkpoint();
     }
 
     fn song_sync() -> SongSync {
@@ -157,87 +174,97 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_register_db_root_folder() {
+    #[tokio::test]
+    async fn test_register_db_root_folder() {
         fn song_path() -> LibSongPath {
             LibSongPath::new("song.flac")
         }
-        fn entry_date() -> NaiveDate {
-            NaiveDate::from_ymd_opt(2021, 9, 21).unwrap()
-        }
 
-        let mut mocks = Mocks::new();
-        mocks.db_folder_repository(|m| {
-            m.expect_register_not_exists().times(0);
-        });
-        mocks.db_song_sync_repository(|m| {
-            m.expect_register()
-                .times(1)
-                .returning(|_, _, a_song_sync, a_folder_id, _| {
-                    assert_eq!(a_folder_id, FolderIdMayRoot::Root);
-                    assert_eq!(a_song_sync.title.as_deref(), Some("曲名"));
-                    Ok(5)
-                });
-        });
-        mocks.db_playlist_repository(|m| {
-            m.expect_reset_listuped_flag()
-                .times(1)
-                .returning(|_| Ok(()));
-        });
+        let mut target = target();
+        target
+            .db_folder_repository
+            .inner
+            .expect_register_not_exists()
+            .times(0);
+
+        target
+            .db_song_sync_repository
+            .inner
+            .expect_register()
+            .times(1)
+            .returning(|_, a_song_sync, a_folder_id| {
+                assert_eq!(a_folder_id, FolderIdMayRoot::Root);
+                assert_eq!(a_song_sync.title.as_deref(), Some("曲名"));
+                Ok(5)
+            });
+
+        target
+            .db_playlist_repository
+            .inner
+            .expect_reset_listuped_flag()
+            .times(1)
+            .returning(|| Ok(()));
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let mut s = song_sync();
-            t.register_db(&mut tx, &song_path(), &mut s, entry_date())
-                .unwrap();
+        let mut s = song_sync();
+        target
+            .register_db(&mut tx, &song_path(), &mut s)
+            .await
+            .unwrap();
 
-            assert_eq!(s.title.as_deref(), Some("曲名"));
-        });
+        assert_eq!(s.title.as_deref(), Some("曲名"));
+
+        checkpoint_all(&mut target);
     }
-    #[test]
-    fn test_register_db_no_title() {
+
+    #[tokio::test]
+    async fn test_register_db_no_title() {
         fn song_path() -> LibSongPath {
             LibSongPath::new("test/hoge/fuga.mp3")
         }
-        fn entry_date() -> NaiveDate {
-            NaiveDate::from_ymd_opt(2021, 9, 21).unwrap()
-        }
 
-        let mut mocks = Mocks::new();
-        mocks.db_folder_repository(|m| {
-            m.expect_register_not_exists()
-                .times(1)
-                .returning(|_, a_path| {
-                    assert_eq!(a_path, &LibDirPath::new("test/hoge"));
-                    Ok(FolderIdMayRoot::Folder(15))
-                });
-        });
-        mocks.db_song_sync_repository(|m| {
-            m.expect_register()
-                .times(1)
-                .returning(|_, _, a_song_sync, a_folder_id, _| {
-                    assert_eq!(a_folder_id, FolderIdMayRoot::Folder(15));
-                    assert_eq!(a_song_sync.title.as_deref(), Some("fuga"));
-                    Ok(5)
-                });
-        });
-        mocks.db_playlist_repository(|m| {
-            m.expect_reset_listuped_flag()
-                .times(1)
-                .returning(|_| Ok(()));
-        });
+        let mut target = target();
+        target
+            .db_folder_repository
+            .inner
+            .expect_register_not_exists()
+            .times(1)
+            .returning(|a_path| {
+                assert_eq!(a_path, &LibDirPath::new("test/hoge"));
+                Ok(FolderIdMayRoot::Folder(15))
+            });
+
+        target
+            .db_song_sync_repository
+            .inner
+            .expect_register()
+            .times(1)
+            .returning(|_, a_song_sync, a_folder_id| {
+                assert_eq!(a_folder_id, FolderIdMayRoot::Folder(15));
+                assert_eq!(a_song_sync.title.as_deref(), Some("fuga"));
+                Ok(5)
+            });
+
+        target
+            .db_playlist_repository
+            .inner
+            .expect_reset_listuped_flag()
+            .times(1)
+            .returning(|| Ok(()));
 
         let mut tx = DbTransaction::Dummy;
 
-        mocks.run_target(|t| {
-            let mut s = song_sync();
-            s.title = None;
+        let mut s = song_sync();
+        s.title = None;
 
-            t.register_db(&mut tx, &song_path(), &mut s, entry_date())
-                .unwrap();
+        target
+            .register_db(&mut tx, &song_path(), &mut s)
+            .await
+            .unwrap();
 
-            assert_eq!(s.title.as_deref(), Some("fuga"));
-        });
+        assert_eq!(s.title.as_deref(), Some("fuga"));
+
+        checkpoint_all(&mut target);
     }
 }

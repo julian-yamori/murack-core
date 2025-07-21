@@ -286,28 +286,56 @@ mod tests {
     use super::*;
     use crate::cui::BufferCui;
     use domain::{
-        MockFileLibraryRepository, check::MockCheckUsecase, mocks, path::LibPathStr,
+        MockFileLibraryRepository, check::MockCheckUsecase, path::LibPathStr,
         song::MockDbSongRepository,
     };
-    use paste::paste;
     use std::path::PathBuf;
 
-    mocks! {
-        CommandCheck,
-        [ResolveExistance, ResolveDataMatch, ResolveDap, FileLibraryRepository, CheckUsecase, DbSongRepository],
-        [args: Args, config: Rc<Config>, cui: Rc<BufferCui>, connection_factory: Rc<ConnectionFactory>]
-    }
-
-    fn new_mocks(arg_path: LibPathStr, ignore_dap_content: bool) -> Mocks {
-        Mocks::new(
-            Args {
+    fn target(
+        arg_path: LibPathStr,
+        ignore_dap_content: bool,
+    ) -> CommandCheck<
+        BufferCui,
+        MockResolveExistance,
+        MockResolveDataMatch,
+        MockResolveDap,
+        MockFileLibraryRepository,
+        MockCheckUsecase,
+        MockDbSongRepository,
+    > {
+        CommandCheck {
+            args: Args {
                 path: arg_path,
                 ignore_dap_content,
             },
-            Rc::new(Config::dummy()),
-            Rc::new(BufferCui::new()),
-            Rc::new(ConnectionFactory::Dummy),
-        )
+            config: Arc::new(Config::dummy()),
+            cui: Arc::new(BufferCui::new()),
+            resolve_existance: MockResolveExistance::default(),
+            resolve_data_match: MockResolveDataMatch::default(),
+            resolve_dap: MockResolveDap::default(),
+            file_library_repository: MockFileLibraryRepository::default(),
+            check_usecase: MockCheckUsecase::default(),
+            db_song_repository: MockDbSongRepository::default(),
+        }
+    }
+
+    fn checkpoint_all(
+        target: &mut CommandCheck<
+            BufferCui,
+            MockResolveExistance,
+            MockResolveDataMatch,
+            MockResolveDap,
+            MockFileLibraryRepository,
+            MockCheckUsecase,
+            MockDbSongRepository,
+        >,
+    ) {
+        target.resolve_existance.checkpoint();
+        target.resolve_data_match.checkpoint();
+        target.resolve_dap.checkpoint();
+        target.file_library_repository.checkpoint();
+        target.check_usecase.checkpoint();
+        target.db_song_repository.inner.checkpoint();
     }
 
     fn pc_lib() -> PathBuf {
@@ -317,8 +345,8 @@ mod tests {
         "dap_lib".into()
     }
 
-    #[test]
-    fn test_listup_song_path_green() {
+    #[sqlx::test]
+    fn test_listup_song_path_green(db_pool: PgPool) {
         fn search_path() -> LibPathStr {
             "test/hoge".to_owned().into()
         }
@@ -331,90 +359,96 @@ mod tests {
             ]
         }
 
-        let mut mocks = new_mocks(search_path(), false);
+        let mut target = target(search_path(), false);
 
-        mocks.file_library_repository(|m| {
-            m.expect_search_by_lib_path()
-                .withf(|lib, _| lib == pc_lib())
-                .times(1)
-                .returning(|_, search| {
-                    assert_eq!(search, &search_path());
-                    Ok(song_paths())
-                });
-            m.expect_search_by_lib_path()
-                .withf(|lib, _| lib == dap_lib())
-                .times(1)
-                .returning(|_, search| {
-                    assert_eq!(search, &search_path());
-                    Ok(song_paths())
-                });
-        });
-        mocks.db_song_repository(|m| {
-            m.expect_get_path_by_path_str()
-                .times(1)
-                .returning(|_, search| {
-                    assert_eq!(search, &search_path());
-                    //なんとなく逆順
-                    Ok(song_paths().into_iter().rev().collect())
-                });
-        });
+        target
+            .file_library_repository
+            .expect_search_by_lib_path()
+            .withf(|lib, _| lib == pc_lib())
+            .times(1)
+            .returning(|_, search| {
+                assert_eq!(search, &search_path());
+                Ok(song_paths())
+            });
+        target
+            .file_library_repository
+            .expect_search_by_lib_path()
+            .withf(|lib, _| lib == dap_lib())
+            .times(1)
+            .returning(|_, search| {
+                assert_eq!(search, &search_path());
+                Ok(song_paths())
+            });
+        target
+            .db_song_repository
+            .inner
+            .expect_get_path_by_path_str()
+            .times(1)
+            .returning(|search| {
+                assert_eq!(search, &search_path());
+                //なんとなく逆順
+                Ok(song_paths().into_iter().rev().collect())
+            });
 
-        let mut db = mocks.connection_factory.open().unwrap();
+        assert_eq!(
+            target.listup_song_path(&db_pool).await.unwrap(),
+            song_paths()
+        );
 
-        mocks.run_target(|target| {
-            assert_eq!(target.listup_song_path(&mut db).unwrap(), song_paths())
-        });
+        checkpoint_all(&mut target);
     }
 
-    #[test]
-    fn test_listup_song_path_conflict() {
-        let mut mocks = new_mocks("test/hoge".to_owned().into(), false);
+    #[sqlx::test]
+    fn test_listup_song_path_conflict(db_pool: PgPool) {
+        let mut target = target("test/hoge".to_owned().into(), false);
 
-        mocks.file_library_repository(|m| {
-            m.expect_search_by_lib_path()
-                .withf(|lib, _| lib == pc_lib())
-                .returning(|_, _| {
-                    Ok(vec![
-                        LibSongPath::new("test/hoge/child/song1.flac"),
-                        LibSongPath::new("test/hoge/child/pc1.flac"),
-                        LibSongPath::new("test/hoge/song2.flac"),
-                        LibSongPath::new("test/hoge/pc2.flac"),
-                    ])
-                });
-            m.expect_search_by_lib_path()
-                .withf(|lib, _| lib == dap_lib())
-                .returning(|_, _| {
-                    Ok(vec![
-                        LibSongPath::new("test/hoge/child/song1.flac"),
-                        LibSongPath::new("test/hoge/child/dap1.flac"),
-                        LibSongPath::new("test/hoge/song2.flac"),
-                    ])
-                });
-        });
-        mocks.db_song_repository(|m| {
-            m.expect_get_path_by_path_str().returning(|_, _| {
+        target
+            .file_library_repository
+            .expect_search_by_lib_path()
+            .withf(|lib, _| lib == pc_lib())
+            .returning(|_, _| {
+                Ok(vec![
+                    LibSongPath::new("test/hoge/child/song1.flac"),
+                    LibSongPath::new("test/hoge/child/pc1.flac"),
+                    LibSongPath::new("test/hoge/song2.flac"),
+                    LibSongPath::new("test/hoge/pc2.flac"),
+                ])
+            });
+        target
+            .file_library_repository
+            .expect_search_by_lib_path()
+            .withf(|lib, _| lib == dap_lib())
+            .returning(|_, _| {
+                Ok(vec![
+                    LibSongPath::new("test/hoge/child/song1.flac"),
+                    LibSongPath::new("test/hoge/child/dap1.flac"),
+                    LibSongPath::new("test/hoge/song2.flac"),
+                ])
+            });
+        target
+            .db_song_repository
+            .inner
+            .expect_get_path_by_path_str()
+            .returning(|_| {
                 Ok(vec![
                     LibSongPath::new("test/hoge/child/song1.flac"),
                     LibSongPath::new("test/hoge/song2.flac"),
                     LibSongPath::new("test/hoge/db1.flac"),
                 ])
             });
-        });
 
-        let mut db = mocks.connection_factory.open().unwrap();
+        assert_eq!(
+            target.listup_song_path(&db_pool).await.unwrap(),
+            vec![
+                LibSongPath::new("test/hoge/child/dap1.flac"),
+                LibSongPath::new("test/hoge/child/pc1.flac"),
+                LibSongPath::new("test/hoge/child/song1.flac"),
+                LibSongPath::new("test/hoge/db1.flac"),
+                LibSongPath::new("test/hoge/pc2.flac"),
+                LibSongPath::new("test/hoge/song2.flac"),
+            ]
+        );
 
-        mocks.run_target(|target| {
-            assert_eq!(
-                target.listup_song_path(&mut db).unwrap(),
-                vec![
-                    LibSongPath::new("test/hoge/child/dap1.flac"),
-                    LibSongPath::new("test/hoge/child/pc1.flac"),
-                    LibSongPath::new("test/hoge/child/song1.flac"),
-                    LibSongPath::new("test/hoge/db1.flac"),
-                    LibSongPath::new("test/hoge/pc2.flac"),
-                    LibSongPath::new("test/hoge/song2.flac"),
-                ]
-            )
-        });
+        checkpoint_all(&mut target);
     }
 }

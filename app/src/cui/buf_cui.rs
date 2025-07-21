@@ -1,32 +1,45 @@
+use std::{
+    collections::VecDeque,
+    fmt::Arguments,
+    io::Write,
+    sync::{Arc, Mutex, MutexGuard},
+};
+
+use anyhow::{Result, anyhow};
+
 use crate::cui::Cui;
-use anyhow::Result;
-use std::{cell::RefCell, collections::VecDeque, fmt::Arguments, io::Write, rc::Rc};
 
 /// 出力をメモリに保持するCui実装(テスト用)
 pub struct BufferCui {
-    pub buffer: Rc<RefCell<BufferCuiData>>,
+    pub buffer: Arc<Mutex<BufferCuiData>>,
 }
 
 impl BufferCui {
     pub fn new() -> Self {
         Self {
-            buffer: Rc::new(RefCell::new(BufferCuiData::new())),
+            buffer: Arc::new(Mutex::new(BufferCuiData::new())),
         }
+    }
+
+    fn lock_buffer(&self) -> Result<MutexGuard<BufferCuiData>> {
+        self.buffer
+            .lock()
+            .map_err(|_| anyhow!("artwork cache lock error"))
     }
 }
 
 impl Cui for BufferCui {
     fn out(&self, args: Arguments) {
-        self.buffer.borrow_mut().out.write_fmt(args).unwrap();
+        self.lock_buffer().unwrap().out.write_fmt(args).unwrap();
     }
     fn err(&self, args: Arguments) {
-        self.buffer.borrow_mut().err.write_fmt(args).unwrap();
+        self.lock_buffer().unwrap().err.write_fmt(args).unwrap();
     }
 
     fn input_case(&self, cases: &[char], message: &str) -> Result<char> {
         let c = self
-            .buffer
-            .borrow_mut()
+            .lock_buffer()
+            .unwrap()
             .input
             .pop_front()
             .unwrap_or_else(|| panic!("入力バッファが空\n({message})"));

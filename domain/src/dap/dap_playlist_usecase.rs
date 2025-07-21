@@ -337,23 +337,32 @@ mock! {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{MockDapRepository, MockSongFinder};
-    use super::*;
-    use crate::{
-        mocks,
-        playlist::{MockDbPlaylistRepository, PlaylistType, SortType},
-    };
-    use paste::paste;
     use std::path::PathBuf;
+
     use test_case::test_case;
 
-    mocks! {
-        DapPlaylistUsecaseImpl,
-        [
-            DapRepository,
-            DbPlaylistRepository,
-            SongFinder
-        ]
+    use super::super::{MockDapRepository, MockSongFinder};
+    use super::*;
+    use crate::playlist::{MockDbPlaylistRepository, PlaylistType, SortType};
+
+    fn target()
+    -> DapPlaylistUsecaseImpl<MockDapRepository, MockDbPlaylistRepository, MockSongFinder> {
+        DapPlaylistUsecaseImpl {
+            dap_repository: MockDapRepository::default(),
+            db_playlist_repository: MockDbPlaylistRepository::default(),
+            song_finder: MockSongFinder::default(),
+        }
+    }
+    fn checkpoint_all(
+        target: &mut DapPlaylistUsecaseImpl<
+            MockDapRepository,
+            MockDbPlaylistRepository,
+            MockSongFinder,
+        >,
+    ) {
+        target.dap_repository.checkpoint();
+        target.db_playlist_repository.inner.checkpoint();
+        target.song_finder.inner.checkpoint();
     }
 
     #[test]
@@ -369,9 +378,9 @@ mod tests {
         }
         const FILE_NAME: &str = "playlist.m3u";
 
-        let mut mocks = Mocks::new();
-        mocks.dap_repository(|m| {
-            m.expect_make_playlist_file()
+        let mut target = target();
+        target.dap_repository
+            .expect_make_playlist_file()
                 .times(1)
                 .returning(|a_root, a_file_name, a_data| {
                     assert_eq!(a_root, &root());
@@ -380,12 +389,12 @@ mod tests {
 
                     Ok(())
                 });
-        });
 
-        mocks.run_target(|t| {
-            t.write_playlist_file(&root(), FILE_NAME, &song_path_list)
-                .unwrap();
-        })
+        target
+            .write_playlist_file(&root(), FILE_NAME, &song_path_list)
+            .unwrap();
+
+        checkpoint_all(&mut target);
     }
 
     #[test_case(1, 1 ; "1")]
