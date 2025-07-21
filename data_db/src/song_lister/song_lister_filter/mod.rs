@@ -218,9 +218,9 @@ fn get_query_filter_where_tag(range: &TagsFilterRange) -> String {
 fn get_query_filter_where_bool(clm_name: &str, range: &BoolFilterRange) -> String {
     match range {
         //true
-        BoolFilterRange::True => format!("{clm_name} <> 0"),
+        BoolFilterRange::True => format!("{clm_name} = true"),
         //false
-        BoolFilterRange::False => format!("{clm_name} = 0"),
+        BoolFilterRange::False => format!("{clm_name} = false"),
     }
 }
 

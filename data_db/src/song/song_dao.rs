@@ -134,9 +134,9 @@ impl SongDao for SongDaoImpl {
         let cmp_value_buff;
         let (like_query, cmp_value) = if like_esc::is_need(path_str) {
             cmp_value_buff = like_esc::escape(path_str);
-            ("LIKE ? || '%' ESCAPE '$'", cmp_value_buff.as_str())
+            ("LIKE $1 || '%' ESCAPE '$'", cmp_value_buff.as_str())
         } else {
-            ("LIKE ? || '%'", path_str)
+            ("LIKE $1 || '%'", path_str)
         };
 
         let sql = format!("SELECT path FROM tracks WHERE path {like_query}");
