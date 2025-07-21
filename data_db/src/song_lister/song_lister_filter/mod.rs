@@ -76,7 +76,7 @@ fn get_query_filter_where(filter_target: &FilterTarget) -> String {
         FilterTarget::Artwork { range } => get_query_filter_where_artwork(range),
         FilterTarget::Duration { range } => get_query_filter_where_int("duration", range),
         FilterTarget::ReleaseDate { range } => get_query_filter_where_date("release_date", range),
-        FilterTarget::TrackNumber { range } => get_query_filter_where_int("disc_number", range),
+        FilterTarget::TrackNumber { range } => get_query_filter_where_int("track_number", range),
         FilterTarget::TrackMax { range } => get_query_filter_where_int("track_max", range),
         FilterTarget::DiscNumber { range } => get_query_filter_where_int("disc_number", range),
         FilterTarget::DiscMax { range } => get_query_filter_where_int("disc_max", range),
