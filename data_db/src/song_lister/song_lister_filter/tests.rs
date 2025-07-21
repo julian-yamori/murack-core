@@ -306,137 +306,333 @@ fn test_str(db_pool: PgPool) {
     );
 }
 
-#[sqlx::test(migrator = "crate::MIGRATOR")]
-fn test_int(db_pool: PgPool) {
-    async fn insert_song(test_db: &mut TestDb, track_number: Option<i32>) -> i32 {
-        let mut song = dummy_song();
-        song.track_number = track_number;
-        test_db.insert_song(&song).await
+#[cfg(test)]
+mod test_int {
+    use super::*;
+
+    struct DbFixture {
+        test_db: TestDb,
+
+        // track_number 別の id リスト
+        #[allow(dead_code)]
+        song_none: i32,
+        song_1: i32,
+        song_5: i32,
+        song_9: i32,
+        song_10: i32,
+        song_25: i32,
+        song_123: i32,
+    }
+    impl DbFixture {
+        async fn new(db_pool: &PgPool) -> Self {
+            async fn insert_song(test_db: &mut TestDb, track_number: Option<i32>) -> i32 {
+                let mut song = dummy_song();
+                song.track_number = track_number;
+                test_db.insert_song(&song).await
+            }
+
+            let mut test_db = TestDb::new(db_pool).await;
+
+            Self {
+                song_none: insert_song(&mut test_db, None).await,
+                song_1: insert_song(&mut test_db, Some(1)).await,
+                song_5: insert_song(&mut test_db, Some(5)).await,
+                song_9: insert_song(&mut test_db, Some(9)).await,
+                song_10: insert_song(&mut test_db, Some(10)).await,
+                song_25: insert_song(&mut test_db, Some(25)).await,
+                song_123: insert_song(&mut test_db, Some(123)).await,
+                test_db,
+            }
+        }
     }
 
     fn filter(range: IntFilterRange) -> FilterTarget {
         FilterTarget::TrackNumber { range }
     }
 
-    let mut test_db = TestDb::new(&db_pool).await;
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
+    fn test_equal(db_pool: PgPool) {
+        let DbFixture {
+            mut test_db,
+            song_none: _,
+            song_1: _,
+            song_5: _,
+            song_9,
+            song_10: _,
+            song_25: _,
+            song_123: _,
+        } = DbFixture::new(&db_pool).await;
 
-    let _song_0 = insert_song(&mut test_db, None).await;
-    let song_1 = insert_song(&mut test_db, Some(1)).await;
-    let song_5 = insert_song(&mut test_db, Some(5)).await;
-    let song_9 = insert_song(&mut test_db, Some(9)).await;
-    let song_10 = insert_song(&mut test_db, Some(10)).await;
-    let song_25 = insert_song(&mut test_db, Some(25)).await;
-    let song_123 = insert_song(&mut test_db, Some(123)).await;
+        let target = target();
+        assert_eq_not_orderd(
+            &target
+                .list_song_id(&mut test_db.tx, &filter(IntFilterRange::Equal { value: 9 }))
+                .await
+                .unwrap(),
+            &[song_9],
+        );
+    }
 
-    let target = target();
-    assert_eq_not_orderd(
-        &target
-            .list_song_id(&mut test_db.tx, &filter(IntFilterRange::Equal { value: 9 }))
-            .await
-            .unwrap(),
-        &[song_9],
-    );
-    //※nullは含めない仕様(WalkBase1がそうなっていたので)
-    assert_eq_not_orderd(
-        &target
-            .list_song_id(
-                &mut test_db.tx,
-                &filter(IntFilterRange::NotEqual { value: 25 }),
-            )
-            .await
-            .unwrap(),
-        &[song_1, song_5, song_9, song_10, song_123],
-    );
-    assert_eq_not_orderd(
-        &target
-            .list_song_id(
-                &mut test_db.tx,
-                &filter(IntFilterRange::LargeEqual { value: 10 }),
-            )
-            .await
-            .unwrap(),
-        &[song_10, song_25, song_123],
-    );
-    assert_eq_not_orderd(
-        &target
-            .list_song_id(
-                &mut test_db.tx,
-                &filter(IntFilterRange::SmallEqual { value: 5 }),
-            )
-            .await
-            .unwrap(),
-        &[song_1, song_5],
-    );
-    assert_eq_not_orderd(
-        &target
-            .list_song_id(
-                &mut test_db.tx,
-                &filter(IntFilterRange::RangeIn { min: 9, max: 25 }),
-            )
-            .await
-            .unwrap(),
-        &[song_9, song_10, song_25],
-    );
-    assert_eq_not_orderd(
-        &target
-            .list_song_id(
-                &mut test_db.tx,
-                &filter(IntFilterRange::RangeOut { min: 5, max: 10 }),
-            )
-            .await
-            .unwrap(),
-        &[song_1, song_25, song_123],
-    );
-    // assert_eq_not_orderd(
-    //     &target
-    //         .list_song_id(
-    //             &mut test_db.tx,
-    //             &filter(IntFilterRange::Equal { value: None }),
-    //         )
-    //         .await
-    //         .unwrap(),
-    //     &[song_0],
-    // );
-    // assert_eq_not_orderd(
-    //     &target
-    //         .list_song_id(
-    //             &mut test_db.tx,
-    //             &filter(IntFilterRange::NotEqual { value: None }),
-    //         )
-    //         .await
-    //         .unwrap(),
-    //     &[song_1, song_5, song_9, song_10, song_25, song_123],
-    // );
-    // assert_eq_not_orderd(
-    //     &target
-    //         .list_song_id(
-    //             &mut test_db.tx,
-    //             &filter(IntFilterRange::LargeEqual { value: None }),
-    //         )
-    //         .await
-    //         .unwrap(),
-    //     &[],
-    // );
-    // assert_eq_not_orderd(
-    //     &target
-    //         .list_song_id(
-    //             &mut test_db.tx,
-    //             &filter(IntFilterRange::RangeIn { min: None, max: 5 }),
-    //         )
-    //         .await
-    //         .unwrap(),
-    //     &[],
-    // );
-    // assert_eq_not_orderd(
-    //     &target
-    //         .list_song_id(
-    //             &mut test_db.tx,
-    //             &filter(IntFilterRange::RangeIn { min: 5, max: None }),
-    //         )
-    //         .await
-    //         .unwrap(),
-    //     &[],
-    // );
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
+    fn test_not_equal(db_pool: PgPool) {
+        let DbFixture {
+            mut test_db,
+            song_none: _,
+            song_1,
+            song_5,
+            song_9,
+            song_10,
+            song_25: _,
+            song_123,
+        } = DbFixture::new(&db_pool).await;
+
+        let target = target();
+        //※nullは含めない仕様(WalkBase1がそうなっていたので)
+        assert_eq_not_orderd(
+            &target
+                .list_song_id(
+                    &mut test_db.tx,
+                    &filter(IntFilterRange::NotEqual { value: 25 }),
+                )
+                .await
+                .unwrap(),
+            &[song_1, song_5, song_9, song_10, song_123],
+        );
+    }
+
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
+    fn test_large_equal(db_pool: PgPool) {
+        let DbFixture {
+            mut test_db,
+            song_none: _,
+            song_1: _,
+            song_5: _,
+            song_9: _,
+            song_10,
+            song_25,
+            song_123,
+        } = DbFixture::new(&db_pool).await;
+
+        let target = target();
+        assert_eq_not_orderd(
+            &target
+                .list_song_id(
+                    &mut test_db.tx,
+                    &filter(IntFilterRange::LargeEqual { value: 10 }),
+                )
+                .await
+                .unwrap(),
+            &[song_10, song_25, song_123],
+        );
+    }
+
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
+    fn test_amall_equal(db_pool: PgPool) {
+        let DbFixture {
+            mut test_db,
+            song_none: _,
+            song_1,
+            song_5,
+            song_9: _,
+            song_10: _,
+            song_25: _,
+            song_123: _,
+        } = DbFixture::new(&db_pool).await;
+
+        let target = target();
+        assert_eq_not_orderd(
+            &target
+                .list_song_id(
+                    &mut test_db.tx,
+                    &filter(IntFilterRange::SmallEqual { value: 5 }),
+                )
+                .await
+                .unwrap(),
+            &[song_1, song_5],
+        );
+    }
+
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
+    fn test_range_in(db_pool: PgPool) {
+        let DbFixture {
+            mut test_db,
+            song_none: _,
+            song_1: _,
+            song_5: _,
+            song_9,
+            song_10,
+            song_25,
+            song_123: _,
+        } = DbFixture::new(&db_pool).await;
+
+        let target = target();
+        assert_eq_not_orderd(
+            &target
+                .list_song_id(
+                    &mut test_db.tx,
+                    &filter(IntFilterRange::RangeIn { min: 9, max: 25 }),
+                )
+                .await
+                .unwrap(),
+            &[song_9, song_10, song_25],
+        );
+    }
+
+    #[sqlx::test(migrator = "crate::MIGRATOR")]
+    fn test_range_out(db_pool: PgPool) {
+        let DbFixture {
+            mut test_db,
+            song_none: _,
+            song_1,
+            song_5: _,
+            song_9: _,
+            song_10: _,
+            song_25,
+            song_123,
+        } = DbFixture::new(&db_pool).await;
+
+        let target = target();
+        assert_eq_not_orderd(
+            &target
+                .list_song_id(
+                    &mut test_db.tx,
+                    &filter(IntFilterRange::RangeOut { min: 5, max: 10 }),
+                )
+                .await
+                .unwrap(),
+            &[song_1, song_25, song_123],
+        );
+    }
+
+    // #[sqlx::test(migrator = "crate::MIGRATOR")]
+    // fn test_equal_none(db_pool: PgPool) {
+    //     let DbFixture {
+    //         mut test_db,
+    //         song_none,
+    //         song_1,
+    //         song_5,
+    //         song_9,
+    //         song_10,
+    //         song_25,
+    //         song_123,
+    //     } = DbFixture::new(&db_pool).await;
+
+    //     let target = target();
+    //     assert_eq_not_orderd(
+    //         &target
+    //             .list_song_id(
+    //                 &mut test_db.tx,
+    //                 &filter(IntFilterRange::Equal { value: None }),
+    //             )
+    //             .await
+    //             .unwrap(),
+    //         &[song_none],
+    //     );
+    // }
+
+    // #[sqlx::test(migrator = "crate::MIGRATOR")]
+    // fn test_not_equal_none(db_pool: PgPool) {
+    //     let DbFixture {
+    //         mut test_db,
+    //         song_none: _,
+    //         song_1,
+    //         song_5,
+    //         song_9,
+    //         song_10,
+    //         song_25,
+    //         song_123,
+    //     } = DbFixture::new(&db_pool).await;
+
+    //     let target = target();
+    //     assert_eq_not_orderd(
+    //         &target
+    //             .list_song_id(
+    //                 &mut test_db.tx,
+    //                 &filter(IntFilterRange::NotEqual { value: None }),
+    //             )
+    //             .await
+    //             .unwrap(),
+    //         &[song_1, song_5, song_9, song_10, song_25, song_123],
+    //     );
+    // }
+
+    // #[sqlx::test(migrator = "crate::MIGRATOR")]
+    // fn test_large_equal_none(db_pool: PgPool) {
+    //     let DbFixture {
+    //         mut test_db,
+    //         song_none: _,
+    //         song_1,
+    //         song_5,
+    //         song_9,
+    //         song_10,
+    //         song_25,
+    //         song_123,
+    //     } = DbFixture::new(&db_pool).await;
+
+    //     let target = target();
+    //     assert_eq_not_orderd(
+    //         &target
+    //             .list_song_id(
+    //                 &mut test_db.tx,
+    //                 &filter(IntFilterRange::LargeEqual { value: None }),
+    //             )
+    //             .await
+    //             .unwrap(),
+    //         &[],
+    //     );
+    // }
+
+    // #[sqlx::test(migrator = "crate::MIGRATOR")]
+    // fn test_range_min_is_none(db_pool: PgPool) {
+    //     let DbFixture {
+    //         mut test_db,
+    //         song_none: _,
+    //         song_1,
+    //         song_5,
+    //         song_9,
+    //         song_10,
+    //         song_25,
+    //         song_123,
+    //     } = DbFixture::new(&db_pool).await;
+
+    //     let target = target();
+    //     assert_eq_not_orderd(
+    //         &target
+    //             .list_song_id(
+    //                 &mut test_db.tx,
+    //                 &filter(IntFilterRange::RangeIn { min: None, max: 5 }),
+    //             )
+    //             .await
+    //             .unwrap(),
+    //         &[],
+    //     );
+    // }
+
+    // #[sqlx::test(migrator = "crate::MIGRATOR")]
+    // fn test_range_max_is_none(db_pool: PgPool) {
+    //     let DbFixture {
+    //         mut test_db,
+    //         song_none: _,
+    //         song_1,
+    //         song_5,
+    //         song_9,
+    //         song_10,
+    //         song_25,
+    //         song_123,
+    //     } = DbFixture::new(&db_pool).await;
+
+    //     let target = target();
+    //     assert_eq_not_orderd(
+    //         &target
+    //             .list_song_id(
+    //                 &mut test_db.tx,
+    //                 &filter(IntFilterRange::RangeIn { min: 5, max: None }),
+    //             )
+    //             .await
+    //             .unwrap(),
+    //         &[],
+    //     );
+    // }
 }
 
 #[sqlx::test(migrator = "crate::MIGRATOR")]
