@@ -1,26 +1,28 @@
-use super::Cui;
-use anyhow::Result;
 use std::{
     fmt::Arguments,
     io::{self, Write},
 };
+
+use super::Cui;
 
 /// 標準入出力を使用するCui trait実装
 pub struct StdCui {}
 
 impl Cui for StdCui {
     /// 標準出力へ出力
-    fn out(&self, args: Arguments) {
+    fn out(&self, args: Arguments) -> anyhow::Result<()> {
         let mut stdout = io::stdout();
-        stdout.write_fmt(args).unwrap();
-        stdout.flush().unwrap();
+        stdout.write_fmt(args)?;
+        stdout.flush()?;
+        Ok(())
     }
 
     /// エラーを出力
-    fn err(&self, args: Arguments) {
+    fn err(&self, args: Arguments) -> anyhow::Result<()> {
         let mut stderr = io::stderr();
-        stderr.write_fmt(args).unwrap();
-        stderr.flush().unwrap();
+        stderr.write_fmt(args)?;
+        stderr.flush()?;
+        Ok(())
     }
 
     /// 選択肢を示して、文字を入力させる。
@@ -34,7 +36,7 @@ impl Cui for StdCui {
     ///
     /// # Returns
     /// 入力された文字(casesのうちのいずれか)
-    fn input_case(&self, cases: &[char], message: &str) -> Result<char> {
+    fn input_case(&self, cases: &[char], message: &str) -> anyhow::Result<char> {
         loop {
             print!("{message}");
             io::stdout().flush()?;

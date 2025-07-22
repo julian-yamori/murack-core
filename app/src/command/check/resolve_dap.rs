@@ -76,14 +76,14 @@ where
         }
 
         let cui = &self.cui;
-        cui_outln!(cui, "----");
-        cui_outln!(cui, "{}", CheckIssueSummary::PcDapNotEquals);
-        cui_outln!(cui);
+        cui_outln!(cui, "----")?;
+        cui_outln!(cui, "{}", CheckIssueSummary::PcDapNotEquals)?;
+        cui_outln!(cui)?;
 
-        cui_outln!(cui, "1: PCからDAPへファイルを上書き");
-        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-        cui_outln!(cui);
+        cui_outln!(cui, "1: PCからDAPへファイルを上書き")?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+        cui_outln!(cui)?;
 
         let input = cui.input_case(&['1', '0', '-'], messages::MSG_SELECT_OPERATION)?;
 

@@ -29,14 +29,16 @@ impl BufferCui {
 }
 
 impl Cui for BufferCui {
-    fn out(&self, args: Arguments) {
-        self.lock_buffer().unwrap().out.write_fmt(args).unwrap();
+    fn out(&self, args: Arguments) -> anyhow::Result<()> {
+        self.lock_buffer().unwrap().out.write_fmt(args)?;
+        Ok(())
     }
-    fn err(&self, args: Arguments) {
-        self.lock_buffer().unwrap().err.write_fmt(args).unwrap();
+    fn err(&self, args: Arguments) -> anyhow::Result<()> {
+        self.lock_buffer().unwrap().err.write_fmt(args)?;
+        Ok(())
     }
 
-    fn input_case(&self, cases: &[char], message: &str) -> Result<char> {
+    fn input_case(&self, cases: &[char], message: &str) -> anyhow::Result<char> {
         let c = self
             .lock_buffer()
             .unwrap()

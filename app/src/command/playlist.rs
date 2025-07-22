@@ -53,10 +53,10 @@ where
 {
     /// プレイリスト情報の読み込み開始時
     fn on_start_load_playlist(&mut self) {
-        cui_outln!(self.cui, "プレイリスト情報の取得中...")
+        cui_outln!(self.cui, "プレイリスト情報の取得中...").unwrap()
     }
     /// ファイルの保存開始時
     fn on_start_save_file(&mut self) {
-        cui_outln!(self.cui, "プレイリストファイルの保存中...")
+        cui_outln!(self.cui, "プレイリストファイルの保存中...").unwrap()
     }
 }

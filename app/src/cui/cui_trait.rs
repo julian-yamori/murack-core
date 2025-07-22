@@ -1,19 +1,27 @@
-use anyhow::Result;
 use std::fmt::Arguments;
 
 /// CUIの抽象化
 pub trait Cui {
     /// 標準出力へ出力
-    fn out(&self, args: Arguments);
+    fn out(&self, args: Arguments) -> anyhow::Result<()>;
 
     /// 標準出力へ出力(改行付き)
-    fn outln(&self, args: Arguments) {
-        self.out(args);
-        self.out(format_args!("\n"));
+    fn outln(&self, args: Arguments) -> anyhow::Result<()> {
+        self.out(args)?;
+        self.out(format_args!("\n"))?;
+
+        Ok(())
     }
 
     /// 標準エラーへ出力
-    fn err(&self, args: Arguments);
+    fn err(&self, args: Arguments) -> anyhow::Result<()>;
+
+    /// 標準エラーへ出力(改行付き)
+    fn errln(&self, args: Arguments) -> anyhow::Result<()> {
+        self.err(args)?;
+        self.err(format_args!("\n"))?;
+        Ok(())
+    }
 
     /// 選択肢を示して、文字を入力させる。
     ///
@@ -26,5 +34,5 @@ pub trait Cui {
     ///
     /// # Returns
     /// 入力された文字(casesのうちのいずれか)
-    fn input_case(&self, cases: &[char], message: &str) -> Result<char>;
+    fn input_case(&self, cases: &[char], message: &str) -> anyhow::Result<char>;
 }

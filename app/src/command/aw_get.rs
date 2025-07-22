@@ -74,10 +74,10 @@ where
             fs::write(&out_path, &artwork.bytes)
                 .with_context(|| format!("ファイルの書き込みに失敗: {}", out_path.display()))?;
 
-            cui_outln!(self.cui, "=> {}", out_path.display());
+            cui_outln!(self.cui, "=> {}", out_path.display())?;
         }
 
-        cui_outln!(self.cui);
+        cui_outln!(self.cui)?;
 
         Ok(())
     }

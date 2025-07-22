@@ -1,7 +1,7 @@
 /// Cui::outマクロ
 macro_rules! cui_out {
     ($cui:expr, $($arg:tt)*) => ({
-        $cui.out(format_args!($($arg)*));
+        $cui.out(format_args!($($arg)*))
     })
 }
 
@@ -9,6 +9,6 @@ macro_rules! cui_out {
 macro_rules! cui_outln {
     ($cui:expr) => (cui_out!($cui, "\n"));
     ($cui:expr, $($arg:tt)*) => ({
-        $cui.outln(format_args!($($arg)*));
+        $cui.outln(format_args!($($arg)*))
     })
 }

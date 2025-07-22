@@ -172,13 +172,13 @@ where
     fn resole_pc_read_failed(&self, read_error: anyhow::Error) -> Result<bool> {
         let cui = &self.cui;
 
-        cui_outln!(cui, "----");
-        cui_outln!(cui, "{}", CheckIssueSummary::PcReadFailed { e: read_error });
-        cui_outln!(cui);
+        cui_outln!(cui, "----")?;
+        cui_outln!(cui, "{}", CheckIssueSummary::PcReadFailed { e: read_error })?;
+        cui_outln!(cui)?;
 
-        cui_outln!(cui, "{}", messages::CASE_MSG_CANT_RESOLVE);
-        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-        cui_outln!(cui);
+        cui_outln!(cui, "{}", messages::CASE_MSG_CANT_RESOLVE)?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+        cui_outln!(cui)?;
 
         let input = cui.input_case(&['0', '-'], messages::MSG_SELECT_OPERATION)?;
 
@@ -192,14 +192,14 @@ where
     ) -> Result<ResolveFileExistanceResult> {
         let cui = &self.cui;
 
-        cui_outln!(cui, "----");
-        cui_outln!(cui, "{}", CheckIssueSummary::DapNotExists);
-        cui_outln!(cui);
+        cui_outln!(cui, "----")?;
+        cui_outln!(cui, "{}", CheckIssueSummary::DapNotExists)?;
+        cui_outln!(cui)?;
 
-        cui_outln!(cui, "1: PCからDAPへコピー");
-        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-        cui_outln!(cui);
+        cui_outln!(cui, "1: PCからDAPへコピー")?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+        cui_outln!(cui)?;
 
         let input = cui.input_case(&['1', '0', '-'], messages::MSG_SELECT_OPERATION)?;
 
@@ -229,15 +229,15 @@ where
         let input = {
             let cui = &self.cui;
 
-            cui_outln!(cui, "----");
-            cui_outln!(cui, "{}", CheckIssueSummary::DbNotExists);
-            cui_outln!(cui);
+            cui_outln!(cui, "----")?;
+            cui_outln!(cui, "{}", CheckIssueSummary::DbNotExists)?;
+            cui_outln!(cui)?;
 
-            cui_outln!(cui, "1: DBに曲を追加");
-            cui_outln!(cui, "2: PCとDAPからファイルを削除");
-            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-            cui_outln!(cui);
+            cui_outln!(cui, "1: DBに曲を追加")?;
+            cui_outln!(cui, "2: PCとDAPからファイルを削除")?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+            cui_outln!(cui)?;
 
             cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
@@ -273,16 +273,16 @@ where
         let input = {
             let cui = &self.cui;
 
-            cui_outln!(cui, "----");
-            cui_outln!(cui, "{}", CheckIssueSummary::DbNotExists);
-            cui_outln!(cui, "{}", CheckIssueSummary::DapNotExists);
-            cui_outln!(cui);
+            cui_outln!(cui, "----")?;
+            cui_outln!(cui, "{}", CheckIssueSummary::DbNotExists)?;
+            cui_outln!(cui, "{}", CheckIssueSummary::DapNotExists)?;
+            cui_outln!(cui)?;
 
-            cui_outln!(cui, "1: DBに曲を追加し、DAPにもコピー");
-            cui_outln!(cui, "2: PCからファイルを削除");
-            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-            cui_outln!(cui);
+            cui_outln!(cui, "1: DBに曲を追加し、DAPにもコピー")?;
+            cui_outln!(cui, "2: PCからファイルを削除")?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+            cui_outln!(cui)?;
 
             cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
@@ -323,15 +323,15 @@ where
         let input = {
             let cui = &self.cui;
 
-            cui_outln!(cui, "----");
-            cui_outln!(cui, "{}", CheckIssueSummary::PcNotExists);
-            cui_outln!(cui);
+            cui_outln!(cui, "----")?;
+            cui_outln!(cui, "{}", CheckIssueSummary::PcNotExists)?;
+            cui_outln!(cui)?;
 
-            cui_outln!(cui, "1: DAPからPCにファイルをコピー");
-            cui_outln!(cui, "2: DBとDAPから曲を削除");
-            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-            cui_outln!(cui);
+            cui_outln!(cui, "1: DAPからPCにファイルをコピー")?;
+            cui_outln!(cui, "2: DBとDAPから曲を削除")?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+            cui_outln!(cui)?;
 
             cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
@@ -371,15 +371,15 @@ where
         let input = {
             let cui = &self.cui;
 
-            cui_outln!(cui, "----");
-            cui_outln!(cui, "{}", CheckIssueSummary::PcNotExists);
-            cui_outln!(cui, "{}", CheckIssueSummary::DapNotExists);
-            cui_outln!(cui);
+            cui_outln!(cui, "----")?;
+            cui_outln!(cui, "{}", CheckIssueSummary::PcNotExists)?;
+            cui_outln!(cui, "{}", CheckIssueSummary::DapNotExists)?;
+            cui_outln!(cui)?;
 
-            cui_outln!(cui, "2: DBから曲を削除");
-            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-            cui_outln!(cui);
+            cui_outln!(cui, "2: DBから曲を削除")?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+            cui_outln!(cui)?;
 
             cui.input_case(&['2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
@@ -404,16 +404,16 @@ where
     ) -> Result<ResolveFileExistanceResult> {
         let cui = &self.cui;
 
-        cui_outln!(cui, "----");
-        cui_outln!(cui, "{}", CheckIssueSummary::PcNotExists);
-        cui_outln!(cui, "{}", CheckIssueSummary::DbNotExists);
-        cui_outln!(cui);
+        cui_outln!(cui, "----")?;
+        cui_outln!(cui, "{}", CheckIssueSummary::PcNotExists)?;
+        cui_outln!(cui, "{}", CheckIssueSummary::DbNotExists)?;
+        cui_outln!(cui)?;
 
-        cui_outln!(cui, "1: DAPからPCにファイルをコピーし、DBにも追加");
-        cui_outln!(cui, "2: DAPからファイルを削除");
-        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-        cui_outln!(cui);
+        cui_outln!(cui, "1: DAPからPCにファイルをコピーし、DBにも追加")?;
+        cui_outln!(cui, "2: DAPからファイルを削除")?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+        cui_outln!(cui)?;
 
         let input = cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?;
 
@@ -434,7 +434,7 @@ where
                 {
                     Ok(d) => d,
                     Err(e) => {
-                        cui_outln!(cui, "曲ファイルのデータの読み込みに失敗しました。\n{}", e);
+                        cui_outln!(cui, "曲ファイルのデータの読み込みに失敗しました。\n{}", e)?;
                         return Ok(ResolveFileExistanceResult::UnResolved);
                     }
                 };

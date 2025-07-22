@@ -90,8 +90,8 @@ where
         if !terminated {
             let cui = &self.cui;
 
-            cui_outln!(cui, "====================");
-            cui_outln!(cui, "全ての問題の解決処理が終了しました。");
+            cui_outln!(cui, "====================")?;
+            cui_outln!(cui, "全ての問題の解決処理が終了しました。")?;
         }
 
         Ok(())
@@ -107,7 +107,7 @@ where
         let mut set = BTreeSet::<LibSongPath>::new();
 
         //PCからリストアップ
-        cui_outln!(cui, "PCの検索中...");
+        cui_outln!(cui, "PCの検索中...")?;
         for path in self
             .file_library_repository
             .search_by_lib_path(&self.config.pc_lib, &self.args.path)?
@@ -116,7 +116,7 @@ where
         }
 
         //DAPからリストアップ
-        cui_outln!(cui, "DAPの検索中...");
+        cui_outln!(cui, "DAPの検索中...")?;
         for path in self
             .file_library_repository
             .search_by_lib_path(&self.config.dap_lib, &self.args.path)?
@@ -125,7 +125,7 @@ where
         }
 
         //DBからリストアップ
-        cui_outln!(cui, "DBの検索中...");
+        cui_outln!(cui, "DBの検索中...")?;
 
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
@@ -160,7 +160,7 @@ where
         let all_count = path_list.len();
         for (current_index, path) in path_list.into_iter().enumerate() {
             if current_index % 100 == 0 {
-                cui_outln!(cui, "チェック中...({}/{})", current_index, all_count);
+                cui_outln!(cui, "チェック中...({}/{})", current_index, all_count)?;
             }
 
             let issues = self
@@ -179,16 +179,16 @@ where
             }
         }
 
-        cui_outln!(cui, "チェック中...({}/{})", all_count, all_count);
+        cui_outln!(cui, "チェック中...({}/{})", all_count, all_count)?;
 
         //全ファイルのチェックが終わった後で、簡易結果出力
         for (path, issues) in &conflict_list {
-            cui_outln!(cui, "# {}", path);
+            cui_outln!(cui, "# {}", path)?;
             for issue in issues {
-                cui_outln!(cui, "---- {}", issue);
+                cui_outln!(cui, "---- {}", issue)?;
             }
         }
-        cui_outln!(cui);
+        cui_outln!(cui)?;
 
         Ok(conflict_list.into_iter().map(|(path, _)| path).collect())
     }
@@ -201,7 +201,7 @@ where
 
         //齟齬がなければ終了
         if conflict_list.is_empty() {
-            cui_outln!(cui, "問題はありませんでした。");
+            cui_outln!(cui, "問題はありませんでした。")?;
             return Ok(false);
         }
 
@@ -209,11 +209,11 @@ where
             cui,
             "{}個のファイルで問題を検出しました。",
             conflict_list.len()
-        );
+        )?;
 
         //継続確認
         let result = cui.input_case(&['y', 'n'], "解決処理を行いますか? (y/n)->")?;
-        cui_outln!(cui);
+        cui_outln!(cui)?;
 
         Ok(result == 'y')
     }
@@ -231,10 +231,10 @@ where
             {
                 let cui = &self.cui;
 
-                cui_outln!(cui, "====================");
-                cui_outln!(cui, "{}", song_path);
-                cui_outln!(cui, "({}/{})", current_index + 1, all_count);
-                cui_outln!(cui);
+                cui_outln!(cui, "====================")?;
+                cui_outln!(cui, "{}", song_path)?;
+                cui_outln!(cui, "({}/{})", current_index + 1, all_count)?;
+                cui_outln!(cui)?;
             }
 
             if !self.resolve_song(db_pool, song_path).await? {
@@ -242,7 +242,7 @@ where
             }
 
             let cui = &self.cui;
-            cui_outln!(cui);
+            cui_outln!(cui)?;
         }
 
         Ok(false)

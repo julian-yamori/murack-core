@@ -66,10 +66,10 @@ where
 
         //取得した全ファイルについて処理
         for (song_idx, song_lib_path) in path_list.iter().enumerate() {
-            self.write_console_progress(song_idx, file_count, song_lib_path);
+            self.write_console_progress(song_idx, file_count, song_lib_path)?;
 
             if let Err(e) = self.unit_add(db_pool, song_lib_path).await {
-                self.cui.err(format_args!("{e}\n"));
+                self.cui.err(format_args!("{e}\n"))?;
             }
         }
 
@@ -117,14 +117,14 @@ where
         current_idx: usize,
         all_count: usize,
         song_path: &LibSongPath,
-    ) {
+    ) -> anyhow::Result<()> {
         cui_outln!(
             self.cui,
             "({}/{}) {}",
             current_idx + 1,
             all_count,
             song_path
-        );
+        )
     }
 }
 

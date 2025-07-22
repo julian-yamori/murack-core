@@ -1,17 +1,17 @@
-use crate::{cui::Cui, AppComponents, Config, Error};
+use crate::{AppComponents, Config, Error, cui::Cui};
 use anyhow::{Context, Result};
 use std::{
     path::{Path, PathBuf},
     rc::Rc,
 };
 use walk_base_2_domain::{
+    FileLibraryRepository,
     db_wrapper::{ConnectionFactory, ConnectionWrapper},
     folder::{DbFolderRepository, FolderUsecase},
     path::{LibPathStr, LibSongPath},
     playlist::DbPlaylistRepository,
     song::DbSongRepository,
     sync::DbSongSyncRepository,
-    FileLibraryRepository,
 };
 
 /// replaceコマンド
@@ -65,7 +65,7 @@ impl CommandReplace {
             }
         }
 
-        cui_outln!(self.cui);
+        cui_outln!(self.cui)?;
 
         //ライブラリ外側の見つからなかった曲があれば列挙
         if !listup_result.lib_not_founds.is_empty() {
@@ -75,7 +75,7 @@ impl CommandReplace {
                     path.display()
                 ))
             }
-            cui_outln!(self.cui);
+            cui_outln!(self.cui)?;
         }
 
         //差し替えられなかったライブラリ内の曲があれば列挙
@@ -84,7 +84,7 @@ impl CommandReplace {
                 self.cui
                     .err(format_args!("{} dosn't exist in source.\n", path))
             }
-            cui_outln!(self.cui);
+            cui_outln!(self.cui)?;
         }
 
         Ok(())
@@ -221,7 +221,8 @@ impl CommandReplace {
             )?;
 
             //旧パスの親ディレクトリが無くなるなら削除
-            self.folder_usecase.delete_db_if_empty(tx, &unit.old_lib_path.parent())?;
+            self.folder_usecase
+                .delete_db_if_empty(tx, &unit.old_lib_path.parent())?;
 
             let db_song = self
                 .db_song_sync_repository
@@ -289,7 +290,7 @@ impl CommandReplace {
             all_count,
             new_file_name,
             unit.old_lib_path
-        );
+        )?;
     }
 }
 
@@ -297,9 +298,9 @@ impl CommandReplace {
 fn song_ext_from_others(song_path: &LibSongPath, others: &Path) -> Result<LibSongPath> {
     match others.extension() {
         Some(ext) => {
-            let ext_utf8 = ext.to_str().with_context(|| {
-                format!("拡張子のUTF-8への変換に失敗: {}", others.display())
-            })?;
+            let ext_utf8 = ext
+                .to_str()
+                .with_context(|| format!("拡張子のUTF-8への変換に失敗: {}", others.display()))?;
             Ok(song_path.with_extension(ext_utf8))
         }
         //差し替え元に拡張子がなければ、とりあえず変更なし
@@ -375,15 +376,15 @@ mod tests {
     use crate::cui::BufferCui;
     use paste::paste;
     use walk_base_2_domain::{
-        mocks,
         MockFileLibraryRepository,
         folder::{MockDbFolderRepository, MockFolderUsecase},
+        mocks,
         playlist::MockDbPlaylistRepository,
         song::MockDbSongRepository,
         sync::MockDbSongSyncRepository,
     };
 
-    mocks!{
+    mocks! {
         CommandReplace,
         [FileLibraryRepository, DbFolderRepository, DbPlaylistRepository, DbSongRepository, DbSongSyncRepository, FolderUsecase],
         [args: Args, config: Rc<Config>, cui: Rc<BufferCui>, connection_factory: Rc<ConnectionFactory>]
@@ -405,7 +406,7 @@ mod tests {
     #[test]
     fn test_listup_files_song() {
         let mut mocks = new_mocks("/home/taro/test.flac", "folder/test.mp3");
-        
+
         mocks.file_library_repository(|m| {
             m.expect_search_song_outside_lib()
                 .returning(|_| Ok(vec![PathBuf::from("/home/taro/test.flac")]));
@@ -418,15 +419,18 @@ mod tests {
         let mut db = mocks.connection_factory.open().unwrap();
 
         mocks.run_target(|target| {
-            assert_eq!(target.listup_files(&mut db).unwrap(), ListupResult {
-                unit_list: vec![OpeUnit {
-                    new_file_path: PathBuf::from("/home/taro/test.flac"),
-                    old_lib_path: LibSongPath::new("folder/test.mp3"),
-                    new_lib_path: LibSongPath::new("folder/test.flac"),
-                }],
-                lib_not_founds: vec![],
-                remain_lib_songs: vec![],
-            })
+            assert_eq!(
+                target.listup_files(&mut db).unwrap(),
+                ListupResult {
+                    unit_list: vec![OpeUnit {
+                        new_file_path: PathBuf::from("/home/taro/test.flac"),
+                        old_lib_path: LibSongPath::new("folder/test.mp3"),
+                        new_lib_path: LibSongPath::new("folder/test.flac"),
+                    }],
+                    lib_not_founds: vec![],
+                    remain_lib_songs: vec![],
+                }
+            )
         });
     }
 
@@ -434,7 +438,7 @@ mod tests {
     #[test]
     fn test_listup_files_root() {
         let mut mocks = new_mocks("/home/taro/test.flac", "test.mp3");
-        
+
         mocks.file_library_repository(|m| {
             m.expect_search_song_outside_lib()
                 .returning(|_| Ok(vec![PathBuf::from("/home/taro/test.flac")]));
@@ -447,15 +451,18 @@ mod tests {
         let mut db = mocks.connection_factory.open().unwrap();
 
         mocks.run_target(|target| {
-            assert_eq!(target.listup_files(&mut db).unwrap(), ListupResult {
-                unit_list: vec![OpeUnit {
-                    new_file_path: PathBuf::from("/home/taro/test.flac"),
-                    old_lib_path: LibSongPath::new("test.mp3"),
-                    new_lib_path: LibSongPath::new("test.flac"),
-                }],
-                lib_not_founds: vec![],
-                remain_lib_songs: vec![],
-            })
+            assert_eq!(
+                target.listup_files(&mut db).unwrap(),
+                ListupResult {
+                    unit_list: vec![OpeUnit {
+                        new_file_path: PathBuf::from("/home/taro/test.flac"),
+                        old_lib_path: LibSongPath::new("test.mp3"),
+                        new_lib_path: LibSongPath::new("test.flac"),
+                    }],
+                    lib_not_founds: vec![],
+                    remain_lib_songs: vec![],
+                }
+            )
         });
     }
 
@@ -463,48 +470,53 @@ mod tests {
     #[test]
     fn test_listup_files_dir() {
         let mut mocks = new_mocks("/home/taro/musics", "folder/under");
-        
+
         mocks.file_library_repository(|m| {
-            m.expect_search_song_outside_lib()
-                .returning(|_| Ok(vec![
+            m.expect_search_song_outside_lib().returning(|_| {
+                Ok(vec![
                     PathBuf::from("/home/taro/song1.flac"),
                     PathBuf::from("/home/taro/song2.flac"),
                     PathBuf::from("/home/taro/song3.flac"),
-                ]));
+                ])
+            });
         });
         mocks.db_song_repository(|m| {
-            m.expect_get_path_by_path_str()
-                .returning(|_, _| Ok(vec![
+            m.expect_get_path_by_path_str().returning(|_, _| {
+                Ok(vec![
                     LibSongPath::new("folder/under/song1.mp3"),
                     LibSongPath::new("folder/under/song3.mp3"),
                     LibSongPath::new("folder/under/song2.flac"),
-                ]));
+                ])
+            });
         });
 
         let mut db = mocks.connection_factory.open().unwrap();
 
         mocks.run_target(|target| {
-            assert_eq!(target.listup_files(&mut db).unwrap(), ListupResult {
-                unit_list: vec![
-                    OpeUnit {
-                        new_file_path: PathBuf::from("/home/taro/song1.flac"),
-                        old_lib_path: LibSongPath::new("folder/under/song1.mp3"),
-                        new_lib_path: LibSongPath::new("folder/under/song1.flac"),
-                    },
-                    OpeUnit {
-                        new_file_path: PathBuf::from("/home/taro/song2.flac"),
-                        old_lib_path: LibSongPath::new("folder/under/song2.flac"),
-                        new_lib_path: LibSongPath::new("folder/under/song2.flac"),
-                    },
-                    OpeUnit {
-                        new_file_path: PathBuf::from("/home/taro/song3.flac"),
-                        old_lib_path: LibSongPath::new("folder/under/song3.mp3"),
-                        new_lib_path: LibSongPath::new("folder/under/song3.flac"),
-                    },
-                ],
-                lib_not_founds: vec![],
-                remain_lib_songs: vec![],
-            })
+            assert_eq!(
+                target.listup_files(&mut db).unwrap(),
+                ListupResult {
+                    unit_list: vec![
+                        OpeUnit {
+                            new_file_path: PathBuf::from("/home/taro/song1.flac"),
+                            old_lib_path: LibSongPath::new("folder/under/song1.mp3"),
+                            new_lib_path: LibSongPath::new("folder/under/song1.flac"),
+                        },
+                        OpeUnit {
+                            new_file_path: PathBuf::from("/home/taro/song2.flac"),
+                            old_lib_path: LibSongPath::new("folder/under/song2.flac"),
+                            new_lib_path: LibSongPath::new("folder/under/song2.flac"),
+                        },
+                        OpeUnit {
+                            new_file_path: PathBuf::from("/home/taro/song3.flac"),
+                            old_lib_path: LibSongPath::new("folder/under/song3.mp3"),
+                            new_lib_path: LibSongPath::new("folder/under/song3.flac"),
+                        },
+                    ],
+                    lib_not_founds: vec![],
+                    remain_lib_songs: vec![],
+                }
+            )
         });
     }
 
@@ -512,58 +524,63 @@ mod tests {
     #[test]
     fn test_listup_files_remain() {
         let mut mocks = new_mocks("/home/taro/musics", "folder/under");
-        
+
         mocks.file_library_repository(|m| {
-            m.expect_search_song_outside_lib()
-                .returning(|_| Ok(vec![
+            m.expect_search_song_outside_lib().returning(|_| {
+                Ok(vec![
                     PathBuf::from("/home/taro/f_rem1.flac"),
                     PathBuf::from("/home/taro/song1.flac"),
                     PathBuf::from("/home/taro/song2.flac"),
                     PathBuf::from("/home/taro/song3.flac"),
                     PathBuf::from("/home/taro/f_rem2.flac"),
-                ]));
+                ])
+            });
         });
         mocks.db_song_repository(|m| {
-            m.expect_get_path_by_path_str()
-                .returning(|_, _| Ok(vec![
+            m.expect_get_path_by_path_str().returning(|_, _| {
+                Ok(vec![
                     LibSongPath::new("folder/under/d_rem1.mp3"),
                     LibSongPath::new("folder/under/song1.mp3"),
                     LibSongPath::new("folder/under/song3.mp3"),
                     LibSongPath::new("folder/under/song2.flac"),
                     LibSongPath::new("folder/under/d_rem2.mp3"),
-                ]));
+                ])
+            });
         });
 
         let mut db = mocks.connection_factory.open().unwrap();
 
         mocks.run_target(|target| {
-            assert_eq!(target.listup_files(&mut db).unwrap(), ListupResult {
-                unit_list: vec![
-                    OpeUnit {
-                        new_file_path: PathBuf::from("/home/taro/song1.flac"),
-                        old_lib_path: LibSongPath::new("folder/under/song1.mp3"),
-                        new_lib_path: LibSongPath::new("folder/under/song1.flac"),
-                    },
-                    OpeUnit {
-                        new_file_path: PathBuf::from("/home/taro/song2.flac"),
-                        old_lib_path: LibSongPath::new("folder/under/song2.flac"),
-                        new_lib_path: LibSongPath::new("folder/under/song2.flac"),
-                    },
-                    OpeUnit {
-                        new_file_path: PathBuf::from("/home/taro/song3.flac"),
-                        old_lib_path: LibSongPath::new("folder/under/song3.mp3"),
-                        new_lib_path: LibSongPath::new("folder/under/song3.flac"),
-                    },
-                ],
-                lib_not_founds: vec![
-                    PathBuf::from("/home/taro/rem1.flac"),
-                    PathBuf::from("/home/taro/rem2.flac"),
-                ],
-                remain_lib_songs: vec![
-                    LibSongPath::new("folder/under/rem1.mp3"),
-                    LibSongPath::new("folder/under/rem2.mp3"),
-                ],
-            })
+            assert_eq!(
+                target.listup_files(&mut db).unwrap(),
+                ListupResult {
+                    unit_list: vec![
+                        OpeUnit {
+                            new_file_path: PathBuf::from("/home/taro/song1.flac"),
+                            old_lib_path: LibSongPath::new("folder/under/song1.mp3"),
+                            new_lib_path: LibSongPath::new("folder/under/song1.flac"),
+                        },
+                        OpeUnit {
+                            new_file_path: PathBuf::from("/home/taro/song2.flac"),
+                            old_lib_path: LibSongPath::new("folder/under/song2.flac"),
+                            new_lib_path: LibSongPath::new("folder/under/song2.flac"),
+                        },
+                        OpeUnit {
+                            new_file_path: PathBuf::from("/home/taro/song3.flac"),
+                            old_lib_path: LibSongPath::new("folder/under/song3.mp3"),
+                            new_lib_path: LibSongPath::new("folder/under/song3.flac"),
+                        },
+                    ],
+                    lib_not_founds: vec![
+                        PathBuf::from("/home/taro/rem1.flac"),
+                        PathBuf::from("/home/taro/rem2.flac"),
+                    ],
+                    remain_lib_songs: vec![
+                        LibSongPath::new("folder/under/rem1.mp3"),
+                        LibSongPath::new("folder/under/rem2.mp3"),
+                    ],
+                }
+            )
         });
     }
 }

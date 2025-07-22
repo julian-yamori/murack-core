@@ -143,15 +143,15 @@ where
         let cui = &self.cui;
 
         //結果表示
-        cui_outln!(cui, "----");
-        self.display_all_conflicts(&conflicts, pc_song, &db_song.song_sync);
+        cui_outln!(cui, "----")?;
+        self.display_all_conflicts(&conflicts, pc_song, &db_song.song_sync)?;
 
-        cui_outln!(cui, "1: PCからDBへ上書き");
-        cui_outln!(cui, "2: DBからPCへ上書きし、DAPも更新");
-        cui_outln!(cui, "3: それぞれの項目個別に処理方法を選択");
-        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-        cui_outln!(cui);
+        cui_outln!(cui, "1: PCからDBへ上書き")?;
+        cui_outln!(cui, "2: DBからPCへ上書きし、DAPも更新")?;
+        cui_outln!(cui, "3: それぞれの項目個別に処理方法を選択")?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+        cui_outln!(cui)?;
 
         let input = cui.input_case(&['1', '2', '3', '0', '-'], messages::MSG_SELECT_OPERATION)?;
 
@@ -215,30 +215,30 @@ where
         let input = {
             let cui = &self.cui;
 
-            cui_outln!(cui, "----");
-            cui_outln!(cui, "{}", conflict.item_name());
+            cui_outln!(cui, "----")?;
+            cui_outln!(cui, "{}", conflict.item_name())?;
 
-            cui_outln!(cui, "[PC]");
+            cui_outln!(cui, "[PC]")?;
             cui_outln!(
                 cui,
                 "{}",
                 conflict.display_value(pc_song).as_deref().unwrap_or("None")
-            );
+            )?;
 
-            cui_outln!(cui, "[DB]");
+            cui_outln!(cui, "[DB]")?;
             cui_outln!(
                 cui,
                 "{}",
                 conflict.display_value(db_sync).as_deref().unwrap_or("None")
-            );
+            )?;
 
-            cui_outln!(cui);
+            cui_outln!(cui)?;
 
-            cui_outln!(cui, "1: PCからDBへ上書き");
-            cui_outln!(cui, "2: DBからPCへ上書きし、DAPも更新");
-            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-            cui_outln!(cui);
+            cui_outln!(cui, "1: PCからDBへ上書き")?;
+            cui_outln!(cui, "2: DBからPCへ上書きし、DAPも更新")?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+            cui_outln!(cui)?;
 
             cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
@@ -295,22 +295,22 @@ where
 
         let cui = &self.cui;
 
-        cui_outln!(cui, "----");
+        cui_outln!(cui, "----")?;
         //PCのアートワーク情報を表示
-        cui_outln!(cui, "[PC]");
-        self.display_artwork(&pc_song.artworks);
-        cui_outln!(cui);
+        cui_outln!(cui, "[PC]")?;
+        self.display_artwork(&pc_song.artworks)?;
+        cui_outln!(cui)?;
 
         //DBのアートワーク情報を表示
-        cui_outln!(cui, "[DB]");
-        self.display_artwork(&db_song.song_sync.artworks);
-        cui_outln!(cui);
+        cui_outln!(cui, "[DB]")?;
+        self.display_artwork(&db_song.song_sync.artworks)?;
+        cui_outln!(cui)?;
 
-        cui_outln!(cui, "1: PCからDBへ上書き");
-        cui_outln!(cui, "2: DBからPCへ上書きし、DAPも更新");
-        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-        cui_outln!(cui);
+        cui_outln!(cui, "1: PCからDBへ上書き")?;
+        cui_outln!(cui, "2: DBからPCへ上書きし、DAPも更新")?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+        cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+        cui_outln!(cui)?;
 
         let input = cui.input_case(&['1', '2', '0', '-'], messages::MSG_SELECT_OPERATION)?;
 
@@ -383,20 +383,20 @@ where
             let cui = &self.cui;
 
             //再生時間の齟齬を表示
-            cui_outln!(cui, "----");
+            cui_outln!(cui, "----")?;
             cui_outln!(
                 cui,
                 "* 再生時間: {}ms | {}ms",
                 pc_song.duration,
                 db_song.song_sync.duration
-            );
-            cui_outln!(cui, "PC vs DB");
-            cui_outln!(cui);
+            )?;
+            cui_outln!(cui, "PC vs DB")?;
+            cui_outln!(cui)?;
 
-            cui_outln!(cui, "1: PCからDBへ上書き");
-            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE);
-            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE);
-            cui_outln!(cui);
+            cui_outln!(cui, "1: PCからDBへ上書き")?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_DONT_RESOLVE)?;
+            cui_outln!(cui, "{}", messages::CASE_MSG_TERMINATE)?;
+            cui_outln!(cui)?;
 
             cui.input_case(&['1', '0', '-'], messages::MSG_SELECT_OPERATION)?
         };
@@ -479,7 +479,7 @@ where
         conflicts: &[SongItemConflict],
         pc_song: &SongSync,
         db_song: &SongSync,
-    ) {
+    ) -> anyhow::Result<()> {
         let cui = &self.cui;
 
         for conflict in conflicts {
@@ -488,7 +488,7 @@ where
             match conflict.item_kind {
                 //メモと歌詞は省略
                 SongItemKind::Lyrics => {
-                    cui_outln!(cui, "* {}が異なります", item_name);
+                    cui_outln!(cui, "* {}が異なります", item_name)?;
                 }
                 _ => {
                     let pc_value = conflict.display_value(pc_song);
@@ -499,22 +499,24 @@ where
                         item_name,
                         pc_value.as_deref().unwrap_or("None"),
                         db_value.as_deref().unwrap_or("None"),
-                    );
+                    )?;
                 }
             }
         }
 
-        cui_outln!(cui, "(PC | DB)");
-        cui_outln!(cui);
+        cui_outln!(cui, "(PC | DB)")?;
+        cui_outln!(cui)?;
+
+        Ok(())
     }
 
     /// アートワークの情報をコンソールに出力
-    fn display_artwork(&self, artworks: &[SongArtwork]) {
+    fn display_artwork(&self, artworks: &[SongArtwork]) -> anyhow::Result<()> {
         let cui = &self.cui;
 
         if artworks.is_empty() {
-            cui_outln!(cui, "アートワークなし");
-            return;
+            cui_outln!(cui, "アートワークなし")?;
+            return Ok(());
         }
         for (idx, artwork) in artworks.iter().enumerate() {
             //画像タイプを文字列化
@@ -543,15 +545,15 @@ where
                 _ => "Unknown",
             };
 
-            cui_outln!(cui, "- アートワーク {}", idx);
-            cui_outln!(cui, "    MIME type: {}", artwork.picture.mime_type);
+            cui_outln!(cui, "- アートワーク {}", idx)?;
+            cui_outln!(cui, "    MIME type: {}", artwork.picture.mime_type)?;
             cui_outln!(
                 cui,
                 "    Picture type: {} ({})",
                 artwork.picture_type,
                 picture_type_str
-            );
-            cui_outln!(cui, "    Description: {}", artwork.description);
+            )?;
+            cui_outln!(cui, "    Description: {}", artwork.description)?;
 
             //TODO WalkBase1では画像を解析してwidth,heightを表示していた
             /*
@@ -562,5 +564,7 @@ where
             cout << "    Height: " << picFormat->getHeight() << endl;
             */
         }
+
+        Ok(())
     }
 }

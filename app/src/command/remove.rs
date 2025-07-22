@@ -63,22 +63,22 @@ where
             self.cui.err(format_args!(
                 "{}\n",
                 DomainError::DbPathStrNotFound(self.args.path.clone()),
-            ));
+            ))?;
             return Ok(());
         }
 
-        cui_outln!(self.cui, "以下の曲をDBから削除しました。");
+        cui_outln!(self.cui, "以下の曲をDBから削除しました。")?;
         for path in song_path_list {
-            cui_outln!(self.cui, "{}", path);
+            cui_outln!(self.cui, "{}", path)?;
         }
-        cui_outln!(self.cui);
+        cui_outln!(self.cui)?;
 
         Ok(())
     }
 
     /// DAPから削除
     pub fn remove_dap(&self) -> Result<()> {
-        cui_outln!(self.cui, "DAPからの削除中...");
+        cui_outln!(self.cui, "DAPからの削除中...")?;
 
         match self
             .song_usecase
@@ -88,7 +88,7 @@ where
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
                 Some(DomainError::FilePathStrNotFound { .. }) => {
-                    self.cui.err(format_args!("{e}\n"));
+                    self.cui.err(format_args!("{e}\n"))?;
                     Ok(())
                 }
                 _ => Err(e),
@@ -98,7 +98,7 @@ where
 
     /// PCから削除
     pub fn remove_pc(&self) -> Result<()> {
-        cui_outln!(self.cui, "PCからの削除中...");
+        cui_outln!(self.cui, "PCからの削除中...")?;
 
         match self
             .song_usecase
@@ -108,7 +108,7 @@ where
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
                 Some(DomainError::FilePathStrNotFound { .. }) => {
-                    self.cui.err(format_args!("{e}\n"));
+                    self.cui.err(format_args!("{e}\n"))?;
                     Ok(())
                 }
                 _ => Err(e),
