@@ -1,12 +1,17 @@
 //! 曲パスの検索機能
 
-use crate::utils;
-use anyhow::{Context, Result};
-use domain::path::{LibPathStr, LibSongPath};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
+
+use anyhow::{Context, Result};
+use murack_core_domain::{
+    Error as DomainError,
+    path::{LibPathStr, LibSongPath},
+};
+
+use crate::utils;
 
 /// ライブラリのフォルダ内で、指定パスに該当する曲のパスを列挙
 ///
@@ -77,7 +82,7 @@ fn search_dir_rec(dest: &mut Vec<PathBuf>, path: &Path) -> Result<()> {
     //子要素の走査
     let entries = match fs::read_dir(path) {
         Ok(i) => i.collect::<Vec<std::result::Result<std::fs::DirEntry, std::io::Error>>>(),
-        Err(e) => return Err(domain::Error::FileIoError(path.to_owned(), e).into()),
+        Err(e) => return Err(DomainError::FileIoError(path.to_owned(), e).into()),
     };
 
     //直下ディレクトリの絶対パスリスト
@@ -94,7 +99,7 @@ fn search_dir_rec(dest: &mut Vec<PathBuf>, path: &Path) -> Result<()> {
         let file_type = match entry.metadata() {
             Ok(m) => m.file_type(),
             Err(e) => {
-                return Err(domain::Error::FileIoError(entry_path, e).into());
+                return Err(DomainError::FileIoError(entry_path, e).into());
             }
         };
 

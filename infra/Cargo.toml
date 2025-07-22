@@ -8,10 +8,10 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.44"
 tokio = { version = "1.46", features = ["full"] }
-walk_base_2_domain = { path = "../domain" }
-walk_base_2_app = { path = "../app" }
-walk_base_2_data_db = { path = "../data_db" }
-walk_base_2_data_file = { path = "../data_file" }
+murack-core-domain = { path = "../domain" }
+murack-core-app = { path = "../app" }
+murack-core-data-db = { path = "../data_db" }
+murack-core-data-file = { path = "../data_file" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

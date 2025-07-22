@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::{
+use murack_core_domain::{
+    Error as DomainError,
     artwork::DbArtworkRepository,
     db::DbTransaction,
     folder::FolderIdMayRoot,
@@ -97,7 +98,7 @@ where
         //DBに既に存在しないか確認
         //TODO unique keyにする
         if song_dao.exists_path(tx, song_path).await? {
-            return Err(domain::Error::DbSongAlreadyExists(song_path.clone()).into());
+            return Err(DomainError::DbSongAlreadyExists(song_path.clone()).into());
         }
 
         let song_id = song_dao

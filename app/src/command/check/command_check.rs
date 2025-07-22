@@ -5,7 +5,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use anyhow::Result;
-use domain::{
+use murack_core_domain::{
     FileLibraryRepository,
     check::{CheckIssueSummary, CheckUsecase},
     db::DbTransaction,
@@ -285,7 +285,7 @@ mod tests {
     use super::super::{MockResolveDap, MockResolveDataMatch, MockResolveExistance};
     use super::*;
     use crate::cui::BufferCui;
-    use domain::{
+    use murack_core_domain::{
         MockFileLibraryRepository, check::MockCheckUsecase, path::LibPathStr,
         song::MockDbSongRepository,
     };

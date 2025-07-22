@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use walk_base_2_app::{Config, cui::Cui};
+use murack_core_app::{Config, cui::Cui};
 
 use crate::{AppArgs, Registry};
 
@@ -55,7 +55,7 @@ pub async fn run(args: impl Iterator<Item = String>, cui: impl Cui + Sync + Send
                 registry.command_help(&app_args.sub_args[..])?.run()?;
             }
             _ => {
-                return Err(walk_base_2_app::Error::InvalidCommandArgument {
+                return Err(murack_core_app::Error::InvalidCommandArgument {
                     msg: format!("sub command '{sub_command}' is invalid."),
                 }
                 .into());

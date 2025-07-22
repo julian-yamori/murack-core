@@ -1,5 +1,5 @@
 [package]
-name = "walk_base_2_data_file"
+name = "murack-core-data-file"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,5 +10,5 @@ anyhow = "1.0.44"
 thiserror = "2.0.12"
 trash = "5.2.2"
 
-domain = { path = "../domain", package = "walk_base_2_domain" }
-media = { path = "../media", package = "walk_base_2_media" }
+murack-core-domain = { path = "../domain", package = "murack-core-domain" }
+murack-core-media = { path = "../media", package = "murack-core-media" }

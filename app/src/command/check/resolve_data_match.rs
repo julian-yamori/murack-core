@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::{
-    FileLibraryRepository,
+use mockall::automock;
+use murack_core_domain::{
+    Error as DomainError, FileLibraryRepository,
     artwork::{DbArtworkRepository, SongArtwork},
     check::CheckUsecase,
     db::DbTransaction,
@@ -11,7 +12,6 @@ use domain::{
     song::SongItemKind,
     sync::{DbSongSync, DbSongSyncRepository, SongSync},
 };
-use mockall::automock;
 use sqlx::PgPool;
 
 use super::{SongItemConflict, messages};
@@ -425,7 +425,7 @@ where
         self.db_song_sync_repository
             .get_by_path(&mut tx, song_path)
             .await?
-            .ok_or_else(|| domain::Error::DbSongNotFound(song_path.clone()).into())
+            .ok_or_else(|| DomainError::DbSongNotFound(song_path.clone()).into())
     }
 
     /// DBに曲の連携情報(アートワーク以外)を保存

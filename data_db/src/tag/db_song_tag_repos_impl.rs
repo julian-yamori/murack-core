@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::{db::DbTransaction, tag::DbSongTagRepository};
+use murack_core_domain::{db::DbTransaction, tag::DbSongTagRepository};
 
 use super::SongTagsDao;
 

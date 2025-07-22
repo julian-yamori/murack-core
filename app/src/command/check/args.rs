@@ -1,5 +1,5 @@
 use anyhow::Result;
-use domain::path::LibPathStr;
+use murack_core_domain::path::LibPathStr;
 
 /// checkコマンドの引数
 #[derive(Debug, PartialEq, Clone)]

@@ -1,6 +1,6 @@
 use anyhow::Result;
+use murack_core_app::cui::StdCui;
 use std::env;
-use walk_base_2_app::cui::StdCui;
 
 #[tokio::main]
 async fn main() -> Result<()> {

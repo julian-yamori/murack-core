@@ -1,5 +1,5 @@
 [package]
-name = "walk_base_2_data_db"
+name = "murack-core-data-db"
 version = "0.1.0"
 edition = "2024"
 
@@ -17,8 +17,8 @@ serde_json = "1.0.141"
 sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio-rustls", "chrono"] }
 thiserror = "2.0.12"
 
-domain = { path = "../domain", package = "walk_base_2_domain" }
-media = { path = "../media", package = "walk_base_2_media" }
+murack-core-domain = { path = "../domain", package = "murack-core-domain" }
+murack-core-media = { path = "../media", package = "murack-core-media" }
 
 [dev-dependencies]
 anyhow = { version = "1.0.98", features = ["backtrace"] }

@@ -3,7 +3,7 @@ use std::collections::{BTreeSet, HashSet};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
-use domain::{
+use murack_core_domain::{
     dap::SongFinder,
     db::DbTransaction,
     path::LibSongPath,

@@ -3,8 +3,8 @@ use crate::{
     sync::SongSync,
 };
 use anyhow::Result;
-use media::audio_meta::AudioMetaData;
 use mockall::automock;
+use murack_core_media::audio_meta::AudioMetaData;
 use std::path::{Path, PathBuf};
 
 /// ファイルシステム上のライブラリを扱うリポジトリ

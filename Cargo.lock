@@ -1242,6 +1242,87 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "453e991b2efe96c288cbc2d03a19e353504294559ecb6c03067fff5bd824616d"
 
 [[package]]
+name = "murack-core-app"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "mockall",
+ "murack-core-domain",
+ "murack-core-media",
+ "sqlx",
+ "test-case",
+ "thiserror 2.0.12",
+ "toml 0.9.0",
+]
+
+[[package]]
+name = "murack-core-data-db"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-recursion",
+ "async-trait",
+ "chrono",
+ "derive-new",
+ "mockall",
+ "murack-core-domain",
+ "murack-core-media",
+ "once_cell",
+ "pretty_assertions",
+ "serde_json",
+ "sqlx",
+ "test-case",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "murack-core-data-file"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "murack-core-domain",
+ "murack-core-media",
+ "thiserror 2.0.12",
+ "trash",
+]
+
+[[package]]
+name = "murack-core-domain"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-recursion",
+ "async-trait",
+ "chrono",
+ "derive-new",
+ "mockall",
+ "murack-core-media",
+ "once_cell",
+ "serde",
+ "sqlx",
+ "test-case",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "murack-core-media"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "id3",
+ "image",
+ "md5",
+ "metaflac",
+ "mp3-duration",
+ "mp4ameta",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2633,93 +2714,12 @@ name = "walk_base_2"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "murack-core-app",
+ "murack-core-data-db",
+ "murack-core-data-file",
+ "murack-core-domain",
  "pretty_assertions",
  "tokio",
- "walk_base_2_app",
- "walk_base_2_data_db",
- "walk_base_2_data_file",
- "walk_base_2_domain",
-]
-
-[[package]]
-name = "walk_base_2_app"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "mockall",
- "sqlx",
- "test-case",
- "thiserror 2.0.12",
- "toml 0.9.0",
- "walk_base_2_domain",
- "walk_base_2_media",
-]
-
-[[package]]
-name = "walk_base_2_data_db"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-recursion",
- "async-trait",
- "chrono",
- "derive-new",
- "mockall",
- "once_cell",
- "pretty_assertions",
- "serde_json",
- "sqlx",
- "test-case",
- "thiserror 2.0.12",
- "tokio",
- "walk_base_2_domain",
- "walk_base_2_media",
-]
-
-[[package]]
-name = "walk_base_2_data_file"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "thiserror 2.0.12",
- "trash",
- "walk_base_2_domain",
- "walk_base_2_media",
-]
-
-[[package]]
-name = "walk_base_2_domain"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-recursion",
- "async-trait",
- "chrono",
- "derive-new",
- "mockall",
- "once_cell",
- "serde",
- "sqlx",
- "test-case",
- "thiserror 2.0.12",
- "tokio",
- "walk_base_2_media",
-]
-
-[[package]]
-name = "walk_base_2_media"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "id3",
- "image",
- "md5",
- "metaflac",
- "mp3-duration",
- "mp4ameta",
- "thiserror 2.0.12",
 ]
 
 [[package]]

@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use domain::{
+use mockall::automock;
+use murack_core_domain::{
     FileLibraryRepository,
     check::{CheckIssueSummary, CheckUsecase},
     path::LibSongPath,
 };
-use mockall::automock;
 
 use super::messages;
 use crate::{Config, cui::Cui};

@@ -1,4 +1,4 @@
-use domain::folder::FolderIdMayRoot;
+use murack_core_domain::folder::FolderIdMayRoot;
 
 pub fn db_from_folder_id_may_root(value: FolderIdMayRoot) -> Option<i32> {
     match value {

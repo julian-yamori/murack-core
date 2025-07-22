@@ -1,9 +1,10 @@
-use anyhow::{Context, Result};
-use domain::dap::DapRepository;
 use std::{
     fs::{self, Metadata},
     path::Path,
 };
+
+use anyhow::{Context, Result};
+use murack_core_domain::{Error as DomainError, dap::DapRepository};
 
 /// DapRepositoryの本実装
 pub struct DapRepositoryImpl {}
@@ -14,7 +15,7 @@ impl DapRepository for DapRepositoryImpl {
     /// - dap_plist_path: DAPのプレイリスト保存パス
     fn listup_playlist_files(&self, dap_plist_path: &Path) -> Result<Vec<String>> {
         let entries = fs::read_dir(dap_plist_path)
-            .map_err(|e| domain::Error::FileIoError(dap_plist_path.to_owned(), e))?;
+            .map_err(|e| DomainError::FileIoError(dap_plist_path.to_owned(), e))?;
 
         let mut ret_vec = Vec::new();
 
@@ -27,7 +28,7 @@ impl DapRepository for DapRepositoryImpl {
             let entry_path = entry.path();
             let metadata = entry
                 .metadata()
-                .map_err(|e| domain::Error::FileIoError(entry_path.clone(), e))?;
+                .map_err(|e| DomainError::FileIoError(entry_path.clone(), e))?;
 
             //プレイリストならリストに追加
             if is_entry_playlist(&entry_path, &metadata) {
@@ -64,7 +65,7 @@ impl DapRepository for DapRepositoryImpl {
     ) -> Result<()> {
         let path = dap_plist_path.join(file_name);
 
-        fs::write(&path, content).map_err(|e| domain::Error::FileIoError(path, e).into())
+        fs::write(&path, content).map_err(|e| DomainError::FileIoError(path, e).into())
     }
 
     /// DAPのプレイリストファイルを削除
@@ -74,7 +75,7 @@ impl DapRepository for DapRepositoryImpl {
     fn delete_playlist_file(&self, dap_plist_path: &Path, file_name: &str) -> Result<()> {
         let path = dap_plist_path.join(file_name);
 
-        fs::remove_file(&path).map_err(|e| domain::Error::FileIoError(path, e).into())
+        fs::remove_file(&path).map_err(|e| DomainError::FileIoError(path, e).into())
     }
 }
 

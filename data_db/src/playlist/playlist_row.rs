@@ -1,4 +1,4 @@
-use domain::playlist::{Playlist, PlaylistType, SortType};
+use murack_core_domain::playlist::{Playlist, PlaylistType, SortType};
 
 /// playlistテーブルのレコード
 pub struct PlaylistRow {

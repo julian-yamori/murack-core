@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::{
+use murack_core_domain::{
     db::DbTransaction,
     playlist::{DbPlaylistRepository, Playlist, PlaylistType},
 };
@@ -133,7 +133,7 @@ fn build_plist_children_recursive(
 
 #[cfg(test)]
 mod tests {
-    use domain::playlist::SortType;
+    use murack_core_domain::playlist::SortType;
 
     use super::super::MockPlaylistDao;
     use super::*;

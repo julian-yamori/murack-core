@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use media::{
+use murack_core_media::{
     audio_meta::{AudioPicture, AudioPictureEntry},
     picture::Picture,
 };

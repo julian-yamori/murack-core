@@ -1,9 +1,11 @@
 //! 曲データのコピー機能
 
-use crate::{Error, utils};
-use anyhow::{Context, Result};
-use domain::path::LibSongPath;
 use std::{fs, path::Path};
+
+use anyhow::{Context, Result};
+use murack_core_domain::{Error as DomainError, path::LibSongPath};
+
+use crate::{Error, utils};
 
 /// ライブラリからライブラリへ、曲データをコピー
 ///
@@ -17,7 +19,7 @@ pub fn copy_song_over_lib(src_lib: &Path, dest_lib: &Path, target: &LibSongPath)
     //コピー元にファイルがあるか確認
     let src_song = target.abs(src_lib);
     if !src_song.exists() {
-        return Err(domain::Error::FileSongNotFound {
+        return Err(DomainError::FileSongNotFound {
             lib_root: src_lib.to_owned(),
             song_path: target.to_owned(),
         }
@@ -27,7 +29,7 @@ pub fn copy_song_over_lib(src_lib: &Path, dest_lib: &Path, target: &LibSongPath)
     //コピー先に既に存在しないか確認
     let dest_song = target.abs(dest_lib);
     if dest_song.exists() {
-        return Err(domain::Error::FileSongAlreadyExists {
+        return Err(DomainError::FileSongAlreadyExists {
             lib_root: dest_lib.to_owned(),
             song_path: target.to_owned(),
         }
@@ -36,7 +38,7 @@ pub fn copy_song_over_lib(src_lib: &Path, dest_lib: &Path, target: &LibSongPath)
 
     //コピー先で不足しているディレクトリを作成
     if let Some(parent) = dest_song.parent() {
-        fs::create_dir_all(parent).map_err(|e| domain::Error::FileIoError(parent.to_owned(), e))?;
+        fs::create_dir_all(parent).map_err(|e| DomainError::FileIoError(parent.to_owned(), e))?;
     }
 
     //コピーを実行
@@ -74,7 +76,7 @@ pub fn copy_from_outside_lib(
     //コピー先に既に存在しないか確認
     let dest_song = song_path.abs(lib_root);
     if dest_song.exists() {
-        return Err(domain::Error::FileSongAlreadyExists {
+        return Err(DomainError::FileSongAlreadyExists {
             lib_root: lib_root.to_owned(),
             song_path: song_path.to_owned(),
         }
@@ -83,7 +85,7 @@ pub fn copy_from_outside_lib(
 
     //コピー先で不足しているディレクトリを作成
     if let Some(parent) = dest_song.parent() {
-        fs::create_dir_all(parent).map_err(|e| domain::Error::FileIoError(parent.to_owned(), e))?;
+        fs::create_dir_all(parent).map_err(|e| DomainError::FileIoError(parent.to_owned(), e))?;
     }
 
     //コピーを実行
@@ -104,7 +106,7 @@ pub fn overwrite_song_over_lib(
     //コピー元にファイルがあるか確認
     let src_song = target.abs(src_lib);
     if !src_song.exists() {
-        return Err(domain::Error::FileSongNotFound {
+        return Err(DomainError::FileSongNotFound {
             lib_root: src_lib.to_owned(),
             song_path: target.to_owned(),
         }
@@ -125,7 +127,7 @@ pub fn overwrite_song_over_lib(
         //コピー元に歌詞ファイルがない場合
         //上書き先にあれば削除
         if dest_lrc.exists() {
-            fs::remove_file(&dest_lrc).map_err(|e| domain::Error::FileIoError(dest_lrc, e))?;
+            fs::remove_file(&dest_lrc).map_err(|e| DomainError::FileIoError(dest_lrc, e))?;
         }
     }
 

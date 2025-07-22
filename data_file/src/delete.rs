@@ -1,10 +1,15 @@
 //! 曲データの削除機能
 
-use crate::utils;
-use anyhow::Result;
-use domain::path::{LibPathStr, LibSongPath};
 use std::fs;
 use std::path::Path;
+
+use anyhow::Result;
+use murack_core_domain::{
+    Error as DomainError,
+    path::{LibPathStr, LibSongPath},
+};
+
+use crate::utils;
 
 /// ライブラリから曲を削除
 ///
@@ -15,7 +20,7 @@ pub fn delete_song(lib_root: &Path, target: &LibSongPath) -> Result<()> {
     //ファイルが存在するか確認
     let abs_path = target.abs(lib_root);
     if !abs_path.exists() {
-        return Err(domain::Error::FileSongNotFound {
+        return Err(DomainError::FileSongNotFound {
             lib_root: lib_root.to_owned(),
             song_path: target.to_owned(),
         }
@@ -38,7 +43,7 @@ pub fn delete_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
 
     //ファイルが存在しない
     if !target_abs.exists() {
-        Err(domain::Error::FilePathStrNotFound {
+        Err(DomainError::FilePathStrNotFound {
             lib_root: lib_root.to_owned(),
             path_str: target.to_owned(),
         }
@@ -60,13 +65,13 @@ pub fn delete_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
 /// # Arguments
 /// - abs_path: 削除対象曲ファイルの絶対パス
 fn delete_song_checked(abs_path: &Path) -> Result<()> {
-    fs::remove_file(abs_path).map_err(|e| domain::Error::FileIoError(abs_path.to_owned(), e))?;
+    fs::remove_file(abs_path).map_err(|e| DomainError::FileIoError(abs_path.to_owned(), e))?;
 
     let lrc_path = utils::get_lrc_path(abs_path);
 
     //歌詞ファイルもあれば削除
     if lrc_path.exists() {
-        fs::remove_file(&lrc_path).map_err(|e| domain::Error::FileIoError(lrc_path, e))?;
+        fs::remove_file(&lrc_path).map_err(|e| DomainError::FileIoError(lrc_path, e))?;
     }
 
     Ok(())
@@ -81,7 +86,7 @@ pub fn trash_song(lib_root: &Path, target: &LibSongPath) -> Result<()> {
     //ファイルが存在するか確認
     let abs_path = target.abs(lib_root);
     if !abs_path.exists() {
-        return Err(domain::Error::FileSongNotFound {
+        return Err(DomainError::FileSongNotFound {
             lib_root: lib_root.to_owned(),
             song_path: target.to_owned(),
         }
@@ -104,7 +109,7 @@ pub fn trash_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
 
     //ファイルが存在しない
     if !target_abs.exists() {
-        Err(domain::Error::FilePathStrNotFound {
+        Err(DomainError::FilePathStrNotFound {
             lib_root: lib_root.to_owned(),
             path_str: target.to_owned(),
         }

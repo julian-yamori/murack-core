@@ -1,6 +1,6 @@
 use anyhow::Result;
-use domain::{
-    FileLibraryRepository,
+use murack_core_domain::{
+    Error as DomainError, FileLibraryRepository,
     db::DbTransaction,
     path::{LibPathStr, LibSongPath},
     sync::SyncUsecase,
@@ -57,7 +57,7 @@ where
 
         let file_count = path_list.len();
         if file_count == 0 {
-            return Err(domain::Error::FilePathStrNotFound {
+            return Err(DomainError::FilePathStrNotFound {
                 lib_root: self.config.pc_lib.clone(),
                 path_str: self.args.path.clone(),
             }

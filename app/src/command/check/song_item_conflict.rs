@@ -1,4 +1,4 @@
-use domain::{song::SongItemKind, sync::SongSync};
+use murack_core_domain::{song::SongItemKind, sync::SongSync};
 
 /// 曲の項目一つの競合についての機能
 pub struct SongItemConflict {

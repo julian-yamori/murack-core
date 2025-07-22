@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use walk_base_2_app::{
+use murack_core_app::{
     Config,
     command::{
         CommandAdd, CommandArtworkGet, CommandCheck, CommandHelp, CommandMove, CommandPlaylist,
@@ -9,13 +9,13 @@ use walk_base_2_app::{
     },
     cui::Cui,
 };
-use walk_base_2_data_db::db_components::{
+use murack_core_data_db::db_components::{
     DbComponents, TypeDbArtworkRepository, TypeDbFolderRepository, TypeDbPlaylistRepository,
     TypeDbPlaylistSongRepository, TypeDbSongRepository, TypeDbSongSyncRepository,
     TypeDbSongTagRepository, TypeSongFinder,
 };
-use walk_base_2_data_file::{DapRepositoryImpl, FileLibraryRepositoryImpl};
-use walk_base_2_domain::{
+use murack_core_data_file::{DapRepositoryImpl, FileLibraryRepositoryImpl};
+use murack_core_domain::{
     check::CheckUsecaseImpl, dap::DapPlaylistUsecaseImpl, folder::FolderUsecaseImpl,
     song::SongUsecaseImpl, sync::SyncUsecaseImpl,
 };

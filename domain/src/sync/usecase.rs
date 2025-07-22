@@ -117,7 +117,7 @@ mod tests {
     use std::sync::Arc;
 
     use chrono::NaiveDate;
-    use media::picture::Picture;
+    use murack_core_media::picture::Picture;
 
     use super::super::MockDbSongSyncRepository;
     use super::*;

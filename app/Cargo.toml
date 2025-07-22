@@ -1,5 +1,5 @@
 [package]
-name = "walk_base_2_app"
+name = "murack-core-app"
 version = "0.1.0"
 edition = "2024"
 
@@ -13,8 +13,8 @@ sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio-rustls"] }
 thiserror = "2.0.12"
 toml = "0.9.0"
 
-domain = { path = "../domain", package = "walk_base_2_domain" }
-media = { path = "../media", package = "walk_base_2_media" }
+murack-core-domain = { path = "../domain" }
+murack-core-media = { path = "../media" }
 
 [dev-dependencies]
 anyhow = { version = "1.0.98", features = ["backtrace"] }

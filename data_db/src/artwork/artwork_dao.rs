@@ -1,5 +1,5 @@
 use anyhow::Result;
-use domain::db::DbTransaction;
+use murack_core_domain::db::DbTransaction;
 
 /// artworkテーブルのDAO
 pub struct ArtworkDao {}

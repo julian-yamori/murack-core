@@ -1,10 +1,12 @@
 //! ファイルの移動機能
 
-use crate::utils;
-use anyhow::{Context, Result};
-use domain::path::LibPathStr;
 use std::fs;
 use std::path::Path;
+
+use anyhow::{Context, Result};
+use murack_core_domain::{Error as DomainError, path::LibPathStr};
+
+use crate::utils;
 
 /// パス文字列を指定してライブラリ内のファイル/フォルダを移動
 ///
@@ -15,7 +17,7 @@ use std::path::Path;
 pub fn move_path_str(lib_root: &Path, src: &LibPathStr, dest: &LibPathStr) -> Result<()> {
     let src_abs = src.abs(lib_root);
     if !src_abs.exists() {
-        return Err(domain::Error::FilePathStrNotFound {
+        return Err(DomainError::FilePathStrNotFound {
             lib_root: lib_root.to_owned(),
             path_str: src.to_owned(),
         }
@@ -24,7 +26,7 @@ pub fn move_path_str(lib_root: &Path, src: &LibPathStr, dest: &LibPathStr) -> Re
 
     let dest_abs = dest.abs(lib_root);
     if dest_abs.exists() {
-        return Err(domain::Error::FilePathStrAlreadyExists {
+        return Err(DomainError::FilePathStrAlreadyExists {
             lib_root: lib_root.to_owned(),
             path_str: dest.to_owned(),
         }
@@ -33,7 +35,7 @@ pub fn move_path_str(lib_root: &Path, src: &LibPathStr, dest: &LibPathStr) -> Re
 
     //移動先で不足しているディレクトリを作成
     if let Some(parent) = dest_abs.parent() {
-        fs::create_dir_all(parent).map_err(|e| domain::Error::FileIoError(parent.to_owned(), e))?;
+        fs::create_dir_all(parent).map_err(|e| DomainError::FileIoError(parent.to_owned(), e))?;
     }
 
     //移動を実行

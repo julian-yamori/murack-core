@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::{db::DbTransaction, path::LibSongPath};
+use murack_core_domain::{db::DbTransaction, path::LibSongPath};
 
 use super::{SongSyncEntry, SongSyncRow};
 

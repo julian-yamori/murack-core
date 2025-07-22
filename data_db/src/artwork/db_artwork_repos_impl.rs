@@ -2,11 +2,11 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use domain::{
+use murack_core_domain::{
     artwork::{DbArtworkRepository, SongArtwork},
     db::DbTransaction,
 };
-use media::picture::Picture;
+use murack_core_media::picture::Picture;
 
 use super::{ArtworkCache, ArtworkCachedData, ArtworkDao, ArtworkImageDao, SongArtworkDao};
 

@@ -4,7 +4,7 @@ mod tests;
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::NaiveDate;
-use domain::{
+use murack_core_domain::{
     db::DbTransaction,
     filter::{
         ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,

@@ -1,14 +1,18 @@
 //! DBとの連携データの読み書き機能
 
-use crate::utils;
-use anyhow::Result;
-use domain::{artwork::SongArtwork, path::LibSongPath, sync::SongSync};
-use media::audio_meta::{AudioMetaData, FormatType, formats};
 use std::{
     fs::{self, File},
     io::prelude::*,
     path::Path,
 };
+
+use anyhow::Result;
+use murack_core_domain::{
+    Error as DomainError, artwork::SongArtwork, path::LibSongPath, sync::SongSync,
+};
+use murack_core_media::audio_meta::{AudioMetaData, FormatType, formats};
+
+use crate::utils;
 
 /// 曲のオーディオメタデータを読み込み
 ///
@@ -20,7 +24,7 @@ pub fn read_metadata(lib_root: &Path, song_path: &LibSongPath) -> Result<AudioMe
 
     //ファイルがない場合はdomain側で判別したいので個別エラー
     if !song_abs.exists() {
-        return Err(domain::Error::FileSongNotFound {
+        return Err(DomainError::FileSongNotFound {
             lib_root: lib_root.to_owned(),
             song_path: song_path.to_owned(),
         }
@@ -141,7 +145,7 @@ fn write_lyrics(path: &Path, lyrics: &Option<String>) -> Result<()> {
     }
 }
 
-/// std::io::errorをFileIoErrorに変換
-fn io_to_my_error(path: &Path, e: std::io::Error) -> domain::Error {
-    domain::Error::FileIoError(path.to_owned(), e)
+/// std::io::error を DomainError::FileIoErrorに変換
+fn io_to_my_error(path: &Path, e: std::io::Error) -> DomainError {
+    DomainError::FileIoError(path.to_owned(), e)
 }

@@ -1,10 +1,10 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::{
+use mockall::mock;
+use murack_core_domain::{
     db::DbTransaction,
     playlist::{PlaylistType, SortType},
 };
-use mockall::mock;
 
 use super::PlaylistRow;
 

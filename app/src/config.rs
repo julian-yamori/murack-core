@@ -1,10 +1,13 @@
-use crate::Error;
-use anyhow::{Context, Result};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
+
+use anyhow::{Context, Result};
+use murack_core_domain::Error as DomainError;
 use toml::{Value, value::Table};
+
+use crate::Error;
 
 /// 設定ファイル取扱
 #[derive(Debug, PartialEq)]
@@ -27,7 +30,7 @@ impl Config {
     pub fn load(path: &Path) -> Result<Self> {
         let file_str = match fs::read_to_string(path) {
             Ok(s) => s,
-            Err(e) => return Err(domain::Error::FileIoError(path.to_owned(), e).into()),
+            Err(e) => return Err(DomainError::FileIoError(path.to_owned(), e).into()),
         };
         let root_v = file_str
             .parse::<Value>()

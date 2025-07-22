@@ -1,5 +1,5 @@
 use anyhow::Result;
-use domain::dap::{DapPlaylistObserver, DapPlaylistUsecase};
+use murack_core_domain::dap::{DapPlaylistObserver, DapPlaylistUsecase};
 
 use crate::{Config, cui::Cui, db_pool_connect};
 

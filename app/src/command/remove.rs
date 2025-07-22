@@ -1,5 +1,7 @@
 use anyhow::Result;
-use domain::{db::DbTransaction, path::LibPathStr, song::SongUsecase};
+use murack_core_domain::{
+    Error as DomainError, db::DbTransaction, path::LibPathStr, song::SongUsecase,
+};
 
 use crate::{Config, Error, cui::Cui, db_pool_connect};
 
@@ -61,7 +63,7 @@ where
         if song_path_list.is_empty() {
             self.cui.err(format_args!(
                 "{}\n",
-                domain::Error::DbPathStrNotFound(self.args.path.clone()),
+                DomainError::DbPathStrNotFound(self.args.path.clone()),
             ));
             return Ok(());
         }
@@ -86,7 +88,7 @@ where
             Ok(_) => Ok(()),
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
-                Some(domain::Error::FilePathStrNotFound { .. }) => {
+                Some(DomainError::FilePathStrNotFound { .. }) => {
                     self.cui.err(format_args!("{e}\n"));
                     Ok(())
                 }
@@ -106,7 +108,7 @@ where
             Ok(_) => Ok(()),
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
-                Some(domain::Error::FilePathStrNotFound { .. }) => {
+                Some(DomainError::FilePathStrNotFound { .. }) => {
                     self.cui.err(format_args!("{e}\n"));
                     Ok(())
                 }

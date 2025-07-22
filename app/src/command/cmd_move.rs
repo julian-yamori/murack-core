@@ -1,6 +1,6 @@
 use anyhow::Result;
-use domain::{
-    FileLibraryRepository,
+use murack_core_domain::{
+    Error as DomainError, FileLibraryRepository,
     db::DbTransaction,
     folder::DbFolderRepository,
     path::LibPathStr,
@@ -100,7 +100,7 @@ where
             .file_library_repository
             .is_exist_path_str(pc_lib, dest_path_str)?
         {
-            return Err(domain::Error::FilePathStrAlreadyExists {
+            return Err(DomainError::FilePathStrAlreadyExists {
                 lib_root: pc_lib.clone(),
                 path_str: dest_path_str.clone(),
             }
@@ -118,7 +118,7 @@ where
             .file_library_repository
             .is_exist_path_str(dap_lib, dest_path_str)?
         {
-            return Err(domain::Error::FilePathStrAlreadyExists {
+            return Err(DomainError::FilePathStrAlreadyExists {
                 lib_root: dap_lib.clone(),
                 path_str: dest_path_str.clone(),
             }
@@ -143,7 +143,7 @@ where
             .is_exist_path(&mut tx, &dest_song_path)
             .await?
         {
-            return Err(domain::Error::DbSongAlreadyExists(dest_song_path).into());
+            return Err(DomainError::DbSongAlreadyExists(dest_song_path).into());
         }
 
         //フォルダのチェック
@@ -153,7 +153,7 @@ where
             .is_exist_path(&mut tx, &dest_dir_path)
             .await?
         {
-            return Err(domain::Error::DbFolderAlreadyExists(dest_dir_path).into());
+            return Err(DomainError::DbFolderAlreadyExists(dest_dir_path).into());
         }
 
         Ok(())

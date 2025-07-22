@@ -1,7 +1,7 @@
 use crate::{Config, Error, cui::Cui};
 
 use anyhow::{Context, Result, anyhow};
-use domain::{FileLibraryRepository, path::LibSongPath};
+use murack_core_domain::{FileLibraryRepository, path::LibSongPath};
 
 use std::{
     fs,
@@ -102,7 +102,11 @@ fn make_output_path(
         "image/png" => "png",
         "image/gif" => "gif",
         "image/bmp" => "bmp",
-        s => return Err(media::Error::UnsupportedArtworkFmt { fmt: s.to_owned() }.into()),
+        s => {
+            return Err(
+                murack_core_media::Error::UnsupportedArtworkFmt { fmt: s.to_owned() }.into(),
+            );
+        }
     };
 
     let old_stem = dest

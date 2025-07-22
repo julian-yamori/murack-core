@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::{db::DbTransaction, folder::FolderIdMayRoot, path::LibDirPath};
 use mockall::mock;
+use murack_core_domain::{db::DbTransaction, folder::FolderIdMayRoot, path::LibDirPath};
 
 use super::FolderPathRow;
 use crate::converts::{DbOptionString, enums::db_from_folder_id_may_root};
