@@ -2719,6 +2719,7 @@ dependencies = [
  "murack-core-data-file",
  "murack-core-domain",
  "pretty_assertions",
+ "sqlx",
  "tokio",
 ]
 

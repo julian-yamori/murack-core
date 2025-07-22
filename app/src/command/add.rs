@@ -7,7 +7,7 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
-use crate::{Config, Error, cui::Cui, db_pool_connect};
+use crate::{Config, Error, cui::Cui};
 
 /// addコマンド
 ///
@@ -49,7 +49,7 @@ where
     }
 
     /// このコマンドを実行
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self, db_pool: &PgPool) -> Result<()> {
         //指定されたパスから音声ファイルを検索
         let path_list = self
             .file_library_repository
@@ -64,13 +64,11 @@ where
             .into());
         }
 
-        let db_pool = db_pool_connect(&self.config.database_url).await?;
-
         //取得した全ファイルについて処理
         for (song_idx, song_lib_path) in path_list.iter().enumerate() {
             self.write_console_progress(song_idx, file_count, song_lib_path);
 
-            if let Err(e) = self.unit_add(&db_pool, song_lib_path).await {
+            if let Err(e) = self.unit_add(db_pool, song_lib_path).await {
                 self.cui.err(format_args!("{e}\n"));
             }
         }

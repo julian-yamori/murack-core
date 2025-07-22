@@ -2,8 +2,9 @@ use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError, db::DbTransaction, path::LibPathStr, song::SongUsecase,
 };
+use sqlx::PgPool;
 
-use crate::{Config, Error, cui::Cui, db_pool_connect};
+use crate::{Config, Error, cui::Cui};
 
 /// removeコマンド
 ///
@@ -41,16 +42,14 @@ where
     /// このコマンドを実行
     /// # Arguments
     /// - command_line: コマンドライン引数
-    pub async fn run(&self) -> Result<()> {
-        self.remove_db().await?;
+    pub async fn run(&self, db_pool: &PgPool) -> Result<()> {
+        self.remove_db(db_pool).await?;
         self.remove_dap()?;
         self.remove_pc()
     }
 
     /// DBから削除
-    pub async fn remove_db(&self) -> Result<()> {
-        let db_pool = db_pool_connect(&self.config.database_url).await?;
-
+    pub async fn remove_db(&self, db_pool: &PgPool) -> Result<()> {
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
         };

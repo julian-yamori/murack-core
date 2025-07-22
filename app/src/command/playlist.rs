@@ -1,7 +1,8 @@
 use anyhow::Result;
 use murack_core_domain::dap::{DapPlaylistObserver, DapPlaylistUsecase};
+use sqlx::PgPool;
 
-use crate::{Config, cui::Cui, db_pool_connect};
+use crate::{Config, cui::Cui};
 
 /// playlistコマンド
 ///
@@ -30,12 +31,11 @@ where
     }
 
     /// このコマンドを実行
-    pub async fn run(self) -> Result<()> {
+    pub async fn run(self, db_pool: &PgPool) -> Result<()> {
         let mut observer = Observer { cui: self.cui };
-        let db_pool = db_pool_connect(&self.config.database_url).await?;
 
         self.dap_playlist_usecase
-            .run(&db_pool, &self.config.dap_playlist, false, &mut observer)
+            .run(db_pool, &self.config.dap_playlist, false, &mut observer)
             .await
     }
 }

@@ -15,7 +15,7 @@ use murack_core_domain::{
 use sqlx::PgPool;
 
 use super::{Args, ResolveDap, ResolveDataMatch, ResolveExistance, ResolveFileExistanceResult};
-use crate::{Config, cui::Cui, db_pool_connect};
+use crate::{Config, cui::Cui};
 
 pub struct CommandCheck<CUI, REX, RDM, RDP, FR, CS, SR>
 where
@@ -77,17 +77,15 @@ where
     }
 
     /// このコマンドを実行
-    pub async fn run(&self) -> Result<()> {
-        let db_pool = db_pool_connect(&self.config.database_url).await?;
-
-        let path_list = self.listup_song_path(&db_pool).await?;
-        let conflict_list = self.summary_check(&db_pool, path_list).await?;
+    pub async fn run(&self, db_pool: &PgPool) -> Result<()> {
+        let path_list = self.listup_song_path(db_pool).await?;
+        let conflict_list = self.summary_check(db_pool, path_list).await?;
 
         if !self.summary_result_cui(&conflict_list)? {
             return Ok(());
         }
 
-        let terminated = self.resolve_all_songs(&db_pool, &conflict_list).await?;
+        let terminated = self.resolve_all_songs(db_pool, &conflict_list).await?;
 
         if !terminated {
             let cui = &self.cui;

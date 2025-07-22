@@ -15,31 +15,41 @@ pub async fn run(args: impl Iterator<Item = String>, cui: impl Cui + Sync + Send
     let app_args = AppArgs::parse(args);
     let config = load_config(app_args.config_path.as_deref())?;
 
+    let db_pool = sqlx::postgres::PgPoolOptions::new()
+        .connect(&config.database_url)
+        .await?;
+
     let registry = Registry::new(cui, config);
 
     match app_args.sub_command {
         //サブコマンドにより、コマンドオブジェクトを分岐
         Some(sub_command) => match &*sub_command {
             "add" => {
-                registry.command_add(&app_args.sub_args[..])?.run().await?;
+                registry
+                    .command_add(&app_args.sub_args[..])?
+                    .run(&db_pool)
+                    .await?;
             }
             "check" => {
                 registry
                     .command_check(&app_args.sub_args[..])?
-                    .run()
+                    .run(&db_pool)
                     .await?;
             }
             "move" => {
-                registry.command_move(&app_args.sub_args[..])?.run().await?;
+                registry
+                    .command_move(&app_args.sub_args[..])?
+                    .run(&db_pool)
+                    .await?;
             }
             "remove" => {
                 registry
                     .command_remove(&app_args.sub_args[..])?
-                    .run()
+                    .run(&db_pool)
                     .await?;
             }
             "playlist" => {
-                registry.command_playlist().run().await?;
+                registry.command_playlist().run(&db_pool).await?;
             }
             "replace" => {
                 //todo app側で無効化中

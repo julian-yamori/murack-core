@@ -8,7 +8,7 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
-use crate::{Config, Error, db_pool_connect};
+use crate::{Config, Error};
 
 /// moveコマンド
 ///
@@ -55,12 +55,10 @@ where
     }
 
     /// このコマンドを実行
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self, db_pool: &PgPool) -> Result<()> {
         self.check_pc_exist()?;
         self.check_dap_exist()?;
-
-        let db_pool = db_pool_connect(&self.config.database_url).await?;
-        self.check_db_exist(&db_pool).await?;
+        self.check_db_exist(db_pool).await?;
 
         let src_path_str = &self.args.src_path;
         let dest_path_str = &self.args.dest_path;

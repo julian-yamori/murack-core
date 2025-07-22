@@ -12,10 +12,3 @@ mod config;
 pub use config::Config;
 
 pub mod command;
-
-/// DBコネクションプールに接続
-pub async fn db_pool_connect(database_url: &str) -> anyhow::Result<sqlx::PgPool> {
-    Ok(sqlx::postgres::PgPoolOptions::new()
-        .connect(database_url)
-        .await?)
-}
