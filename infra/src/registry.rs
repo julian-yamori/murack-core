@@ -7,7 +7,7 @@ use murack_core_app::{
         CommandAdd, CommandArtworkGet, CommandCheck, CommandHelp, CommandMove, CommandPlaylist,
         CommandRemove, ResolveDapImpl, ResolveDataMatchImpl, ResolveExistanceImpl,
     },
-    cui::Cui,
+    cui::StdCui,
 };
 use murack_core_data_db::db_components::{
     DbComponents, TypeDbArtworkRepository, TypeDbFolderRepository, TypeDbPlaylistRepository,
@@ -20,20 +20,14 @@ use murack_core_domain::{
     song::SongUsecaseImpl, sync::SyncUsecaseImpl,
 };
 
-pub struct Registry<CUI>
-where
-    CUI: Cui + Send + Sync,
-{
-    cui: CUI,
+pub struct Registry {
+    cui: StdCui,
     config: Config,
     db_registry: DbComponents,
 }
 
-impl<CUI> Registry<CUI>
-where
-    CUI: Cui + Send + Sync,
-{
-    pub fn new(cui: CUI, config: Config) -> Self {
+impl Registry {
+    pub fn new(cui: StdCui, config: Config) -> Self {
         Self {
             cui,
             config,
@@ -44,7 +38,7 @@ where
     // -----------------------------
     // Commands
 
-    pub fn command_add(self, command_line: &[String]) -> Result<TypeCommandAdd<CUI>> {
+    pub fn command_add(self, command_line: &[String]) -> Result<TypeCommandAdd<StdCui>> {
         let file_library_repository = self.file_library_repository();
         let sync_usecase = self.sync_usecase();
         CommandAdd::new(
@@ -56,7 +50,7 @@ where
         )
     }
 
-    pub fn command_check(self, command_line: &[String]) -> Result<TypeCommandCheck<CUI>> {
+    pub fn command_check(self, command_line: &[String]) -> Result<TypeCommandCheck<StdCui>> {
         let file_library_repository1 = self.file_library_repository();
         let file_library_repository2 = self.file_library_repository();
         let file_library_repository3 = self.file_library_repository();
@@ -117,12 +111,12 @@ where
         )
     }
 
-    pub fn command_remove(self, command_line: &[String]) -> Result<TypeCommandRemove<CUI>> {
+    pub fn command_remove(self, command_line: &[String]) -> Result<TypeCommandRemove<StdCui>> {
         let song_usecase = self.song_usecase();
         CommandRemove::new(command_line, self.config, self.cui, song_usecase)
     }
 
-    pub fn command_playlist(self) -> TypeCommandPlaylist<CUI> {
+    pub fn command_playlist(self) -> TypeCommandPlaylist<StdCui> {
         let dap_playlist_usecase = self.dap_playlist_usecase();
         CommandPlaylist::new(self.config, self.cui, dap_playlist_usecase)
     }
@@ -130,12 +124,12 @@ where
     pub fn command_artwork_get(
         self,
         command_line: &[String],
-    ) -> Result<TypeCommandArtworkGet<CUI>> {
+    ) -> Result<TypeCommandArtworkGet<StdCui>> {
         let file_library_repository = self.file_library_repository();
         CommandArtworkGet::new(command_line, self.config, self.cui, file_library_repository)
     }
 
-    pub fn command_help(self, command_line: &[String]) -> Result<CommandHelp<CUI>> {
+    pub fn command_help(self, command_line: &[String]) -> Result<CommandHelp<StdCui>> {
         CommandHelp::new(command_line, self.cui)
     }
 

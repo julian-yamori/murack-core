@@ -4,14 +4,14 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use murack_core_app::{Config, cui::Cui};
+use murack_core_app::{Config, cui::StdCui};
 
 use crate::{AppArgs, Registry};
 
 /// murack-core app のエントリポイント
 /// # Arguments
 /// - args: コマンドライン引数
-pub async fn run(args: impl Iterator<Item = String>, cui: impl Cui + Sync + Send) -> Result<()> {
+pub async fn run(args: impl Iterator<Item = String>, cui: StdCui) -> Result<()> {
     let app_args = AppArgs::parse(args);
     let config = load_config(app_args.config_path.as_deref())?;
 
