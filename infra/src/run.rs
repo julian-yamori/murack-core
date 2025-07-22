@@ -8,7 +8,7 @@ use murack_core_app::{Config, cui::Cui};
 
 use crate::{AppArgs, Registry};
 
-/// WalkBase2ライブラリのエントリポイント
+/// murack-core app のエントリポイント
 /// # Arguments
 /// - args: コマンドライン引数
 pub async fn run(args: impl Iterator<Item = String>, cui: impl Cui + Sync + Send) -> Result<()> {

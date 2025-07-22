@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-/// WalkBase2 メディアデータのエラー
+/// murack-core メディアデータのエラー
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     /// ファイルIO汎用エラー

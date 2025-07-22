@@ -25,7 +25,7 @@ pub trait DbPlaylistRepository {
     /// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
     async fn reset_listuped_flag<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<()>;
 
-    /// 全プレイリストの、Walkmanに保存してからの変更フラグを設定
+    /// 全プレイリストの、DAP に保存してからの変更フラグを設定
     /// # Arguments
     /// - is_changed: 変更されたか
     async fn set_dap_change_flag_all<'c>(

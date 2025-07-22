@@ -5,12 +5,6 @@ use mockall::mock;
 use crate::{db::DbTransaction, path::LibSongPath, playlist::Playlist};
 
 /// 曲データの検索機能
-/// #todo
-/// 現状ではWalkBaseでの用途が限定的だし、
-/// やたらとごついし、
-/// 整理したいやつ。
-///
-/// とりあえずdapモジュールに定義
 #[async_trait]
 pub trait SongFinder {
     /// プレイリストに含まれる曲のパスリストを取得

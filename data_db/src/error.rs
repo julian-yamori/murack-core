@@ -1,4 +1,4 @@
-/// WalkBase2 data層のエラー
+/// murack-core data_db 層のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     // enum変換エラー

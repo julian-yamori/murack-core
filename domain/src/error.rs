@@ -1,7 +1,7 @@
 use crate::path::{LibDirPath, LibPathStr, LibSongPath};
 use std::path::PathBuf;
 
-/// WalkBase2 domain層のエラー
+/// murack-core domain層のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     /// ファイルIO汎用エラー

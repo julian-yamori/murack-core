@@ -1,4 +1,4 @@
-/// オーディオファイルに埋め込まれた画像データのうち、WalkBaseが利用する部分
+/// オーディオファイルに埋め込まれた画像データのうち、Murack が利用する部分
 #[derive(Debug, PartialEq, Clone)]
 pub struct AudioPicture {
     /// 画像データ
