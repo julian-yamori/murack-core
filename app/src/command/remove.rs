@@ -9,26 +9,26 @@ use crate::{Config, Error, cui::Cui};
 /// removeコマンド
 ///
 /// ライブラリから曲を削除
-pub struct CommandRemove<CUI, SS>
+pub struct CommandRemove<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
     SS: SongUsecase,
 {
     args: Args,
-    config: Config,
-    cui: CUI,
+    config: &'config Config,
+    cui: &'cui CUI,
     song_usecase: SS,
 }
 
-impl<CUI, SS> CommandRemove<CUI, SS>
+impl<'config, 'cui, CUI, SS> CommandRemove<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
     SS: SongUsecase,
 {
     pub fn new(
         command_line: &[String],
-        config: Config,
-        cui: CUI,
+        config: &'config Config,
+        cui: &'cui CUI,
         song_usecase: SS,
     ) -> Result<Self> {
         Ok(Self {

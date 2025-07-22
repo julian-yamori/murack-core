@@ -2,7 +2,7 @@
 //!
 //! PC・DAP・DBの齟齬を確認する
 
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
 
 use anyhow::Result;
 use murack_core_domain::{
@@ -17,7 +17,7 @@ use sqlx::PgPool;
 use super::{Args, ResolveDap, ResolveDataMatch, ResolveExistance, ResolveFileExistanceResult};
 use crate::{Config, cui::Cui};
 
-pub struct CommandCheck<CUI, REX, RDM, RDP, FR, CS, SR>
+pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, CS, SR>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
@@ -33,14 +33,15 @@ where
     resolve_data_match: RDM,
     resolve_dap: RDP,
 
-    config: Arc<Config>,
-    cui: Arc<CUI>,
+    config: &'config Config,
+    cui: &'cui CUI,
     file_library_repository: FR,
     check_usecase: CS,
     db_song_repository: SR,
 }
 
-impl<CUI, REX, RDM, RDP, FR, CS, SR> CommandCheck<CUI, REX, RDM, RDP, FR, CS, SR>
+impl<'config, 'cui, CUI, REX, RDM, RDP, FR, CS, SR>
+    CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, CS, SR>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
@@ -53,12 +54,12 @@ where
     #[allow(clippy::too_many_arguments)] // todo
     pub fn new(
         command_line: &[String],
-        config: Arc<Config>,
+        config: &'config Config,
 
         resolve_existance: REX,
         resolve_data_match: RDM,
         resolve_dap: RDP,
-        cui: Arc<CUI>,
+        cui: &'cui CUI,
         file_library_repository: FR,
         check_usecase: CS,
         db_song_repository: SR,
@@ -289,10 +290,14 @@ mod tests {
     };
     use std::path::PathBuf;
 
-    fn target(
+    fn target<'config, 'cui>(
         arg_path: LibPathStr,
         ignore_dap_content: bool,
+        config: &'config Config,
+        cui: &'cui BufferCui,
     ) -> CommandCheck<
+        'config,
+        'cui,
         BufferCui,
         MockResolveExistance,
         MockResolveDataMatch,
@@ -306,8 +311,8 @@ mod tests {
                 path: arg_path,
                 ignore_dap_content,
             },
-            config: Arc::new(Config::dummy()),
-            cui: Arc::new(BufferCui::new()),
+            config,
+            cui,
             resolve_existance: MockResolveExistance::default(),
             resolve_data_match: MockResolveDataMatch::default(),
             resolve_dap: MockResolveDap::default(),
@@ -357,7 +362,9 @@ mod tests {
             ]
         }
 
-        let mut target = target(search_path(), false);
+        let config = Config::dummy();
+        let cui = BufferCui::new();
+        let mut target = target(search_path(), false, &config, &cui);
 
         target
             .file_library_repository
@@ -396,7 +403,9 @@ mod tests {
 
     #[sqlx::test]
     fn test_listup_song_path_conflict(db_pool: PgPool) -> anyhow::Result<()> {
-        let mut target = target("test/hoge".to_owned().into(), false);
+        let config = Config::dummy();
+        let cui = BufferCui::new();
+        let mut target = target("test/hoge".to_owned().into(), false, &config, &cui);
 
         target
             .file_library_repository

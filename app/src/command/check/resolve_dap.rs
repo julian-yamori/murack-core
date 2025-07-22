@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use mockall::automock;
 use murack_core_domain::{
@@ -22,27 +20,27 @@ pub trait ResolveDap {
 }
 
 ///ResolveDapの実装
-pub struct ResolveDapImpl<CUI, FR, CS>
+pub struct ResolveDapImpl<'config, 'cui, CUI, FR, CS>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository,
     CS: CheckUsecase,
 {
-    config: Arc<Config>,
-    cui: Arc<CUI>,
+    config: &'config Config,
+    cui: &'cui CUI,
     file_library_repository: FR,
     check_usecase: CS,
 }
 
-impl<CUI, FR, CS> ResolveDapImpl<CUI, FR, CS>
+impl<'config, 'cui, CUI, FR, CS> ResolveDapImpl<'config, 'cui, CUI, FR, CS>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository,
     CS: CheckUsecase,
 {
     pub fn new(
-        config: Arc<Config>,
-        cui: Arc<CUI>,
+        config: &'config Config,
+        cui: &'cui CUI,
         file_library_repository: FR,
         check_usecase: CS,
     ) -> Self {
@@ -55,7 +53,7 @@ where
     }
 }
 
-impl<CUI, FR, CS> ResolveDap for ResolveDapImpl<CUI, FR, CS>
+impl<'config, 'cui, CUI, FR, CS> ResolveDap for ResolveDapImpl<'config, 'cui, CUI, FR, CS>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository,

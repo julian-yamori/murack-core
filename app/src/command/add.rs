@@ -12,7 +12,7 @@ use crate::{Config, Error, cui::Cui};
 /// addコマンド
 ///
 /// 曲をライブラリに追加する
-pub struct CommandAdd<CUI, FR, SS>
+pub struct CommandAdd<'config, 'cui, CUI, FR, SS>
 where
     CUI: Cui,
     FR: FileLibraryRepository,
@@ -20,13 +20,13 @@ where
 {
     args: Args,
 
-    config: Config,
-    cui: CUI,
+    config: &'config Config,
+    cui: &'cui CUI,
     file_library_repository: FR,
     sync_usecase: SS,
 }
 
-impl<CUI, FR, SS> CommandAdd<CUI, FR, SS>
+impl<'config, 'cui, CUI, FR, SS> CommandAdd<'config, 'cui, CUI, FR, SS>
 where
     CUI: Cui,
     FR: FileLibraryRepository,
@@ -34,8 +34,8 @@ where
 {
     pub fn new(
         command_line: &[String],
-        config: Config,
-        cui: CUI,
+        config: &'config Config,
+        cui: &'cui CUI,
         file_library_repository: FR,
         sync_usecase: SS,
     ) -> Result<Self> {

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
@@ -29,7 +27,7 @@ pub trait ResolveDataMatch {
 }
 
 /// ResolveDataMatchの実装
-pub struct ResolveDataMatchImpl<CUI, FR, CS, AR, SSR>
+pub struct ResolveDataMatchImpl<'config, 'cui, CUI, FR, CS, AR, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
@@ -37,8 +35,8 @@ where
     AR: DbArtworkRepository + Send + Sync,
     SSR: DbSongSyncRepository + Send + Sync,
 {
-    config: Arc<Config>,
-    cui: Arc<CUI>,
+    config: &'config Config,
+    cui: &'cui CUI,
     file_library_repository: FR,
     check_usecase: CS,
     db_artwork_repository: AR,
@@ -46,7 +44,8 @@ where
 }
 
 #[async_trait]
-impl<CUI, FR, CS, AR, SSR> ResolveDataMatch for ResolveDataMatchImpl<CUI, FR, CS, AR, SSR>
+impl<'config, 'cui, CUI, FR, CS, AR, SSR> ResolveDataMatch
+    for ResolveDataMatchImpl<'config, 'cui, CUI, FR, CS, AR, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
@@ -90,7 +89,7 @@ where
     }
 }
 
-impl<CUI, FR, CS, AR, SSR> ResolveDataMatchImpl<CUI, FR, CS, AR, SSR>
+impl<'config, 'cui, CUI, FR, CS, AR, SSR> ResolveDataMatchImpl<'config, 'cui, CUI, FR, CS, AR, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
@@ -99,8 +98,8 @@ where
     SSR: DbSongSyncRepository + Send + Sync,
 {
     pub fn new(
-        config: Arc<Config>,
-        cui: Arc<CUI>,
+        config: &'config Config,
+        cui: &'cui CUI,
         file_library_repository: FR,
         check_usecase: CS,
         db_artwork_repository: AR,

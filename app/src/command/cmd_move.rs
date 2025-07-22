@@ -13,7 +13,7 @@ use crate::{Config, Error};
 /// moveコマンド
 ///
 /// ライブラリ内で曲パスを移動
-pub struct CommandMove<FR, DSR, DFR, SS>
+pub struct CommandMove<'config, FR, DSR, DFR, SS>
 where
     FR: FileLibraryRepository,
     DSR: DbSongRepository,
@@ -22,14 +22,14 @@ where
 {
     args: Args,
 
-    config: Config,
+    config: &'config Config,
     file_library_repository: FR,
     db_song_repository: DSR,
     db_folder_repository: DFR,
     song_usecase: SS,
 }
 
-impl<FR, DSR, DFR, SS> CommandMove<FR, DSR, DFR, SS>
+impl<'config, FR, DSR, DFR, SS> CommandMove<'config, FR, DSR, DFR, SS>
 where
     FR: FileLibraryRepository,
     DSR: DbSongRepository,
@@ -38,7 +38,7 @@ where
 {
     pub fn new(
         command_line: &[String],
-        config: Config,
+        config: &'config Config,
         file_library_repository: FR,
         db_song_repository: DSR,
         db_folder_repository: DFR,

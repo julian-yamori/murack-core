@@ -11,26 +11,26 @@ use std::{
 /// aw-getコマンド
 ///
 /// 曲ファイルからアートワークを取得する
-pub struct CommandArtworkGet<CUI, FR>
+pub struct CommandArtworkGet<'config, 'cui, CUI, FR>
 where
     CUI: Cui,
     FR: FileLibraryRepository,
 {
     args: Args,
-    config: Config,
-    cui: CUI,
+    config: &'config Config,
+    cui: &'cui CUI,
     file_library_repository: FR,
 }
 
-impl<CUI, FR> CommandArtworkGet<CUI, FR>
+impl<'config, 'cui, CUI, FR> CommandArtworkGet<'config, 'cui, CUI, FR>
 where
     CUI: Cui,
     FR: FileLibraryRepository,
 {
     pub fn new(
         command_line: &[String],
-        config: Config,
-        cui: CUI,
+        config: &'config Config,
+        cui: &'cui CUI,
         file_library_repository: FR,
     ) -> Result<Self> {
         Ok(Self {

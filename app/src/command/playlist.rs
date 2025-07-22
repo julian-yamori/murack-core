@@ -7,22 +7,22 @@ use crate::{Config, cui::Cui};
 /// playlistコマンド
 ///
 /// DAPのプレイリストを更新する
-pub struct CommandPlaylist<CUI, DPS>
+pub struct CommandPlaylist<'config, 'cui, CUI, DPS>
 where
     CUI: Cui + Send + Sync,
     DPS: DapPlaylistUsecase,
 {
-    config: Config,
-    cui: CUI,
+    config: &'config Config,
+    cui: &'cui CUI,
     dap_playlist_usecase: DPS,
 }
 
-impl<CUI, DPS> CommandPlaylist<CUI, DPS>
+impl<'config, 'cui, CUI, DPS> CommandPlaylist<'config, 'cui, CUI, DPS>
 where
     CUI: Cui + Send + Sync,
     DPS: DapPlaylistUsecase,
 {
-    pub fn new(config: Config, cui: CUI, dap_playlist_usecase: DPS) -> Self {
+    pub fn new(config: &'config Config, cui: &'cui CUI, dap_playlist_usecase: DPS) -> Self {
         Self {
             config,
             cui,
@@ -40,14 +40,14 @@ where
     }
 }
 
-struct Observer<CUI>
+struct Observer<'cui, CUI>
 where
     CUI: Cui + Send + Sync,
 {
-    cui: CUI,
+    cui: &'cui CUI,
 }
 
-impl<CUI> DapPlaylistObserver for Observer<CUI>
+impl<'cui, CUI> DapPlaylistObserver for Observer<'cui, CUI>
 where
     CUI: Cui + Send + Sync,
 {

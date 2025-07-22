@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use murack_core_app::{
     Config,
@@ -38,19 +36,19 @@ impl Registry {
     // -----------------------------
     // Commands
 
-    pub fn command_add(self, command_line: &[String]) -> Result<TypeCommandAdd<StdCui>> {
+    pub fn command_add(&self, command_line: &[String]) -> Result<TypeCommandAdd> {
         let file_library_repository = self.file_library_repository();
         let sync_usecase = self.sync_usecase();
         CommandAdd::new(
             command_line,
-            self.config,
-            self.cui,
+            &self.config,
+            &self.cui,
             file_library_repository,
             sync_usecase,
         )
     }
 
-    pub fn command_check(self, command_line: &[String]) -> Result<TypeCommandCheck<StdCui>> {
+    pub fn command_check(&self, command_line: &[String]) -> Result<TypeCommandCheck> {
         let file_library_repository1 = self.file_library_repository();
         let file_library_repository2 = self.file_library_repository();
         let file_library_repository3 = self.file_library_repository();
@@ -63,47 +61,44 @@ impl Registry {
         let db_song_sync_repository1 = self.db_registry.db_song_sync_repository();
         let db_song_sync_repository2 = self.db_registry.db_song_sync_repository();
 
-        let config = Arc::new(self.config);
-        let cui = Arc::new(self.cui);
-
         CommandCheck::new(
             command_line,
-            config.clone(),
+            &self.config,
             ResolveExistanceImpl::new(
-                config.clone(),
-                cui.clone(),
+                &self.config,
+                &self.cui,
                 file_library_repository1,
                 song_usecase,
                 sync_usecase,
                 db_song_sync_repository1,
             ),
             ResolveDataMatchImpl::new(
-                config.clone(),
-                cui.clone(),
+                &self.config,
+                &self.cui,
                 file_library_repository2,
                 check_usecase1,
                 self.db_registry.db_artwork_repository(),
                 db_song_sync_repository2,
             ),
             ResolveDapImpl::new(
-                config,
-                cui.clone(),
+                &self.config,
+                &self.cui,
                 file_library_repository3,
                 check_usecase2,
             ),
-            cui,
+            &self.cui,
             file_library_repository4,
             check_usecase3,
             self.db_registry.db_song_repository(),
         )
     }
 
-    pub fn command_move(self, command_line: &[String]) -> Result<TypeCommandMove> {
+    pub fn command_move(&self, command_line: &[String]) -> Result<TypeCommandMove> {
         let file_library_repository = self.file_library_repository();
         let song_usecase = self.song_usecase();
         CommandMove::new(
             command_line,
-            self.config,
+            &self.config,
             file_library_repository,
             self.db_registry.db_song_repository(),
             self.db_registry.db_folder_repository(),
@@ -111,26 +106,28 @@ impl Registry {
         )
     }
 
-    pub fn command_remove(self, command_line: &[String]) -> Result<TypeCommandRemove<StdCui>> {
+    pub fn command_remove(&self, command_line: &[String]) -> Result<TypeCommandRemove> {
         let song_usecase = self.song_usecase();
-        CommandRemove::new(command_line, self.config, self.cui, song_usecase)
+        CommandRemove::new(command_line, &self.config, &self.cui, song_usecase)
     }
 
-    pub fn command_playlist(self) -> TypeCommandPlaylist<StdCui> {
+    pub fn command_playlist(&self) -> TypeCommandPlaylist {
         let dap_playlist_usecase = self.dap_playlist_usecase();
-        CommandPlaylist::new(self.config, self.cui, dap_playlist_usecase)
+        CommandPlaylist::new(&self.config, &self.cui, dap_playlist_usecase)
     }
 
-    pub fn command_artwork_get(
-        self,
-        command_line: &[String],
-    ) -> Result<TypeCommandArtworkGet<StdCui>> {
+    pub fn command_artwork_get(&self, command_line: &[String]) -> Result<TypeCommandArtworkGet> {
         let file_library_repository = self.file_library_repository();
-        CommandArtworkGet::new(command_line, self.config, self.cui, file_library_repository)
+        CommandArtworkGet::new(
+            command_line,
+            &self.config,
+            &self.cui,
+            file_library_repository,
+        )
     }
 
-    pub fn command_help(self, command_line: &[String]) -> Result<CommandHelp<StdCui>> {
-        CommandHelp::new(command_line, self.cui)
+    pub fn command_help(&self, command_line: &[String]) -> Result<CommandHelp<StdCui>> {
+        CommandHelp::new(command_line, &self.cui)
     }
 
     // -----------------------------
@@ -191,37 +188,47 @@ impl Registry {
     }
 }
 
-pub type TypeCommandAdd<CUI> = CommandAdd<CUI, FileLibraryRepositoryImpl, TypeSyncUsecase>;
-pub type TypeCommandCheck<CUI> = CommandCheck<
-    CUI,
+pub type TypeCommandAdd<'config, 'cui> =
+    CommandAdd<'config, 'cui, StdCui, FileLibraryRepositoryImpl, TypeSyncUsecase>;
+pub type TypeCommandCheck<'config, 'cui> = CommandCheck<
+    'config,
+    'cui,
+    StdCui,
     ResolveExistanceImpl<
-        CUI,
+        'config,
+        'cui,
+        StdCui,
         FileLibraryRepositoryImpl,
         TypeSongUsecase,
         TypeSyncUsecase,
         TypeDbSongSyncRepository,
     >,
     ResolveDataMatchImpl<
-        CUI,
+        'config,
+        'cui,
+        StdCui,
         FileLibraryRepositoryImpl,
         TypeCheckUsecase,
         TypeDbArtworkRepository,
         TypeDbSongSyncRepository,
     >,
-    ResolveDapImpl<CUI, FileLibraryRepositoryImpl, TypeCheckUsecase>,
+    ResolveDapImpl<'config, 'cui, StdCui, FileLibraryRepositoryImpl, TypeCheckUsecase>,
     FileLibraryRepositoryImpl,
     TypeCheckUsecase,
     TypeDbSongRepository,
 >;
-pub type TypeCommandMove = CommandMove<
+pub type TypeCommandMove<'config> = CommandMove<
+    'config,
     FileLibraryRepositoryImpl,
     TypeDbSongRepository,
     TypeDbFolderRepository,
     TypeSongUsecase,
 >;
-pub type TypeCommandRemove<CUI> = CommandRemove<CUI, TypeSongUsecase>;
-pub type TypeCommandPlaylist<CUI> = CommandPlaylist<CUI, TypeDapPlaylistUsecase>;
-pub type TypeCommandArtworkGet<CUI> = CommandArtworkGet<CUI, FileLibraryRepositoryImpl>;
+pub type TypeCommandRemove<'config, 'cui> = CommandRemove<'config, 'cui, StdCui, TypeSongUsecase>;
+pub type TypeCommandPlaylist<'config, 'cui> =
+    CommandPlaylist<'config, 'cui, StdCui, TypeDapPlaylistUsecase>;
+pub type TypeCommandArtworkGet<'config, 'cui> =
+    CommandArtworkGet<'config, 'cui, StdCui, FileLibraryRepositoryImpl>;
 
 type TypeCheckUsecase = CheckUsecaseImpl<TypeDbSongSyncRepository, FileLibraryRepositoryImpl>;
 type TypeDapPlaylistUsecase =

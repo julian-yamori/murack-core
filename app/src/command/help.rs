@@ -3,18 +3,18 @@ use anyhow::Result;
 use crate::cui::Cui;
 
 /// ヘルプ出力コマンド
-pub struct CommandHelp<CUI>
+pub struct CommandHelp<'cui, CUI>
 where
     CUI: Cui,
 {
-    cui: CUI,
+    cui: &'cui CUI,
 }
 
-impl<CUI> CommandHelp<CUI>
+impl<'cui, CUI> CommandHelp<'cui, CUI>
 where
     CUI: Cui,
 {
-    pub fn new(_command_line: &[String], cui: CUI) -> Result<Self> {
+    pub fn new(_command_line: &[String], cui: &'cui CUI) -> Result<Self> {
         Ok(Self { cui })
     }
 

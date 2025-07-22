@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
@@ -35,7 +33,7 @@ pub trait ResolveExistance {
 }
 
 /// ResolveExistanceの実装
-pub struct ResolveExistanceImpl<CUI, FR, SOS, SYS, SSR>
+pub struct ResolveExistanceImpl<'config, 'cui, CUI, FR, SOS, SYS, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
@@ -43,8 +41,8 @@ where
     SYS: SyncUsecase + Send + Sync,
     SSR: DbSongSyncRepository + Send + Sync,
 {
-    config: Arc<Config>,
-    cui: Arc<CUI>,
+    config: &'config Config,
+    cui: &'cui CUI,
     file_library_repository: FR,
     song_usecase: SOS,
     sync_usecase: SYS,
@@ -52,7 +50,8 @@ where
 }
 
 #[async_trait]
-impl<CUI, FR, SOS, SYS, SSR> ResolveExistance for ResolveExistanceImpl<CUI, FR, SOS, SYS, SSR>
+impl<'config, 'cui, CUI, FR, SOS, SYS, SSR> ResolveExistance
+    for ResolveExistanceImpl<'config, 'cui, CUI, FR, SOS, SYS, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
@@ -133,7 +132,8 @@ where
     }
 }
 
-impl<CUI, FR, SOS, SYS, SSR> ResolveExistanceImpl<CUI, FR, SOS, SYS, SSR>
+impl<'config, 'cui, CUI, FR, SOS, SYS, SSR>
+    ResolveExistanceImpl<'config, 'cui, CUI, FR, SOS, SYS, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
@@ -142,8 +142,8 @@ where
     SSR: DbSongSyncRepository + Send + Sync,
 {
     pub fn new(
-        config: Arc<Config>,
-        cui: Arc<CUI>,
+        config: &'config Config,
+        cui: &'cui CUI,
         file_library_repository: FR,
         song_usecase: SOS,
         sync_usecase: SYS,
