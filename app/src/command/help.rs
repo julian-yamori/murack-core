@@ -14,8 +14,8 @@ impl<'cui, CUI> CommandHelp<'cui, CUI>
 where
     CUI: Cui,
 {
-    pub fn new(_command_line: &[String], cui: &'cui CUI) -> Result<Self> {
-        Ok(Self { cui })
+    pub fn new(_command_line: &[String], cui: &'cui CUI) -> Self {
+        Self { cui }
     }
 
     /// このコマンドを実行

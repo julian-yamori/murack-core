@@ -65,8 +65,8 @@ where
         file_library_repository: FR,
         check_usecase: CS,
         db_song_repository: SR,
-    ) -> Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             args,
             resolve_existance,
             resolve_data_match,
@@ -76,7 +76,7 @@ where
             file_library_repository,
             check_usecase,
             db_song_repository,
-        })
+        }
     }
 
     /// このコマンドを実行

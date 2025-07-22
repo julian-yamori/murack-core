@@ -38,14 +38,14 @@ where
         cui: &'cui CUI,
         file_library_repository: FR,
         sync_usecase: SS,
-    ) -> Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             args,
             config,
             cui,
             file_library_repository,
             sync_usecase,
-        })
+        }
     }
 
     /// このコマンドを実行

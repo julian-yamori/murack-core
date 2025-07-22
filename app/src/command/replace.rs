@@ -32,8 +32,8 @@ pub struct CommandReplace {
 }
 
 impl CommandReplace {
-    pub fn new(args: Args, app_components: &impl AppComponents) -> Result<Self> {
-        Ok(Self {
+    pub fn new(args: Args, app_components: &impl AppComponents) -> Self {
+        Self {
             args,
             config: app_components.config().clone(),
             cui: app_components.cui().clone(),
@@ -44,7 +44,7 @@ impl CommandReplace {
             db_song_repository: app_components.db_song_repository().clone(),
             db_song_sync_repository: app_components.db_song_sync_repository().clone(),
             folder_usecase: app_components.folder_usecase().clone(),
-        })
+        }
     }
 
     /// このコマンドを実行

@@ -30,13 +30,13 @@ where
         config: &'config Config,
         cui: &'cui CUI,
         song_usecase: SS,
-    ) -> Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             args,
             config,
             cui,
             song_usecase,
-        })
+        }
     }
 
     /// このコマンドを実行

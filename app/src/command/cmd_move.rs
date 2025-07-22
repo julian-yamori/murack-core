@@ -43,15 +43,15 @@ where
         db_song_repository: DSR,
         db_folder_repository: DFR,
         song_usecase: SS,
-    ) -> Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             args,
             config,
             file_library_repository,
             db_folder_repository,
             db_song_repository,
             song_usecase,
-        })
+        }
     }
 
     /// このコマンドを実行

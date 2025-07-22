@@ -32,13 +32,13 @@ where
         config: &'config Config,
         cui: &'cui CUI,
         file_library_repository: FR,
-    ) -> Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             args,
             config,
             cui,
             file_library_repository,
-        })
+        }
     }
 
     /// このコマンドを実行

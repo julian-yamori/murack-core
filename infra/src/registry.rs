@@ -41,13 +41,14 @@ impl Registry {
     pub fn command_add(&self, command_line: &[String]) -> Result<TypeCommandAdd> {
         let file_library_repository = self.file_library_repository();
         let sync_usecase = self.sync_usecase();
-        CommandAdd::new(
+
+        Ok(CommandAdd::new(
             CommandAddArgs::parse(command_line)?,
             &self.config,
             &self.cui,
             file_library_repository,
             sync_usecase,
-        )
+        ))
     }
 
     pub fn command_check(&self, command_line: &[String]) -> Result<TypeCommandCheck> {
@@ -63,7 +64,7 @@ impl Registry {
         let db_song_sync_repository1 = self.db_registry.db_song_sync_repository();
         let db_song_sync_repository2 = self.db_registry.db_song_sync_repository();
 
-        CommandCheck::new(
+        Ok(CommandCheck::new(
             CommandCheckArgs::parse(command_line)?,
             &self.config,
             ResolveExistanceImpl::new(
@@ -92,30 +93,32 @@ impl Registry {
             file_library_repository4,
             check_usecase3,
             self.db_registry.db_song_repository(),
-        )
+        ))
     }
 
     pub fn command_move(&self, command_line: &[String]) -> Result<TypeCommandMove> {
         let file_library_repository = self.file_library_repository();
         let song_usecase = self.song_usecase();
-        CommandMove::new(
+
+        Ok(CommandMove::new(
             CommandMoveArgs::parse(command_line)?,
             &self.config,
             file_library_repository,
             self.db_registry.db_song_repository(),
             self.db_registry.db_folder_repository(),
             song_usecase,
-        )
+        ))
     }
 
     pub fn command_remove(&self, command_line: &[String]) -> Result<TypeCommandRemove> {
         let song_usecase = self.song_usecase();
-        CommandRemove::new(
+
+        Ok(CommandRemove::new(
             CommandRemoveArgs::parse(command_line)?,
             &self.config,
             &self.cui,
             song_usecase,
-        )
+        ))
     }
 
     pub fn command_playlist(&self) -> TypeCommandPlaylist {
@@ -125,16 +128,17 @@ impl Registry {
 
     pub fn command_artwork_get(&self, command_line: &[String]) -> Result<TypeCommandArtworkGet> {
         let file_library_repository = self.file_library_repository();
-        CommandArtworkGet::new(
+
+        Ok(CommandArtworkGet::new(
             CommandArtworkGetArgs::parse(command_line)?,
             &self.config,
             &self.cui,
             file_library_repository,
-        )
+        ))
     }
 
     pub fn command_help(&self, command_line: &[String]) -> Result<CommandHelp<StdCui>> {
-        CommandHelp::new(command_line, &self.cui)
+        Ok(CommandHelp::new(command_line, &self.cui))
     }
 
     // -----------------------------
