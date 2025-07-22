@@ -1,7 +1,7 @@
 use super::{AudioPicture, AudioPictureEntry};
 use chrono::NaiveDate;
 
-/// オーディオファイルのメタデータのうち、WalkBaseが利用する部分
+/// オーディオファイルのメタデータのうち、Murack が利用する部分
 #[derive(Debug, PartialEq)]
 pub struct AudioMetaData {
     /// 曲の再生時間
