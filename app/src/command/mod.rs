@@ -1,26 +1,28 @@
 //! サブコマンド毎の機能定義
 
-mod add;
-pub use add::CommandAdd;
+pub mod add;
+pub use add::{CommandAdd, CommandAddArgs};
 
-mod aw_get;
-pub use aw_get::CommandArtworkGet;
+pub mod aw_get;
+pub use aw_get::{CommandArtworkGet, CommandArtworkGetArgs};
 
-mod check;
-pub use check::{CommandCheck, ResolveDapImpl, ResolveDataMatchImpl, ResolveExistanceImpl};
+pub mod check;
+pub use check::{
+    CommandCheck, CommandCheckArgs, ResolveDapImpl, ResolveDataMatchImpl, ResolveExistanceImpl,
+};
 
-mod cmd_move;
-pub use cmd_move::CommandMove;
+pub mod cmd_move;
+pub use cmd_move::{CommandMove, CommandMoveArgs};
 
-mod help;
+pub mod help;
 pub use help::CommandHelp;
 
-mod playlist;
+pub mod playlist;
 pub use playlist::CommandPlaylist;
 
-mod remove;
-pub use remove::CommandRemove;
+pub mod remove;
+pub use remove::{CommandRemove, CommandRemoveArgs};
 
 //todo 実装が怪しいのと、利用機会が遠そうなので無効化
-// mod replace;
+// pub mod replace;
 // pub use replace::CommandReplace;

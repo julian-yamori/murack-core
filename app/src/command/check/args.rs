@@ -3,7 +3,7 @@ use murack_core_domain::path::LibPathStr;
 
 /// checkコマンドの引数
 #[derive(Debug, PartialEq, Clone)]
-pub struct Args {
+pub struct CommandCheckArgs {
     /// 確認対象のパス
     ///
     /// 未入力の場合はroot(ライブラリ全体をチェックする)
@@ -16,8 +16,8 @@ pub struct Args {
     pub ignore_dap_content: bool,
 }
 
-impl Args {
-    /// コマンドの引数を解析
+impl CommandCheckArgs {
+    /// コマンドライン引数から解析
     pub fn parse(command_line: &[String]) -> Result<Self> {
         let mut path = LibPathStr::root();
         let mut ignore_dap_content = false;
@@ -32,7 +32,7 @@ impl Args {
             }
         }
 
-        Ok(Args {
+        Ok(CommandCheckArgs {
             path,
             ignore_dap_content,
         })
@@ -46,36 +46,36 @@ mod tests {
     #[test]
     fn test_parse() -> anyhow::Result<()> {
         assert_eq!(
-            Args::parse(&["tgt".to_owned()])?,
-            Args {
+            CommandCheckArgs::parse(&["tgt".to_owned()])?,
+            CommandCheckArgs {
                 path: "tgt".to_owned().into(),
                 ignore_dap_content: false,
             }
         );
         assert_eq!(
-            Args::parse(&["tgt/file".to_owned(), "-i".to_owned()])?,
-            Args {
+            CommandCheckArgs::parse(&["tgt/file".to_owned(), "-i".to_owned()])?,
+            CommandCheckArgs {
                 path: "tgt/file".to_owned().into(),
                 ignore_dap_content: true,
             }
         );
         assert_eq!(
-            Args::parse(&["-i".to_owned()])?,
-            Args {
+            CommandCheckArgs::parse(&["-i".to_owned()])?,
+            CommandCheckArgs {
                 path: LibPathStr::root(),
                 ignore_dap_content: true,
             }
         );
         assert_eq!(
-            Args::parse(&["-i".to_owned(), "tgt/file".to_owned()])?,
-            Args {
+            CommandCheckArgs::parse(&["-i".to_owned(), "tgt/file".to_owned()])?,
+            CommandCheckArgs {
                 path: "tgt/file".to_owned().into(),
                 ignore_dap_content: true,
             }
         );
         assert_eq!(
-            Args::parse(&[])?,
-            Args {
+            CommandCheckArgs::parse(&[])?,
+            CommandCheckArgs {
                 path: LibPathStr::root(),
                 ignore_dap_content: false,
             }

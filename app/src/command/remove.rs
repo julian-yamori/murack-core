@@ -14,7 +14,7 @@ where
     CUI: Cui,
     SS: SongUsecase,
 {
-    args: Args,
+    args: CommandRemoveArgs,
     config: &'config Config,
     cui: &'cui CUI,
     song_usecase: SS,
@@ -26,13 +26,13 @@ where
     SS: SongUsecase,
 {
     pub fn new(
-        command_line: &[String],
+        args: CommandRemoveArgs,
         config: &'config Config,
         cui: &'cui CUI,
         song_usecase: SS,
     ) -> Result<Self> {
         Ok(Self {
-            args: parse_args(command_line)?,
+            args,
             config,
             cui,
             song_usecase,
@@ -118,22 +118,24 @@ where
 }
 
 /// コマンドの引数
-struct Args {
+pub struct CommandRemoveArgs {
     /// 削除対象のパス
     ///
     /// ディレクトリ指定可
-    path: LibPathStr,
+    pub path: LibPathStr,
 }
 
-/// コマンドの引数を解析
-fn parse_args(command_line: &[String]) -> Result<Args> {
-    match command_line {
-        [s, ..] => Ok(Args {
-            path: s.clone().into(),
-        }),
-        [] => Err(Error::InvalidCommandArgument {
-            msg: "target path is not specified.".to_owned(),
+impl CommandRemoveArgs {
+    /// コマンドの引数を解析
+    pub fn parse(command_line: &[String]) -> Result<CommandRemoveArgs> {
+        match command_line {
+            [s, ..] => Ok(CommandRemoveArgs {
+                path: s.clone().into(),
+            }),
+            [] => Err(Error::InvalidCommandArgument {
+                msg: "target path is not specified.".to_owned(),
+            }
+            .into()),
         }
-        .into()),
     }
 }

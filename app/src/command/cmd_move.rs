@@ -20,7 +20,7 @@ where
     DFR: DbFolderRepository,
     SS: SongUsecase,
 {
-    args: Args,
+    args: CommandMoveArgs,
 
     config: &'config Config,
     file_library_repository: FR,
@@ -37,7 +37,7 @@ where
     SS: SongUsecase,
 {
     pub fn new(
-        command_line: &[String],
+        args: CommandMoveArgs,
         config: &'config Config,
         file_library_repository: FR,
         db_song_repository: DSR,
@@ -45,7 +45,7 @@ where
         song_usecase: SS,
     ) -> Result<Self> {
         Ok(Self {
-            args: parse_args(command_line)?,
+            args,
             config,
             file_library_repository,
             db_folder_repository,
@@ -159,32 +159,34 @@ where
 }
 
 /// コマンドの引数
-struct Args {
+pub struct CommandMoveArgs {
     /// 移動元のパス
     ///
     /// ディレクトリ指定可(dest_pathもディレクトリである必要あり)
-    src_path: LibPathStr,
+    pub src_path: LibPathStr,
 
     /// 移動先のパス
     ///
     /// ディレクトリ指定可(src_pathもディレクトリであること)
-    dest_path: LibPathStr,
+    pub dest_path: LibPathStr,
 }
 
-/// コマンドの引数を解析
-fn parse_args(command_line: &[String]) -> Result<Args> {
-    match command_line {
-        [src, dest, ..] => Ok(Args {
-            src_path: src.clone().into(),
-            dest_path: dest.clone().into(),
-        }),
-        [_] => Err(Error::InvalidCommandArgument {
-            msg: "destination path is not specified.".to_owned(),
+impl CommandMoveArgs {
+    /// コマンドの引数を解析
+    pub fn parse(command_line: &[String]) -> Result<CommandMoveArgs> {
+        match command_line {
+            [src, dest, ..] => Ok(CommandMoveArgs {
+                src_path: src.clone().into(),
+                dest_path: dest.clone().into(),
+            }),
+            [_] => Err(Error::InvalidCommandArgument {
+                msg: "destination path is not specified.".to_owned(),
+            }
+            .into()),
+            [] => Err(Error::InvalidCommandArgument {
+                msg: "source file path is not specified.".to_owned(),
+            }
+            .into()),
         }
-        .into()),
-        [] => Err(Error::InvalidCommandArgument {
-            msg: "source file path is not specified.".to_owned(),
-        }
-        .into()),
     }
 }

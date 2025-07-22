@@ -16,7 +16,7 @@ where
     CUI: Cui,
     FR: FileLibraryRepository,
 {
-    args: Args,
+    args: CommandArtworkGetArgs,
     config: &'config Config,
     cui: &'cui CUI,
     file_library_repository: FR,
@@ -28,13 +28,13 @@ where
     FR: FileLibraryRepository,
 {
     pub fn new(
-        command_line: &[String],
+        args: CommandArtworkGetArgs,
         config: &'config Config,
         cui: &'cui CUI,
         file_library_repository: FR,
     ) -> Result<Self> {
         Ok(Self {
-            args: parse_args(command_line)?,
+            args,
             config,
             cui,
             file_library_repository,
@@ -126,9 +126,9 @@ fn make_output_path(
 }
 
 /// コマンドの引数
-struct Args {
+pub struct CommandArtworkGetArgs {
     /// 曲ファイルのパス
-    song_path: LibSongPath,
+    pub song_path: LibSongPath,
 
     /// 画像ファイルの保存先パス
     ///
@@ -136,24 +136,26 @@ struct Args {
     /// アートワークの種類により、自動で付与される。
     ///
     /// Noneの場合、songPathを使用する。
-    artwork_path: Option<PathBuf>,
+    pub artwork_path: Option<PathBuf>,
 }
 
-/// コマンドの引数を解析
-fn parse_args(command_line: &[String]) -> Result<Args> {
-    match command_line {
-        [song, artwork, ..] => Ok(Args {
-            song_path: LibSongPath::new(song),
-            artwork_path: Some(artwork.into()),
-        }),
-        [song] => Ok(Args {
-            song_path: LibSongPath::new(song),
-            artwork_path: None,
-        }),
-        [] => Err(Error::InvalidCommandArgument {
-            msg: "audio file path is not specified.".to_owned(),
+impl CommandArtworkGetArgs {
+    /// コマンドの引数を解析
+    pub fn parse(command_line: &[String]) -> Result<CommandArtworkGetArgs> {
+        match command_line {
+            [song, artwork, ..] => Ok(CommandArtworkGetArgs {
+                song_path: LibSongPath::new(song),
+                artwork_path: Some(artwork.into()),
+            }),
+            [song] => Ok(CommandArtworkGetArgs {
+                song_path: LibSongPath::new(song),
+                artwork_path: None,
+            }),
+            [] => Err(Error::InvalidCommandArgument {
+                msg: "audio file path is not specified.".to_owned(),
+            }
+            .into()),
         }
-        .into()),
     }
 }
 

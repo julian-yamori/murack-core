@@ -3,8 +3,8 @@
 mod command_check;
 pub use command_check::CommandCheck;
 
-mod args;
-use args::Args;
+pub mod args;
+pub use args::CommandCheckArgs;
 
 mod resolve_existance_result;
 use resolve_existance_result::ResolveFileExistanceResult;

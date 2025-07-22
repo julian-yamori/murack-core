@@ -32,9 +32,9 @@ pub struct CommandReplace {
 }
 
 impl CommandReplace {
-    pub fn new(command_line: &[String], app_components: &impl AppComponents) -> Result<Self> {
+    pub fn new(args: Args, app_components: &impl AppComponents) -> Result<Self> {
         Ok(Self {
-            args: parse_args(command_line)?,
+            args,
             config: app_components.config().clone(),
             cui: app_components.cui().clone(),
             connection_factory: app_components.connection_factory().clone(),
@@ -340,33 +340,35 @@ struct OpeUnit {
 
 /// コマンドの引数
 #[derive(Debug, PartialEq, Clone)]
-struct Args {
+pub struct Args {
     /// 差し替え先のパス
     ///
     /// ディレクトリ指定可(new_file_pathもディレクトリである必要あり)
-    dest_path: LibPathStr,
+    pub dest_path: LibPathStr,
 
     /// 新規ファイルのパス
     ///
     /// ディレクトリ指定可(destPathもディレクトリである必要あり)
-    new_file_path: PathBuf,
+    pub new_file_path: PathBuf,
 }
 
-/// コマンドの引数を解析
-fn parse_args(command_line: &[String]) -> Result<Args> {
-    match command_line {
-        [src, dest, ..] => Ok(Args {
-            new_file_path: src.into(),
-            dest_path: dest.clone().into(),
-        }),
-        [_] => Err(Error::InvalidCommandArgument {
-            msg: "destination path is not specified.".to_owned(),
+impl Args {
+    /// コマンドの引数を解析
+    pub fn parse(command_line: &[String]) -> Result<Args> {
+        match command_line {
+            [src, dest, ..] => Ok(Args {
+                new_file_path: src.into(),
+                dest_path: dest.clone().into(),
+            }),
+            [_] => Err(Error::InvalidCommandArgument {
+                msg: "destination path is not specified.".to_owned(),
+            }
+            .into()),
+            [] => Err(Error::InvalidCommandArgument {
+                msg: "source file path is not specified.".to_owned(),
+            }
+            .into()),
         }
-        .into()),
-        [] => Err(Error::InvalidCommandArgument {
-            msg: "source file path is not specified.".to_owned(),
-        }
-        .into()),
     }
 }
 

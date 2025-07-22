@@ -2,8 +2,10 @@ use anyhow::Result;
 use murack_core_app::{
     Config,
     command::{
-        CommandAdd, CommandArtworkGet, CommandCheck, CommandHelp, CommandMove, CommandPlaylist,
-        CommandRemove, ResolveDapImpl, ResolveDataMatchImpl, ResolveExistanceImpl,
+        CommandAdd, CommandAddArgs, CommandArtworkGet, CommandArtworkGetArgs, CommandCheck,
+        CommandCheckArgs, CommandHelp, CommandMove, CommandMoveArgs, CommandPlaylist,
+        CommandRemove, CommandRemoveArgs, ResolveDapImpl, ResolveDataMatchImpl,
+        ResolveExistanceImpl,
     },
     cui::StdCui,
 };
@@ -40,7 +42,7 @@ impl Registry {
         let file_library_repository = self.file_library_repository();
         let sync_usecase = self.sync_usecase();
         CommandAdd::new(
-            command_line,
+            CommandAddArgs::parse(command_line)?,
             &self.config,
             &self.cui,
             file_library_repository,
@@ -62,7 +64,7 @@ impl Registry {
         let db_song_sync_repository2 = self.db_registry.db_song_sync_repository();
 
         CommandCheck::new(
-            command_line,
+            CommandCheckArgs::parse(command_line)?,
             &self.config,
             ResolveExistanceImpl::new(
                 &self.config,
@@ -97,7 +99,7 @@ impl Registry {
         let file_library_repository = self.file_library_repository();
         let song_usecase = self.song_usecase();
         CommandMove::new(
-            command_line,
+            CommandMoveArgs::parse(command_line)?,
             &self.config,
             file_library_repository,
             self.db_registry.db_song_repository(),
@@ -108,7 +110,12 @@ impl Registry {
 
     pub fn command_remove(&self, command_line: &[String]) -> Result<TypeCommandRemove> {
         let song_usecase = self.song_usecase();
-        CommandRemove::new(command_line, &self.config, &self.cui, song_usecase)
+        CommandRemove::new(
+            CommandRemoveArgs::parse(command_line)?,
+            &self.config,
+            &self.cui,
+            song_usecase,
+        )
     }
 
     pub fn command_playlist(&self) -> TypeCommandPlaylist {
@@ -119,7 +126,7 @@ impl Registry {
     pub fn command_artwork_get(&self, command_line: &[String]) -> Result<TypeCommandArtworkGet> {
         let file_library_repository = self.file_library_repository();
         CommandArtworkGet::new(
-            command_line,
+            CommandArtworkGetArgs::parse(command_line)?,
             &self.config,
             &self.cui,
             file_library_repository,

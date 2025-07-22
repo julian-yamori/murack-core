@@ -14,7 +14,9 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
-use super::{Args, ResolveDap, ResolveDataMatch, ResolveExistance, ResolveFileExistanceResult};
+use super::{
+    CommandCheckArgs, ResolveDap, ResolveDataMatch, ResolveExistance, ResolveFileExistanceResult,
+};
 use crate::{Config, cui::Cui};
 
 pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, CS, SR>
@@ -27,7 +29,7 @@ where
     CS: CheckUsecase,
     SR: DbSongRepository,
 {
-    args: Args,
+    args: CommandCheckArgs,
 
     resolve_existance: REX,
     resolve_data_match: RDM,
@@ -53,7 +55,7 @@ where
 {
     #[allow(clippy::too_many_arguments)] // todo
     pub fn new(
-        command_line: &[String],
+        args: CommandCheckArgs,
         config: &'config Config,
 
         resolve_existance: REX,
@@ -65,7 +67,7 @@ where
         db_song_repository: SR,
     ) -> Result<Self> {
         Ok(Self {
-            args: Args::parse(command_line)?,
+            args,
             resolve_existance,
             resolve_data_match,
             resolve_dap,
@@ -307,7 +309,7 @@ mod tests {
         MockDbSongRepository,
     > {
         CommandCheck {
-            args: Args {
+            args: CommandCheckArgs {
                 path: arg_path,
                 ignore_dap_content,
             },

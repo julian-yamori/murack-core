@@ -18,7 +18,7 @@ where
     FR: FileLibraryRepository,
     SS: SyncUsecase,
 {
-    args: Args,
+    args: CommandAddArgs,
 
     config: &'config Config,
     cui: &'cui CUI,
@@ -33,14 +33,14 @@ where
     SS: SyncUsecase,
 {
     pub fn new(
-        command_line: &[String],
+        args: CommandAddArgs,
         config: &'config Config,
         cui: &'cui CUI,
         file_library_repository: FR,
         sync_usecase: SS,
     ) -> Result<Self> {
         Ok(Self {
-            args: parse_args(command_line)?,
+            args,
             config,
             cui,
             file_library_repository,
@@ -128,21 +128,23 @@ where
     }
 }
 
-/// コマンドの引数
-struct Args {
+/// add コマンドの引数
+pub struct CommandAddArgs {
     /// 追加対象のパス
-    path: LibPathStr,
+    pub path: LibPathStr,
 }
 
-/// コマンドの引数を解析
-fn parse_args(command_line: &[String]) -> Result<Args> {
-    match command_line {
-        [s, ..] => Ok(Args {
-            path: s.clone().into(),
-        }),
-        [] => Err(Error::InvalidCommandArgument {
-            msg: "target path is not specified.".to_owned(),
+impl CommandAddArgs {
+    /// コマンドの引数を解析
+    pub fn parse(command_line: &[String]) -> Result<CommandAddArgs> {
+        match command_line {
+            [s, ..] => Ok(CommandAddArgs {
+                path: s.clone().into(),
+            }),
+            [] => Err(Error::InvalidCommandArgument {
+                msg: "target path is not specified.".to_owned(),
+            }
+            .into()),
         }
-        .into()),
     }
 }
