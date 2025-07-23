@@ -1,0 +1,2 @@
+-- Test fixture for empty playlist tree test
+-- This sets up an empty database (no playlists exist)

@@ -1,0 +1,2 @@
+-- Test fixture for not found case test
+-- This sets up an empty database (no songs exist)
