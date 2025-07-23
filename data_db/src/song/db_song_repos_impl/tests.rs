@@ -36,14 +36,6 @@ mod test_get_path_by_path_str {
         assert!(result.contains(&LibSongPath::new("test/hoge/song2.flac")));
         assert!(result.contains(&LibSongPath::new("test/hoge/song3.m4a")));
 
-        // データベース内の楽曲数を確認
-        let track_count = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE path LIKE 'test/hoge/%'"#
-        )
-        .fetch_one(&mut **tx.get())
-        .await?;
-        assert_eq!(track_count, 3);
-
         Ok(())
     }
 
@@ -67,12 +59,6 @@ mod test_get_path_by_path_str {
 
         // 結果は空であるはず
         assert_eq!(result, vec![]);
-
-        // データベース内に楽曲が存在しないことを確認
-        let track_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM tracks"#)
-            .fetch_one(&mut **tx.get())
-            .await?;
-        assert_eq!(track_count, 0);
 
         Ok(())
     }

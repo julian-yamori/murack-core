@@ -4,6 +4,8 @@
 -- フォルダを作成
 INSERT INTO folder_paths (id, path, name, parent_id) VALUES (1, 'test/', 'test', NULL);
 
--- 特定の楽曲ファイルを作成
 INSERT INTO tracks (id, duration, path, folder_id, title) VALUES 
-    (1, 300, 'test/hoge.flac', 1, 'Hoge Song');
+    -- 検索するパスに一致する楽曲ファイルを作成
+    (1, 300, 'test/hoge.flac', 1, 'Hoge Song'),
+    -- 同じフォルダに、検索にヒットしない楽曲ファイルを作成
+    (2, 300, 'test/fuga.flac', 1, 'Fuga Song');
