@@ -27,19 +27,30 @@ async fn test_register_not_exists_2dir(pool: PgPool) -> Result<()> {
     // The result should be a new folder with some ID (let's verify it's not Root)
     assert!(matches!(result, FolderIdMayRoot::Folder(_)));
 
-    // Verify the folder was actually created by checking if it exists
-    let exists = target.is_exist_path(&mut tx, &lib_dir_path).await?;
-    assert!(exists);
+    // Verify the folder was actually created by checking database directly
+    let exists = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM folder_paths WHERE path = $1",
+        "test/hoge/fuga/"
+    )
+    .fetch_one(&mut **tx.get())
+    .await?;
+    assert_eq!(exists, Some(1));
 
     // Verify parent folders were also created
-    let parent_path = LibDirPath::new("test/hoge");
-    let parent_exists = target.is_exist_path(&mut tx, &parent_path).await?;
-    assert!(parent_exists);
+    let parent_exists = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM folder_paths WHERE path = $1",
+        "test/hoge/"
+    )
+    .fetch_one(&mut **tx.get())
+    .await?;
+    assert_eq!(parent_exists, Some(1));
 
-    // Verify the original "test" folder still exists
-    let root_test_path = LibDirPath::new("test");
-    let root_test_exists = target.is_exist_path(&mut tx, &root_test_path).await?;
-    assert!(root_test_exists);
+    // Verify the original "test" folder still exists (from fixture)
+    let root_test_exists =
+        sqlx::query_scalar!("SELECT COUNT(*) FROM folder_paths WHERE path = $1", "test/")
+            .fetch_one(&mut **tx.get())
+            .await?;
+    assert_eq!(root_test_exists, Some(1));
 
     Ok(())
 }
