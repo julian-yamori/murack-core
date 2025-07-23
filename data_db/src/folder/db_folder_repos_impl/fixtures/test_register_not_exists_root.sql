@@ -1,0 +1,3 @@
+-- Test fixture for root folder creation test
+-- This sets up an empty database (no folders exist)
+-- The test will create a folder directly under the root

@@ -61,90 +61,73 @@ mod test_register_not_exists {
         Ok(())
     }
 
-    /// Legacy tests (Mock ベース) - 段階的に SQLx テストに移行予定
-    mod legacy {
-        use super::*;
-        use crate::folder::MockFolderPathDao;
+    /// ルート直下にフォルダを作成するテスト
+    /// データベースが空の状態から開始
+    #[sqlx::test(
+        migrator = "crate::MIGRATOR",
+        fixtures("test_register_not_exists_root")
+    )]
+    async fn ルート直下に作成(pool: PgPool) -> Result<()> {
+        let lib_dir_path = LibDirPath::new("test");
 
-        fn target() -> DbFolderRepositoryImpl<MockFolderPathDao> {
-            DbFolderRepositoryImpl {
-                folder_path_dao: MockFolderPathDao::default(),
-            }
-        }
-        fn checkpoint_all(target: &mut DbFolderRepositoryImpl<MockFolderPathDao>) {
-            target.folder_path_dao.inner.checkpoint();
-        }
+        let folder_path_dao = FolderPathDaoImpl {};
+        let target = DbFolderRepositoryImpl::new(folder_path_dao);
 
-        /// ルート直下にフォルダを作成するテスト
-        #[tokio::test]
-        async fn ルート直下に作成() -> anyhow::Result<()> {
-            fn lib_dir_path() -> LibDirPath {
-                LibDirPath::new("test")
-            }
+        let mut tx = DbTransaction::PgTransaction {
+            tx: pool.begin().await?,
+        };
 
-            let mut target = target();
-            target
-                .folder_path_dao
-                .inner
-                .expect_select_id_by_path()
-                .withf(|a_path| a_path == &lib_dir_path())
-                .returning(|_| Ok(None));
-            target
-                .folder_path_dao
-                .inner
-                .expect_select_id_by_path()
-                .withf(|a_path| a_path == &LibDirPath::new(""))
-                .times(0);
-            target
-                .folder_path_dao
-                .inner
-                .expect_insert()
-                .withf(|a_path, _, _| a_path == &lib_dir_path())
-                .times(1)
-                .returning(|_, a_name, a_parent_id| {
-                    assert_eq!(a_name, "test");
-                    assert_eq!(a_parent_id, FolderIdMayRoot::Root);
-                    Ok(99)
-                });
-            target
-                .folder_path_dao
-                .inner
-                .expect_insert()
-                .withf(|a_path, _, _| a_path == &LibDirPath::new(""))
-                .times(0);
+        let result = target.register_not_exists(&mut tx, &lib_dir_path).await?;
 
-            let mut tx = DbTransaction::Dummy;
+        // 結果は Root 以外の新しいフォルダのIDを返すはず
+        assert!(matches!(result, FolderIdMayRoot::Folder(_)));
 
-            let result = target.register_not_exists(&mut tx, &lib_dir_path()).await?;
-            assert_eq!(result, FolderIdMayRoot::Folder(99));
+        // 対象フォルダが実際に作成されたことを確認
+        let exists =
+            sqlx::query_scalar!("SELECT COUNT(*) FROM folder_paths WHERE path = $1", "test/")
+                .fetch_one(&mut **tx.get())
+                .await?;
+        assert_eq!(exists, Some(1));
 
-            checkpoint_all(&mut target);
-            Ok(())
-        }
+        // parent_id は NULL（Root直下）であることを確認
+        let parent_id = sqlx::query_scalar!(
+            "SELECT parent_id FROM folder_paths WHERE path = $1",
+            "test/"
+        )
+        .fetch_one(&mut **tx.get())
+        .await?;
+        assert_eq!(parent_id, None);
 
-        /// 既に存在するフォルダを指定した場合のテスト
-        #[tokio::test]
-        async fn 既に存在する場合() -> anyhow::Result<()> {
-            fn lib_dir_path() -> LibDirPath {
-                LibDirPath::new("test/hoge/fuga")
-            }
+        Ok(())
+    }
 
-            let mut target = target();
-            target
-                .folder_path_dao
-                .inner
-                .expect_select_id_by_path()
-                .withf(|a_path| a_path == &lib_dir_path())
-                .returning(|_| Ok(Some(12)));
-            target.folder_path_dao.inner.expect_insert().times(0);
+    /// 既に存在するフォルダを指定した場合のテスト
+    /// 既存のIDを返し、新規作成は行わない
+    #[sqlx::test(
+        migrator = "crate::MIGRATOR",
+        fixtures("test_register_not_exists_exists")
+    )]
+    async fn 既に存在する場合(pool: PgPool) -> Result<()> {
+        let lib_dir_path = LibDirPath::new("test/hoge/fuga");
 
-            let mut tx = DbTransaction::Dummy;
+        let folder_path_dao = FolderPathDaoImpl {};
+        let target = DbFolderRepositoryImpl::new(folder_path_dao);
 
-            let result = target.register_not_exists(&mut tx, &lib_dir_path()).await?;
-            assert_eq!(result, FolderIdMayRoot::Folder(12));
+        let mut tx = DbTransaction::PgTransaction {
+            tx: pool.begin().await?,
+        };
 
-            checkpoint_all(&mut target);
-            Ok(())
-        }
+        let result = target.register_not_exists(&mut tx, &lib_dir_path).await?;
+
+        // 結果は既存のフォルダID (12) を返すはず
+        assert_eq!(result, FolderIdMayRoot::Folder(12));
+
+        // フォルダ数が変わっていないことを確認（新規作成されていない）
+        let total_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM folder_paths"#)
+            .fetch_one(&mut **tx.get())
+            .await?;
+        assert_eq!(total_count, 3); // fixture で3個作成している
+
+        Ok(())
     }
 }
