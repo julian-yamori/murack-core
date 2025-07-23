@@ -3,14 +3,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use murack_core_domain::Error as DomainError;
-use toml::{Value, value::Table};
-
-use crate::Error;
+use serde::{Deserialize, Serialize};
 
 /// 設定ファイル取扱
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     /// PC側のライブラリのルートパス
     pub pc_lib: PathBuf,
@@ -32,20 +30,9 @@ impl Config {
             Ok(s) => s,
             Err(e) => return Err(DomainError::FileIoError(path.to_owned(), e).into()),
         };
-        let root_v = file_str
-            .parse::<Value>()
-            .with_context(|| "Failed to parse config.")?;
-        let root = match root_v.as_table() {
-            Some(t) => t,
-            None => return Err(Error::ConfigRootIsNotTable.into()),
-        };
 
-        Ok(Self {
-            pc_lib: tb_path(root, "pc_lib")?,
-            dap_lib: tb_path(root, "dap_lib")?,
-            dap_playlist: tb_path(root, "dap_playlist")?,
-            database_url: tb_str(root, "database_url")?.to_string(),
-        })
+        let config = toml::from_str(&file_str)?;
+        Ok(config)
     }
 
     /// テスト用のダミー値を返す
@@ -58,25 +45,4 @@ impl Config {
             database_url: "database_url".to_string(),
         }
     }
-}
-
-/// TOMLのテーブルから文字列値を取得
-fn tb_str<'a>(t: &'a Table, key: &str) -> Result<&'a str> {
-    match t.get(key) {
-        Some(v) => match v.as_str() {
-            Some(s) => Ok(s),
-            None => Err(Error::ConfigNotString {
-                key: key.to_owned(),
-            }
-            .into()),
-        },
-        None => Err(Error::ConfigNotFound {
-            key: key.to_owned(),
-        }
-        .into()),
-    }
-}
-/// TOMLのテーブルからパス値を取得
-fn tb_path(t: &Table, key: &str) -> Result<PathBuf> {
-    Ok(tb_str(t, key)?.into())
 }
