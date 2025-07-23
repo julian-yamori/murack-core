@@ -1,8 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{
-    db::DbTransaction,
-    playlist::DbPlaylistRepository,
-};
+use murack_core_domain::{db::DbTransaction, playlist::DbPlaylistRepository};
 use sqlx::PgPool;
 
 use crate::playlist::{DbPlaylistRepositoryImpl, PlaylistDaoImpl};
@@ -13,10 +10,7 @@ mod test_get_playlist_tree {
 
     /// 空のプレイリストツリーを取得するテスト
     /// データベースにプレイリストが存在しない場合
-    #[sqlx::test(
-        migrator = "crate::MIGRATOR",
-        fixtures("test_get_playlist_tree_empty")
-    )]
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_empty"))]
     async fn 空の場合(pool: PgPool) -> Result<()> {
         let playlist_dao = PlaylistDaoImpl {};
         let target = DbPlaylistRepositoryImpl::new(playlist_dao);
@@ -41,10 +35,7 @@ mod test_get_playlist_tree {
 
     /// フラットなプレイリスト構造のテスト
     /// 親子関係のない3つのプレイリストが存在する場合
-    #[sqlx::test(
-        migrator = "crate::MIGRATOR",
-        fixtures("test_get_playlist_tree_flat")
-    )]
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_flat"))]
     async fn フラット構造(pool: PgPool) -> Result<()> {
         let playlist_dao = PlaylistDaoImpl {};
         let target = DbPlaylistRepositoryImpl::new(playlist_dao);
@@ -57,7 +48,7 @@ mod test_get_playlist_tree {
 
         // 結果は3つのルートプレイリストであるはず
         assert_eq!(result.len(), 3);
-        
+
         // 各プレイリストに子がないことを確認
         for playlist in &result {
             assert_eq!(playlist.children.len(), 0);
@@ -78,10 +69,7 @@ mod test_get_playlist_tree {
 
     /// 階層構造のあるプレイリストツリーのテスト
     /// 複雑な親子関係を持つプレイリストが存在する場合
-    #[sqlx::test(
-        migrator = "crate::MIGRATOR",
-        fixtures("test_get_playlist_tree_treed")
-    )]
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_treed"))]
     async fn 階層構造(pool: PgPool) -> Result<()> {
         let playlist_dao = PlaylistDaoImpl {};
         let target = DbPlaylistRepositoryImpl::new(playlist_dao);
