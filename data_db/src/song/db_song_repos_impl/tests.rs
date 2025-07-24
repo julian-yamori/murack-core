@@ -233,3 +233,53 @@ mod test_get_path_by_directory {
         Ok(())
     }
 }
+
+// is_exist_in_folder 関数のテスト
+mod test_is_exist_in_folder {
+    use super::*;
+
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
+    async fn フォルダに2曲存在する場合(pool: PgPool) -> anyhow::Result<()> {
+        let song_dao = SongDaoImpl {};
+        let target = DbSongRepositoryImpl::new(song_dao);
+
+        let mut tx = DbTransaction::PgTransaction {
+            tx: pool.begin().await?,
+        };
+
+        // フォルダID 11 には2曲存在するため true
+        assert!(target.is_exist_in_folder(&mut tx, 11).await?);
+
+        Ok(())
+    }
+
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
+    async fn フォルダに1曲だけ存在する場合(pool: PgPool) -> anyhow::Result<()> {
+        let song_dao = SongDaoImpl {};
+        let target = DbSongRepositoryImpl::new(song_dao);
+
+        let mut tx = DbTransaction::PgTransaction {
+            tx: pool.begin().await?,
+        };
+
+        // フォルダID 22 には1曲存在するため true
+        assert!(target.is_exist_in_folder(&mut tx, 22).await?);
+
+        Ok(())
+    }
+
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
+    async fn フォルダに曲が存在しない場合(pool: PgPool) -> anyhow::Result<()> {
+        let song_dao = SongDaoImpl {};
+        let target = DbSongRepositoryImpl::new(song_dao);
+
+        let mut tx = DbTransaction::PgTransaction {
+            tx: pool.begin().await?,
+        };
+
+        // フォルダID 99 には曲が存在しないため false
+        assert!(!target.is_exist_in_folder(&mut tx, 99).await?);
+
+        Ok(())
+    }
+}

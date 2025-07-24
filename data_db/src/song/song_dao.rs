@@ -593,50 +593,6 @@ mod tests {
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
-    fn test_count_by_folder_id(db_pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
-
-        let target = SongDaoImpl {};
-
-        let path = LibSongPath::new("test/hoge.flac");
-        let mut entry = entry_fill(&path);
-        entry.folder_id = Some(11);
-        target.insert(&mut tx, &entry).await?;
-
-        let path = LibSongPath::new("dummy/fuga.flac");
-        let mut entry = entry_fill(&path);
-        entry.folder_id = Some(22);
-        target.insert(&mut tx, &entry).await?;
-
-        let path = LibSongPath::new("test/piyo.flac");
-        let mut entry = entry_fill(&path);
-        entry.folder_id = Some(11);
-        target.insert(&mut tx, &entry).await?;
-
-        let path = LibSongPath::new("piyo.flac");
-        let mut entry = entry_fill(&path);
-        entry.folder_id = None;
-        target.insert(&mut tx, &entry).await?;
-
-        assert_eq!(
-            target
-                .count_by_folder_id(&mut tx, FolderIdMayRoot::Folder(11))
-                .await?,
-            2
-        );
-        assert_eq!(
-            target
-                .count_by_folder_id(&mut tx, FolderIdMayRoot::Root)
-                .await?,
-            1
-        );
-
-        Ok(())
-    }
-
-    #[sqlx::test(migrator = "crate::MIGRATOR")]
     fn test_exists_path(db_pool: PgPool) -> anyhow::Result<()> {
         let song_paths = [
             LibSongPath::new("test/hoge.flac"),
