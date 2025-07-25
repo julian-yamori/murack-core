@@ -3,17 +3,12 @@ use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
 
 use crate::{
-    artwork::{
-        ArtworkCache, ArtworkDao, ArtworkImageDaoImpl, DbArtworkRepositoryImpl, SongArtworkDaoImpl,
-    },
-    folder::{DbFolderRepositoryImpl, FolderPathDaoImpl},
-    playlist::{
-        DbPlaylistRepositoryImpl, DbPlaylistSongRepositoryImpl, PlaylistDaoImpl,
-        PlaylistSongDaoImpl,
-    },
-    song::{DbSongRepositoryImpl, DbSongSyncRepositoryImpl, SongDaoImpl, SongSyncDaoImpl},
+    artwork::{ArtworkCache, DbArtworkRepositoryImpl},
+    folder::DbFolderRepositoryImpl,
+    playlist::{DbPlaylistRepositoryImpl, DbPlaylistSongRepositoryImpl},
+    song::{DbSongRepositoryImpl, DbSongSyncRepositoryImpl},
     song_lister::{SongFinderImpl, SongListerFilterImpl},
-    tag::{DbSongTagRepositoryImpl, SongTagsDaoImpl},
+    tag::DbSongTagRepositoryImpl,
 };
 
 /// data層DB機能のDIを解決するオブジェクト
@@ -29,48 +24,35 @@ impl DbComponents {
     }
 
     pub fn song_finder(&self) -> TypeSongFinder {
-        SongFinderImpl::new(
-            PlaylistDaoImpl {},
-            PlaylistSongDaoImpl {},
-            SongListerFilterImpl {},
-        )
+        SongFinderImpl::new(SongListerFilterImpl {})
     }
 
     pub fn db_artwork_repository(&self) -> TypeDbArtworkRepository {
-        DbArtworkRepositoryImpl::new(
-            self.artwork_cache.clone(),
-            ArtworkDao {},
-            ArtworkImageDaoImpl {},
-            SongArtworkDaoImpl {},
-        )
+        DbArtworkRepositoryImpl::new(self.artwork_cache.clone())
     }
 
     pub fn db_folder_repository(&self) -> TypeDbFolderRepository {
-        DbFolderRepositoryImpl::new(FolderPathDaoImpl {})
+        DbFolderRepositoryImpl::new()
     }
 
     pub fn db_playlist_repository(&self) -> TypeDbPlaylistRepository {
-        DbPlaylistRepositoryImpl::new(PlaylistDaoImpl {})
+        DbPlaylistRepositoryImpl::new()
     }
 
     pub fn db_playlist_song_repository(&self) -> TypeDbPlaylistSongRepository {
-        DbPlaylistSongRepositoryImpl::new(PlaylistDaoImpl {}, PlaylistSongDaoImpl {})
+        DbPlaylistSongRepositoryImpl::new()
     }
 
     pub fn db_song_repository(&self) -> TypeDbSongRepository {
-        DbSongRepositoryImpl::new(SongDaoImpl {})
+        DbSongRepositoryImpl::new()
     }
 
     pub fn db_song_sync_repository(&self) -> TypeDbSongSyncRepository {
-        DbSongSyncRepositoryImpl::new(
-            self.db_artwork_repository(),
-            SongDaoImpl {},
-            SongSyncDaoImpl {},
-        )
+        DbSongSyncRepositoryImpl::new(self.db_artwork_repository())
     }
 
     pub fn db_song_tag_repository(&self) -> TypeDbSongTagRepository {
-        DbSongTagRepositoryImpl::new(SongTagsDaoImpl {})
+        DbSongTagRepositoryImpl::new()
     }
 }
 
@@ -80,14 +62,11 @@ impl Default for DbComponents {
     }
 }
 
-pub type TypeSongFinder =
-    SongFinderImpl<PlaylistDaoImpl, PlaylistSongDaoImpl, SongListerFilterImpl>;
-pub type TypeDbArtworkRepository = DbArtworkRepositoryImpl<ArtworkImageDaoImpl, SongArtworkDaoImpl>;
-pub type TypeDbFolderRepository = DbFolderRepositoryImpl<FolderPathDaoImpl>;
-pub type TypeDbPlaylistRepository = DbPlaylistRepositoryImpl<PlaylistDaoImpl>;
-pub type TypeDbPlaylistSongRepository =
-    DbPlaylistSongRepositoryImpl<PlaylistDaoImpl, PlaylistSongDaoImpl>;
-pub type TypeDbSongRepository = DbSongRepositoryImpl<SongDaoImpl>;
-pub type TypeDbSongSyncRepository =
-    DbSongSyncRepositoryImpl<TypeDbArtworkRepository, SongDaoImpl, SongSyncDaoImpl>;
-pub type TypeDbSongTagRepository = DbSongTagRepositoryImpl<SongTagsDaoImpl>;
+pub type TypeSongFinder = SongFinderImpl<SongListerFilterImpl>;
+pub type TypeDbArtworkRepository = DbArtworkRepositoryImpl;
+pub type TypeDbFolderRepository = DbFolderRepositoryImpl;
+pub type TypeDbPlaylistRepository = DbPlaylistRepositoryImpl;
+pub type TypeDbPlaylistSongRepository = DbPlaylistSongRepositoryImpl;
+pub type TypeDbSongRepository = DbSongRepositoryImpl;
+pub type TypeDbSongSyncRepository = DbSongSyncRepositoryImpl<TypeDbArtworkRepository>;
+pub type TypeDbSongTagRepository = DbSongTagRepositoryImpl;

@@ -2,7 +2,7 @@ use anyhow::Result;
 use murack_core_domain::{db::DbTransaction, playlist::DbPlaylistRepository};
 use sqlx::PgPool;
 
-use crate::playlist::{DbPlaylistRepositoryImpl, PlaylistDaoImpl};
+use crate::playlist::DbPlaylistRepositoryImpl;
 
 // get_playlist_tree 関数のテスト
 mod test_get_playlist_tree {
@@ -12,8 +12,7 @@ mod test_get_playlist_tree {
     /// データベースにプレイリストが存在しない場合
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_empty"))]
     async fn 空の場合(pool: PgPool) -> Result<()> {
-        let playlist_dao = PlaylistDaoImpl {};
-        let target = DbPlaylistRepositoryImpl::new(playlist_dao);
+        let target = DbPlaylistRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -37,8 +36,7 @@ mod test_get_playlist_tree {
     /// 親子関係のない3つのプレイリストが存在する場合
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_flat"))]
     async fn フラット構造(pool: PgPool) -> Result<()> {
-        let playlist_dao = PlaylistDaoImpl {};
-        let target = DbPlaylistRepositoryImpl::new(playlist_dao);
+        let target = DbPlaylistRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -71,8 +69,7 @@ mod test_get_playlist_tree {
     /// 複雑な親子関係を持つプレイリストが存在する場合
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_treed"))]
     async fn 階層構造(pool: PgPool) -> Result<()> {
-        let playlist_dao = PlaylistDaoImpl {};
-        let target = DbPlaylistRepositoryImpl::new(playlist_dao);
+        let target = DbPlaylistRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,

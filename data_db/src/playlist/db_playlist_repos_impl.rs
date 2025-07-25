@@ -5,23 +5,15 @@ use murack_core_domain::{
     playlist::{DbPlaylistRepository, Playlist, PlaylistType},
 };
 
-use super::{PlaylistDao, PlaylistRow};
+use super::{PlaylistRow, playlist_sqls};
 use crate::{Error, error::PlaylistNoParentsDetectedItem};
 
 /// DbPlaylistRepositoryの本実装
 #[derive(new)]
-pub struct DbPlaylistRepositoryImpl<PD>
-where
-    PD: PlaylistDao + Sync + Send,
-{
-    playlist_dao: PD,
-}
+pub struct DbPlaylistRepositoryImpl {}
 
 #[async_trait]
-impl<PD> DbPlaylistRepository for DbPlaylistRepositoryImpl<PD>
-where
-    PD: PlaylistDao + Sync + Send,
-{
+impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     /// IDを指定してプレイリストを検索
     /// # Arguments
     /// id: playlist.rowid
@@ -30,7 +22,7 @@ where
         tx: &mut DbTransaction<'c>,
         id: i32,
     ) -> Result<Option<Playlist>> {
-        let opt = self.playlist_dao.select_by_id(tx, id).await?;
+        let opt = playlist_sqls::select_playlist_by_id(tx, id).await?;
 
         match opt {
             Some(row) => Ok(Some(row.try_into()?)),
@@ -42,7 +34,7 @@ where
     /// # Returns
     /// 最上位プレイリストのリスト
     async fn get_playlist_tree<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<Playlist>> {
-        let remain_pool = self.playlist_dao.select_all_order_folder(tx).await?;
+        let remain_pool = playlist_sqls::select_all_playlists_order_folder(tx).await?;
 
         let (root_list, remain_pool) = build_plist_children_recursive(None, remain_pool)?;
 

@@ -8,7 +8,4 @@ pub use db_playlist_song_repos_impl::DbPlaylistSongRepositoryImpl;
 mod playlist_row;
 use playlist_row::PlaylistRow;
 
-mod playlist_dao;
-pub use playlist_dao::{MockPlaylistDao, PlaylistDao, PlaylistDaoImpl};
-mod playlist_song_dao;
-pub use playlist_song_dao::{PlaylistSongDao, PlaylistSongDaoImpl};
+pub mod playlist_sqls;

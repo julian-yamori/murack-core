@@ -6,7 +6,7 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
-use crate::folder::{DbFolderRepositoryImpl, FolderPathDaoImpl};
+use crate::folder::DbFolderRepositoryImpl;
 
 // register_not_exists 関数のテスト
 mod test_register_not_exists {
@@ -21,8 +21,7 @@ mod test_register_not_exists {
     async fn 存在しない2階層を作成(pool: PgPool) -> Result<()> {
         let lib_dir_path = LibDirPath::new("test/hoge/fuga");
 
-        let folder_path_dao = FolderPathDaoImpl {};
-        let target = DbFolderRepositoryImpl::new(folder_path_dao);
+        let target = DbFolderRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -70,8 +69,7 @@ mod test_register_not_exists {
     async fn ルート直下に作成(pool: PgPool) -> Result<()> {
         let lib_dir_path = LibDirPath::new("test");
 
-        let folder_path_dao = FolderPathDaoImpl {};
-        let target = DbFolderRepositoryImpl::new(folder_path_dao);
+        let target = DbFolderRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -110,8 +108,7 @@ mod test_register_not_exists {
     async fn 既に存在する場合(pool: PgPool) -> Result<()> {
         let lib_dir_path = LibDirPath::new("test/hoge/fuga");
 
-        let folder_path_dao = FolderPathDaoImpl {};
-        let target = DbFolderRepositoryImpl::new(folder_path_dao);
+        let target = DbFolderRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,

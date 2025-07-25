@@ -8,26 +8,15 @@ use murack_core_domain::{
 };
 use murack_core_media::picture::Picture;
 
-use super::{ArtworkCache, ArtworkCachedData, ArtworkDao, ArtworkImageDao, SongArtworkDao};
+use super::{ArtworkCache, ArtworkCachedData, ArtworkImageRow};
 
 /// DbArtworkRepositoryの本実装
 #[derive(new)]
-pub struct DbArtworkRepositoryImpl<AID, SAD>
-where
-    AID: ArtworkImageDao + Sync + Send,
-    SAD: SongArtworkDao + Sync + Send,
-{
+pub struct DbArtworkRepositoryImpl {
     artwork_cache: Arc<Mutex<ArtworkCache>>,
-    artwork_dao: ArtworkDao,
-    artwork_image_dao: AID,
-    song_artwork_dao: SAD,
 }
 
-impl<AID, SAD> DbArtworkRepositoryImpl<AID, SAD>
-where
-    AID: ArtworkImageDao + Sync + Send,
-    SAD: SongArtworkDao + Sync + Send,
-{
+impl DbArtworkRepositoryImpl {
     /// アートワークを新規登録する
     ///
     /// 既に登録されていた場合は、新規登録せずに既存データのIDを返す
@@ -52,7 +41,13 @@ where
         }
 
         //同じハッシュのデータをDBから検索
-        let same_hash_list = self.artwork_image_dao.select_by_hash(tx, &hash[..]).await?;
+        let same_hash_list = sqlx::query_as!(
+            ArtworkImageRow,
+            "SELECT id, image, mime_type FROM artworks WHERE hash = $1",
+            &hash[..]
+        )
+        .fetch_all(&mut **tx.get())
+        .await?;
         //見つかった各データを走査
         for existing in same_hash_list {
             //データ本体の比較を行い、これも一致したら新規作成しない
@@ -73,16 +68,10 @@ where
         let image_mini = picture.artwork_mini_image()?;
 
         //新規追加を実行
-        let new_pk = self
-            .artwork_dao
-            .insert(
-                tx,
-                &hash[..],
-                &picture.bytes,
-                &image_mini[..],
-                &picture.mime_type,
-            )
-            .await?;
+        let new_pk = sqlx::query_scalar!(
+            "INSERT INTO artworks (hash, image, image_mini, mime_type) values($1,$2,$3,$4) RETURNING id",
+            &hash[..], &picture.bytes, &image_mini[..], &picture.mime_type
+        ).fetch_one(&mut **tx.get()).await?;
 
         //すぐに使う可能性が高いので、キャッシュに保存
         self.lock_cache()?.cache = Some(ArtworkCachedData {
@@ -102,11 +91,7 @@ where
 }
 
 #[async_trait]
-impl<AID, SAD> DbArtworkRepository for DbArtworkRepositoryImpl<AID, SAD>
-where
-    AID: ArtworkImageDao + Sync + Send,
-    SAD: SongArtworkDao + Sync + Send,
-{
+impl DbArtworkRepository for DbArtworkRepositoryImpl {
     /// 曲に紐づくアートワークの情報を取得する
     /// # Arguments
     /// - song_id: アートワーク情報を取得する曲のID
@@ -163,16 +148,10 @@ where
             let artwork_id = self.register_artwork(tx, &artwork.picture).await?;
 
             //紐付き情報を登録
-            self.song_artwork_dao
-                .insert(
-                    tx,
-                    song_id,
-                    artwork_idx,
-                    artwork_id,
-                    artwork.picture_type,
-                    &artwork.description,
-                )
-                .await?;
+            sqlx::query!(
+                "INSERT INTO track_artworks (track_id, order_index, artwork_id, picture_type, description) VALUES($1, $2, $3, $4, $5)",
+                song_id, artwork_idx as i32, artwork_id, artwork.picture_type as i32, artwork.description,
+            ).execute(&mut **tx.get()).await?;
         }
 
         Ok(())
@@ -190,22 +169,30 @@ where
         song_id: i32,
     ) -> Result<()> {
         //今紐付いているアートワークのIDを取得
-        let artwork_ids = self
-            .song_artwork_dao
-            .select_artwork_id_by_song_id(tx, song_id)
-            .await?;
+        let artwork_ids = sqlx::query_scalar!(
+            "SELECT artwork_id FROM track_artworks WHERE track_id = $1 ORDER BY order_index ASC",
+            song_id,
+        )
+        .fetch_all(&mut **tx.get())
+        .await?;
 
         //紐付きを解除
-        self.song_artwork_dao.delete_by_song_id(tx, song_id).await?;
+        sqlx::query!("DELETE FROM track_artworks WHERE track_id = $1", song_id,)
+            .execute(&mut **tx.get())
+            .await?;
 
         for artwork_id in artwork_ids {
             //他に紐付いている曲がなければ、このアートワークを削除
-            let use_count = self
-                .song_artwork_dao
-                .count_by_artwork_id(tx, artwork_id)
-                .await?;
+            let use_count = sqlx::query_scalar!(
+                r#"SELECT COUNT(*) AS "count!" FROM track_artworks WHERE artwork_id = $1"#,
+                artwork_id,
+            )
+            .fetch_one(&mut **tx.get())
+            .await?;
             if use_count == 0 {
-                self.artwork_dao.delete(tx, artwork_id).await?;
+                sqlx::query!("DELETE FROM artworks WHERE id = $1", artwork_id,)
+                    .execute(&mut **tx.get())
+                    .await?;
 
                 //キャッシュされていたら削除
                 let mut artwork_cache = self.lock_cache()?;

@@ -7,29 +7,21 @@ use murack_core_domain::{
     song::DbSongRepository,
 };
 
-use super::SongDao;
+use super::song_sqls;
 
 /// HasDbSongRepositoryの本実装
 #[derive(new)]
-pub struct DbSongRepositoryImpl<SD>
-where
-    SD: SongDao + Sync + Send,
-{
-    song_dao: SD,
-}
+pub struct DbSongRepositoryImpl {}
 
 #[async_trait]
-impl<SD> DbSongRepository for DbSongRepositoryImpl<SD>
-where
-    SD: SongDao + Sync + Send,
-{
+impl DbSongRepository for DbSongRepositoryImpl {
     /// パスから曲IDを取得
     async fn get_id_by_path<'c>(
         &self,
         tx: &mut DbTransaction<'c>,
         path: &LibSongPath,
     ) -> Result<Option<i32>> {
-        self.song_dao.select_id_by_path(tx, path).await
+        song_sqls::select_id_by_path(tx, path).await
     }
 
     /// 文字列でパスを指定して、該当曲のパスリストを取得
@@ -63,15 +55,15 @@ where
     ) -> Result<Vec<LibSongPath>> {
         //ルートフォルダ指定なら、全曲
         if path.is_root() {
-            self.song_dao.select_path_all(tx).await
+            song_sqls::select_path_all(tx).await
         } else {
-            self.song_dao.select_path_begins_directory(tx, path).await
+            song_sqls::select_path_begins_directory(tx, path).await
         }
     }
 
     /// ライブラリ内の全ての曲のパスを取得
     async fn get_path_all<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<LibSongPath>> {
-        self.song_dao.select_path_all(tx).await
+        song_sqls::select_path_all(tx).await
     }
 
     /// 指定したパスの曲が存在するか確認
@@ -80,7 +72,7 @@ where
         tx: &mut DbTransaction<'c>,
         path: &LibSongPath,
     ) -> Result<bool> {
-        self.song_dao.exists_path(tx, path).await
+        song_sqls::exists_path(tx, path).await
     }
 
     /// 指定されたフォルダに曲が存在するか確認
@@ -89,10 +81,8 @@ where
         tx: &mut DbTransaction<'c>,
         folder_id: i32,
     ) -> Result<bool> {
-        let song_count = self
-            .song_dao
-            .count_by_folder_id(tx, FolderIdMayRoot::Folder(folder_id))
-            .await?;
+        let song_count =
+            song_sqls::count_by_folder_id(tx, FolderIdMayRoot::Folder(folder_id)).await?;
         Ok(song_count > 0)
     }
 
@@ -109,9 +99,7 @@ where
         new_path: &LibSongPath,
         new_folder_id: FolderIdMayRoot,
     ) -> Result<()> {
-        self.song_dao
-            .update_path_by_path(tx, old_path, new_path, new_folder_id)
-            .await
+        song_sqls::update_path_by_path(tx, old_path, new_path, new_folder_id).await
     }
 
     /// 曲の再生時間を書き換え
@@ -121,9 +109,7 @@ where
         song_id: i32,
         duration: u32,
     ) -> Result<()> {
-        self.song_dao
-            .update_duration_by_id(tx, song_id, duration)
-            .await
+        song_sqls::update_duration_by_id(tx, song_id, duration).await
     }
 
     /// 曲を削除
@@ -131,7 +117,7 @@ where
     /// # Arguments
     /// - song_id: 削除する曲のID
     async fn delete<'c>(&self, tx: &mut DbTransaction<'c>, song_id: i32) -> Result<()> {
-        self.song_dao.delete(tx, song_id).await
+        song_sqls::delete(tx, song_id).await
     }
 }
 

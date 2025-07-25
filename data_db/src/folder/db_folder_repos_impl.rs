@@ -11,29 +11,24 @@ use murack_core_domain::{
 
 use crate::converts::enums::db_into_folder_id_may_root;
 
-use super::FolderPathDao;
+use crate::converts::enums::db_from_folder_id_may_root;
 
 /// DbFolderRepositoryの本実装
 #[derive(new)]
-pub struct DbFolderRepositoryImpl<FPD>
-where
-    FPD: FolderPathDao + Sync + Send,
-{
-    folder_path_dao: FPD,
-}
+pub struct DbFolderRepositoryImpl {}
 
 #[async_trait]
-impl<FPD> DbFolderRepository for DbFolderRepositoryImpl<FPD>
-where
-    FPD: FolderPathDao + Sync + Send,
-{
+impl DbFolderRepository for DbFolderRepositoryImpl {
     /// 指定されたフォルダのIDを取得
     async fn get_id_by_path<'c>(
         &self,
         tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<i32>> {
-        self.folder_path_dao.select_id_by_path(tx, path).await
+        let row = sqlx::query!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
+            .fetch_optional(&mut **tx.get())
+            .await?;
+        Ok(row.map(|r| r.id))
     }
 
     /// 指定されたフォルダの、親フォルダのIDを取得
@@ -42,11 +37,13 @@ where
         tx: &mut DbTransaction<'c>,
         folder_id: i32,
     ) -> Result<Option<FolderIdMayRoot>> {
-        Ok(self
-            .folder_path_dao
-            .select_by_id(tx, folder_id)
-            .await?
-            .map(|f| db_into_folder_id_may_root(f.parent_id)))
+        let row = sqlx::query!(
+            "SELECT parent_id FROM folder_paths WHERE id = $1",
+            folder_id
+        )
+        .fetch_optional(&mut **tx.get())
+        .await?;
+        Ok(row.map(|r| db_into_folder_id_may_root(r.parent_id)))
     }
 
     /// 指定されたパスのフォルダが存在するか確認
@@ -55,7 +52,13 @@ where
         tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<bool> {
-        self.folder_path_dao.exists_path(tx, path).await
+        let count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE path = $1"#,
+            path.as_str()
+        )
+        .fetch_one(&mut **tx.get())
+        .await?;
+        Ok(count > 0)
     }
 
     /// 指定されたフォルダに、子フォルダが存在するか確認
@@ -67,10 +70,12 @@ where
         tx: &mut DbTransaction<'c>,
         folder_id: FolderIdMayRoot,
     ) -> Result<bool> {
-        let folder_count = self
-            .folder_path_dao
-            .count_by_parent_id(tx, folder_id)
-            .await?;
+        let folder_count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE parent_id IS NOT DISTINCT FROM $1"#,
+            db_from_folder_id_may_root(folder_id)
+        )
+        .fetch_one(&mut **tx.get())
+        .await?;
         Ok(folder_count > 0)
     }
 
@@ -93,7 +98,10 @@ where
         }
 
         //同一パスのデータを検索し、そのIDを取得
-        let existing_id = self.folder_path_dao.select_id_by_path(tx, path).await?;
+        let existing_id =
+            sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
+                .fetch_optional(&mut **tx.get())
+                .await?;
 
         //見つかった場合はこのIDを返す
         if let Some(i) = existing_id {
@@ -107,10 +115,14 @@ where
 
         let my_name = path.dir_name().unwrap();
 
-        let new_id = self
-            .folder_path_dao
-            .insert(tx, path, my_name, parent_id)
-            .await?;
+        let new_id = sqlx::query_scalar!(
+            "INSERT INTO folder_paths (path, name, parent_id) VALUES ($1, $2, $3) RETURNING id",
+            path.as_str(),
+            my_name,
+            db_from_folder_id_may_root(parent_id)
+        )
+        .fetch_one(&mut **tx.get())
+        .await?;
 
         Ok(FolderIdMayRoot::Folder(new_id))
     }
@@ -120,7 +132,9 @@ where
     /// # Arguments
     /// - folder_id: 削除対象のフォルダID
     async fn delete<'c>(&self, tx: &mut DbTransaction<'c>, folder_id: i32) -> Result<()> {
-        self.folder_path_dao.delete_by_id(tx, folder_id).await?;
+        sqlx::query!("DELETE FROM folder_paths WHERE id = $1", folder_id)
+            .execute(&mut **tx.get())
+            .await?;
         Ok(())
     }
 }

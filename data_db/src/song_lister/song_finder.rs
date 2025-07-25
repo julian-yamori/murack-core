@@ -12,29 +12,20 @@ use murack_core_domain::{
 use sqlx::{Row, postgres::PgRow};
 
 use super::{SongListerFilter, esc::esci};
-use crate::{
-    Error,
-    playlist::{PlaylistDao, PlaylistSongDao},
-};
+use crate::{Error, playlist::playlist_sqls};
 
 /// SongFinderの本実装
 #[derive(new)]
-pub struct SongFinderImpl<PD, PSD, SLF>
+pub struct SongFinderImpl<SLF>
 where
-    PD: PlaylistDao + Sync + Send,
-    PSD: PlaylistSongDao + Sync + Send,
     SLF: SongListerFilter + Sync + Send,
 {
-    playlist_dao: PD,
-    playlist_song_dao: PSD,
     song_lister_filter: SLF,
 }
 
 #[async_trait]
-impl<PD, PSD, SLF> SongFinder for SongFinderImpl<PD, PSD, SLF>
+impl<SLF> SongFinder for SongFinderImpl<SLF>
 where
-    PD: PlaylistDao + Sync + Send,
-    PSD: PlaylistSongDao + Sync + Send,
     SLF: SongListerFilter + Sync + Send,
 {
     /// プレイリストに含まれる曲のパスリストを取得
@@ -77,10 +68,8 @@ where
 /// playlist_song.orderカラムに付ける別名
 const PLIST_SONG_IDX_COLUMN: &str = "playlist_index";
 
-impl<PD, PSD, SLF> SongFinderImpl<PD, PSD, SLF>
+impl<SLF> SongFinderImpl<SLF>
 where
-    PD: PlaylistDao + Sync + Send,
-    PSD: PlaylistSongDao + Sync + Send,
     SLF: SongListerFilter + Sync + Send,
 {
     /// プレイリストに含まれる曲を検索するクエリを作成
@@ -112,12 +101,11 @@ where
         //通常プレイリストなら、リストアップ済みフラグを立てるのみ
         if plist.playlist_type != PlaylistType::Normal {
             //元々保存されていた曲リストを取得
-            let old_id_list: BTreeSet<_> = self
-                .playlist_song_dao
-                .select_song_id_by_playlist_id(tx, plist.rowid)
-                .await?
-                .into_iter()
-                .collect();
+            let old_id_list: BTreeSet<_> =
+                playlist_sqls::select_song_id_by_playlist_id(tx, plist.rowid)
+                    .await?
+                    .into_iter()
+                    .collect();
 
             let new_id_list = match plist.playlist_type {
                 PlaylistType::Filter => self.search_plist_songs_filter(tx, plist).await?,
@@ -126,13 +114,9 @@ where
             };
 
             //PlaylistSongテーブルを更新
-            self.playlist_song_dao
-                .delete_by_playlist_id(tx, plist.rowid)
-                .await?;
+            playlist_sqls::delete_by_playlist_id(tx, plist.rowid).await?;
             for (idx, song_id) in new_id_list.iter().enumerate() {
-                self.playlist_song_dao
-                    .insert(tx, plist.rowid, *song_id, idx as i32)
-                    .await?;
+                playlist_sqls::insert_playlist_song(tx, plist.rowid, *song_id, idx as i32).await?;
             }
 
             //古いリストから変更があったか確認
@@ -181,9 +165,7 @@ where
         plist: &Playlist,
     ) -> Result<Vec<i32>> {
         //直下の子のプレイリストを取得
-        let children = self
-            .playlist_dao
-            .get_child_playlists(tx, Some(plist.rowid))
+        let children = playlist_sqls::get_child_playlists(tx, Some(plist.rowid))
             .await?
             .into_iter()
             .map(Playlist::try_from);

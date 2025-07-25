@@ -6,7 +6,7 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
-use crate::song::{DbSongRepositoryImpl, SongDaoImpl};
+use crate::song::DbSongRepositoryImpl;
 
 // get_path_by_path_str 関数のテスト
 mod test_get_path_by_path_str {
@@ -19,8 +19,7 @@ mod test_get_path_by_path_str {
         fixtures("test_get_path_by_path_str_directory")
     )]
     async fn ディレクトリ指定(pool: PgPool) -> Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -46,8 +45,7 @@ mod test_get_path_by_path_str {
         fixtures("test_get_path_by_path_str_not_found")
     )]
     async fn 見つからない場合(pool: PgPool) -> Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -70,8 +68,7 @@ mod test_get_path_by_path_str {
         fixtures("test_get_path_by_path_str_song")
     )]
     async fn 楽曲ファイル指定(pool: PgPool) -> Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -103,8 +100,7 @@ mod test_get_path_by_path_str {
         fixtures("test_get_path_by_path_str_root")
     )]
     async fn ルート指定(pool: PgPool) -> Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -139,8 +135,7 @@ mod test_get_path_by_directory {
         fixtures("fixtures/test_get_path_by_directory/normal_chars.sql")
     )]
     fn 浅いディレクトリを指定(pool: PgPool) -> anyhow::Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -165,8 +160,7 @@ mod test_get_path_by_directory {
         fixtures("fixtures/test_get_path_by_directory/normal_chars.sql")
     )]
     fn 少し深いディレクトリを指定(pool: PgPool) -> anyhow::Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -187,8 +181,7 @@ mod test_get_path_by_directory {
         fixtures("fixtures/test_get_path_by_directory/normal_chars.sql")
     )]
     fn ルート指定(pool: PgPool) -> anyhow::Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -216,8 +209,7 @@ mod test_get_path_by_directory {
         fixtures("fixtures/test_get_path_by_directory/special_chars.sql")
     )]
     fn 特殊文字を挟むパスでの検索(pool: PgPool) -> anyhow::Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -240,8 +232,7 @@ mod test_is_exist_in_folder {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
     async fn フォルダに2曲存在する場合(pool: PgPool) -> anyhow::Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -255,8 +246,7 @@ mod test_is_exist_in_folder {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
     async fn フォルダに1曲だけ存在する場合(pool: PgPool) -> anyhow::Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,
@@ -270,8 +260,7 @@ mod test_is_exist_in_folder {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
     async fn フォルダに曲が存在しない場合(pool: PgPool) -> anyhow::Result<()> {
-        let song_dao = SongDaoImpl {};
-        let target = DbSongRepositoryImpl::new(song_dao);
+        let target = DbSongRepositoryImpl::new();
 
         let mut tx = DbTransaction::PgTransaction {
             tx: pool.begin().await?,

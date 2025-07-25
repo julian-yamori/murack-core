@@ -9,14 +9,11 @@ mod song_entry;
 pub use song_entry::SongEntry;
 
 mod song_sync_entry;
-use song_sync_entry::SongSyncEntry;
+pub use song_sync_entry::SongSyncEntry;
 
 mod song_row;
 pub use song_row::SongRow;
 mod song_sync_row;
 pub use song_sync_row::SongSyncRow;
 
-mod song_dao;
-pub use song_dao::{MockSongDao, SongDao, SongDaoImpl};
-mod song_sync_dao;
-pub use song_sync_dao::{SongSyncDao, SongSyncDaoImpl};
+pub mod song_sqls;
