@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
+use sqlx::PgTransaction;
 
 use crate::{db::DbTransaction, folder::FolderIdMayRoot, path::LibDirPath};
 
@@ -10,21 +11,21 @@ pub trait DbFolderRepository {
     /// 指定されたフォルダのIDを取得
     async fn get_id_by_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<i32>>;
 
     /// 指定されたフォルダの、親フォルダのIDを取得
     async fn get_parent<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<Option<FolderIdMayRoot>>;
 
     /// 指定されたパスのフォルダが存在するか確認
     async fn is_exist_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<bool>;
 
@@ -34,7 +35,7 @@ pub trait DbFolderRepository {
     /// ルート直下に子フォルダがあるかを調べる
     async fn is_exist_in_folder<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_id: FolderIdMayRoot,
     ) -> Result<bool>;
 
@@ -57,7 +58,7 @@ pub trait DbFolderRepository {
     ///
     /// # Arguments
     /// - folder_id: 削除対象のフォルダID
-    async fn delete<'c>(&self, tx: &mut DbTransaction<'c>, folder_id: i32) -> Result<()>;
+    async fn delete<'c>(&self, tx: &mut PgTransaction<'c>, folder_id: i32) -> Result<()>;
 }
 
 #[derive(Default)]
@@ -68,7 +69,7 @@ pub struct MockDbFolderRepository {
 impl DbFolderRepository for MockDbFolderRepository {
     async fn get_id_by_path<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<i32>> {
         self.inner.get_id_by_path(path)
@@ -76,7 +77,7 @@ impl DbFolderRepository for MockDbFolderRepository {
 
     async fn get_parent<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<Option<FolderIdMayRoot>> {
         self.inner.get_parent(folder_id)
@@ -84,7 +85,7 @@ impl DbFolderRepository for MockDbFolderRepository {
 
     async fn is_exist_path<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<bool> {
         self.inner.is_exist_path(path)
@@ -92,7 +93,7 @@ impl DbFolderRepository for MockDbFolderRepository {
 
     async fn is_exist_in_folder<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         folder_id: FolderIdMayRoot,
     ) -> Result<bool> {
         self.inner.is_exist_in_folder(folder_id)
@@ -106,7 +107,7 @@ impl DbFolderRepository for MockDbFolderRepository {
         self.inner.register_not_exists(path)
     }
 
-    async fn delete<'c>(&self, _db: &mut DbTransaction<'c>, folder_id: i32) -> Result<()> {
+    async fn delete<'c>(&self, _db: &mut PgTransaction<'c>, folder_id: i32) -> Result<()> {
         self.inner.delete(folder_id)
     }
 }

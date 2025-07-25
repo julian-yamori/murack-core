@@ -148,7 +148,7 @@ where
         let dest_dir_path = dest_path_str.to_dir_path();
         if self
             .db_folder_repository
-            .is_exist_path(&mut tx, &dest_dir_path)
+            .is_exist_path(tx.get(), &dest_dir_path)
             .await?
         {
             return Err(DomainError::DbFolderAlreadyExists(dest_dir_path).into());

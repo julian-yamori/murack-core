@@ -2,9 +2,10 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use mockall::mock;
+use sqlx::PgTransaction;
 
 use super::{DbFolderRepository, FolderIdMayRoot};
-use crate::{Error, db::DbTransaction, path::LibDirPath, track::DbTrackRepository};
+use crate::{Error, path::LibDirPath, track::DbTrackRepository};
 
 /// ライブラリのフォルダ関係のUsecase
 #[async_trait]
@@ -15,7 +16,7 @@ pub trait FolderUsecase {
     /// - folder_id: 確認・削除対象のフォルダID
     async fn delete_db_if_empty<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_path: &LibDirPath,
     ) -> Result<()>;
 }
@@ -43,7 +44,7 @@ where
     /// - folder_path: 確認・削除対象のフォルダパス
     async fn delete_db_if_empty<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_path: &LibDirPath,
     ) -> Result<()> {
         //rootが指定されたら無視
@@ -74,7 +75,7 @@ where
     #[async_recursion]
     async fn delete_db_if_empty_by_id<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<()> {
         //他の曲が含まれる場合、削除せずに終了
@@ -125,7 +126,7 @@ pub struct MockFolderUsecase {
 impl FolderUsecase for MockFolderUsecase {
     async fn delete_db_if_empty<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         folder_path: &LibDirPath,
     ) -> Result<()> {
         self.inner.delete_db_if_empty(folder_path)
@@ -142,6 +143,8 @@ mock! {
 
 #[cfg(test)]
 mod tests {
+    use sqlx::PgPool;
+
     use super::*;
     use crate::{folder::MockDbFolderRepository, track::MockDbTrackRepository};
 
@@ -158,8 +161,8 @@ mod tests {
         target.db_track_repository.inner.checkpoint();
     }
 
-    #[tokio::test]
-    async fn test_delete_db_if_empty_trans_once() -> anyhow::Result<()> {
+    #[sqlx::test]
+    async fn test_delete_db_if_empty_trans_once(pool: PgPool) -> anyhow::Result<()> {
         let mut target = target();
         target
             .db_track_repository
@@ -203,7 +206,7 @@ mod tests {
             .withf(|a_folder_id| *a_folder_id == 4)
             .times(0);
 
-        let mut tx = DbTransaction::Dummy;
+        let mut tx = pool.begin().await?;
 
         target.delete_db_if_empty_by_id(&mut tx, 15).await?;
 
@@ -211,8 +214,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_delete_db_if_empty_folder_exists() -> anyhow::Result<()> {
+    #[sqlx::test]
+    async fn test_delete_db_if_empty_folder_exists(pool: PgPool) -> anyhow::Result<()> {
         let mut target = target();
         target
             .db_track_repository
@@ -230,7 +233,7 @@ mod tests {
             .returning(|_| Ok(true));
         target.db_folder_repository.inner.expect_delete().times(0);
 
-        let mut tx = DbTransaction::Dummy;
+        let mut tx = pool.begin().await?;
 
         target.delete_db_if_empty_by_id(&mut tx, 15).await?;
 
@@ -238,8 +241,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_delete_db_if_empty_trans_root_check() -> anyhow::Result<()> {
+    #[sqlx::test]
+    async fn test_delete_db_if_empty_trans_root_check(pool: PgPool) -> anyhow::Result<()> {
         let mut target = target();
         target
             .db_track_repository
@@ -276,7 +279,7 @@ mod tests {
                 Ok(())
             });
 
-        let mut tx = DbTransaction::Dummy;
+        let mut tx = pool.begin().await?;
 
         target.delete_db_if_empty_by_id(&mut tx, 15).await?;
 

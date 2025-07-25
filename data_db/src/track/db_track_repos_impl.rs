@@ -6,7 +6,7 @@ use murack_core_domain::{
     path::{LibDirPath, LibPathStr, LibTrackPath},
     track::DbTrackRepository,
 };
-use sqlx::{Row, postgres::PgRow};
+use sqlx::{PgTransaction, Row, postgres::PgRow};
 
 use crate::{converts::enums::db_from_folder_id_may_root, like_esc};
 
@@ -102,7 +102,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     /// 指定されたフォルダに曲が存在するか確認
     async fn is_exist_in_folder<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<bool> {
         let folder_id_value = db_from_folder_id_may_root(FolderIdMayRoot::Folder(folder_id));
@@ -110,7 +110,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
             r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id IS NOT DISTINCT FROM $1"#,
             folder_id_value,
         )
-        .fetch_one(&mut **tx.get())
+        .fetch_one(&mut **tx)
         .await?;
 
         Ok(track_count > 0)

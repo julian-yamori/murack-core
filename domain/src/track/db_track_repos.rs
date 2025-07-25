@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
+use sqlx::PgTransaction;
 
 use crate::{
     db::DbTransaction,
@@ -46,7 +47,7 @@ pub trait DbTrackRepository {
     /// 指定されたフォルダに曲が存在するか確認
     async fn is_exist_in_folder<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<bool>;
 
@@ -119,7 +120,7 @@ impl DbTrackRepository for MockDbTrackRepository {
 
     async fn is_exist_in_folder<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<bool> {
         self.inner.is_exist_in_folder(folder_id)

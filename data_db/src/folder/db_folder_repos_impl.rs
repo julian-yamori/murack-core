@@ -8,6 +8,7 @@ use murack_core_domain::{
     folder::{DbFolderRepository, FolderIdMayRoot},
     path::LibDirPath,
 };
+use sqlx::PgTransaction;
 
 use crate::converts::enums::db_into_folder_id_may_root;
 
@@ -22,11 +23,11 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     /// 指定されたフォルダのIDを取得
     async fn get_id_by_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<i32>> {
         let row = sqlx::query!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
-            .fetch_optional(&mut **tx.get())
+            .fetch_optional(&mut **tx)
             .await?;
         Ok(row.map(|r| r.id))
     }
@@ -34,14 +35,14 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     /// 指定されたフォルダの、親フォルダのIDを取得
     async fn get_parent<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<Option<FolderIdMayRoot>> {
         let row = sqlx::query!(
             "SELECT parent_id FROM folder_paths WHERE id = $1",
             folder_id
         )
-        .fetch_optional(&mut **tx.get())
+        .fetch_optional(&mut **tx)
         .await?;
         Ok(row.map(|r| db_into_folder_id_may_root(r.parent_id)))
     }
@@ -49,14 +50,14 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     /// 指定されたパスのフォルダが存在するか確認
     async fn is_exist_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<bool> {
         let count = sqlx::query_scalar!(
             r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE path = $1"#,
             path.as_str()
         )
-        .fetch_one(&mut **tx.get())
+        .fetch_one(&mut **tx)
         .await?;
         Ok(count > 0)
     }
@@ -67,14 +68,14 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     /// ルート直下に子フォルダがあるかを調べる
     async fn is_exist_in_folder<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         folder_id: FolderIdMayRoot,
     ) -> Result<bool> {
         let folder_count = sqlx::query_scalar!(
             r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE parent_id IS NOT DISTINCT FROM $1"#,
             db_from_folder_id_may_root(folder_id)
         )
-        .fetch_one(&mut **tx.get())
+        .fetch_one(&mut **tx)
         .await?;
         Ok(folder_count > 0)
     }
@@ -131,9 +132,9 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     ///
     /// # Arguments
     /// - folder_id: 削除対象のフォルダID
-    async fn delete<'c>(&self, tx: &mut DbTransaction<'c>, folder_id: i32) -> Result<()> {
+    async fn delete<'c>(&self, tx: &mut PgTransaction<'c>, folder_id: i32) -> Result<()> {
         sqlx::query!("DELETE FROM folder_paths WHERE id = $1", folder_id)
-            .execute(&mut **tx.get())
+            .execute(&mut **tx)
             .await?;
         Ok(())
     }

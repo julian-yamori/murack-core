@@ -210,7 +210,7 @@ where
 
         //他に使用する曲がなければ、フォルダを削除
         self.folder_usecase
-            .delete_db_if_empty(tx, &path.parent())
+            .delete_db_if_empty(tx.get(), &path.parent())
             .await?;
 
         self.db_playlist_repository.reset_listuped_flag(tx).await?;
@@ -308,7 +308,7 @@ where
 
         //子要素がなくなった親フォルダを削除
         self.folder_usecase
-            .delete_db_if_empty(tx, &src.parent())
+            .delete_db_if_empty(tx.get(), &src.parent())
             .await?;
 
         //パスを使用したフィルタがあるかもしれないので、
@@ -398,6 +398,8 @@ mock! {
 
 #[cfg(test)]
 mod tests {
+    use sqlx::PgPool;
+
     use super::*;
     use crate::{
         MockFileLibraryRepository,
@@ -453,8 +455,8 @@ mod tests {
         target.folder_usecase.inner.checkpoint();
     }
 
-    #[tokio::test]
-    async fn test_delete_db_ok() -> anyhow::Result<()> {
+    #[sqlx::test]
+    async fn test_delete_db_ok(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
             LibTrackPath::new("hoge/fuga.flac")
         }
@@ -513,7 +515,9 @@ mod tests {
             .times(1)
             .returning(|| Ok(()));
 
-        let mut tx = DbTransaction::Dummy;
+        let mut tx = DbTransaction::PgTransaction {
+            tx: pool.begin().await?,
+        };
 
         target.delete_track_db(&mut tx, &track_path()).await?;
 
@@ -582,8 +586,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_delete_db_root_folder() -> anyhow::Result<()> {
+    #[sqlx::test]
+    async fn test_delete_db_root_folder(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
             LibTrackPath::new("fuga.mp3")
         }
@@ -642,7 +646,9 @@ mod tests {
             .times(1)
             .returning(|| Ok(()));
 
-        let mut tx = DbTransaction::Dummy;
+        let mut tx = DbTransaction::PgTransaction {
+            tx: pool.begin().await?,
+        };
 
         target.delete_track_db(&mut tx, &track_path()).await?;
 
