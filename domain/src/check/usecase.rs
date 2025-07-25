@@ -6,7 +6,6 @@ use mockall::automock;
 use sqlx::PgPool;
 
 use super::CheckIssueSummary;
-use crate::db::DbTransaction;
 use crate::{
     Error, FileLibraryRepository,
     path::LibTrackPath,
@@ -116,9 +115,7 @@ where
         };
 
         //DBデータ読み込み
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
         let db_data_opt = self
             .db_track_sync_repository
             .get_by_path(&mut tx, track_path)

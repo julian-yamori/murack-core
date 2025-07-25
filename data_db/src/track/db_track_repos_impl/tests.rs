@@ -1,6 +1,5 @@
 use anyhow::Result;
 use murack_core_domain::{
-    db::DbTransaction,
     path::{LibDirPath, LibPathStr, LibTrackPath},
     track::DbTrackRepository,
 };
@@ -21,9 +20,7 @@ mod test_get_path_by_path_str {
     async fn ディレクトリ指定(pool: PgPool) -> Result<()> {
         let target = DbTrackRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target
             .get_path_by_path_str(&mut tx, &LibPathStr::from("test/hoge".to_owned()))
@@ -47,9 +44,7 @@ mod test_get_path_by_path_str {
     async fn 見つからない場合(pool: PgPool) -> Result<()> {
         let target = DbTrackRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target
             .get_path_by_path_str(&mut tx, &LibPathStr::from("test/hoge".to_owned()))
@@ -70,9 +65,7 @@ mod test_get_path_by_path_str {
     async fn 楽曲ファイル指定(pool: PgPool) -> Result<()> {
         let target = DbTrackRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target
             .get_path_by_path_str(&mut tx, &LibPathStr::from("test/hoge.flac".to_owned()))
@@ -86,7 +79,7 @@ mod test_get_path_by_path_str {
             r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE path = $1"#,
             "test/hoge.flac"
         )
-        .fetch_one(&mut **tx.get())
+        .fetch_one(&mut *tx)
         .await?;
         assert_eq!(exists, 1);
 
@@ -102,9 +95,7 @@ mod test_get_path_by_path_str {
     async fn ルート指定(pool: PgPool) -> Result<()> {
         let target = DbTrackRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target
             .get_path_by_path_str(&mut tx, &LibPathStr::root())
@@ -118,7 +109,7 @@ mod test_get_path_by_path_str {
 
         // データベース内の全楽曲数を確認
         let total_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM tracks"#)
-            .fetch_one(&mut **tx.get())
+            .fetch_one(&mut *tx)
             .await?;
         assert_eq!(total_count, 3);
 
@@ -137,9 +128,7 @@ mod test_get_path_by_directory {
     fn 浅いディレクトリを指定(pool: PgPool) -> anyhow::Result<()> {
         let target = DbTrackRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         assert_eq!(
             target
@@ -162,9 +151,7 @@ mod test_get_path_by_directory {
     fn 少し深いディレクトリを指定(pool: PgPool) -> anyhow::Result<()> {
         let target = DbTrackRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         assert_eq!(
             target
@@ -183,9 +170,7 @@ mod test_get_path_by_directory {
     fn ルート指定(pool: PgPool) -> anyhow::Result<()> {
         let target = DbTrackRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         assert_eq!(
             target
@@ -211,9 +196,7 @@ mod test_get_path_by_directory {
     fn 特殊文字を挟むパスでの検索(pool: PgPool) -> anyhow::Result<()> {
         let target = DbTrackRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         assert_eq!(
             target

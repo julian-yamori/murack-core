@@ -8,7 +8,6 @@ use anyhow::Result;
 use murack_core_domain::{
     FileLibraryRepository,
     check::{CheckIssueSummary, CheckUsecase},
-    db::DbTransaction,
     path::LibTrackPath,
     track::DbTrackRepository,
 };
@@ -130,9 +129,7 @@ where
         //DBからリストアップ
         cui_outln!(cui, "DBの検索中...")?;
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
 
         for path in self
             .db_track_repository

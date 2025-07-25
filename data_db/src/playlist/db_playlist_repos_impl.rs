@@ -1,9 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use murack_core_domain::{
-    db::DbTransaction,
-    playlist::{DbPlaylistRepository, Playlist, PlaylistType, SortType},
-};
+use murack_core_domain::playlist::{DbPlaylistRepository, Playlist, PlaylistType, SortType};
+use sqlx::PgTransaction;
 
 use super::PlaylistRow;
 use crate::{Error, error::PlaylistNoParentsDetectedItem};
@@ -19,7 +17,7 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     /// id: playlist.rowid
     async fn get_playlist<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         id: i32,
     ) -> Result<Option<Playlist>> {
         let opt = sqlx::query_as!(
@@ -27,7 +25,7 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
             id
         )
-        .fetch_optional(&mut **tx.get())
+        .fetch_optional(&mut **tx)
         .await?;
 
         match opt {
@@ -39,12 +37,12 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     /// プレイリストのツリー構造を取得
     /// # Returns
     /// 最上位プレイリストのリスト
-    async fn get_playlist_tree<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<Playlist>> {
+    async fn get_playlist_tree<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<Playlist>> {
         let remain_pool = sqlx::query_as!(
             PlaylistRow,
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
         )
-        .fetch_all(&mut **tx.get())
+        .fetch_all(&mut **tx)
         .await?;
 
         let (root_list, remain_pool) = build_plist_children_recursive(None, remain_pool)?;
@@ -67,14 +65,14 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     }
 
     /// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
-    async fn reset_listuped_flag<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<()> {
+    async fn reset_listuped_flag<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<()> {
         sqlx::query!(
             "UPDATE playlists SET listuped_flag = $1 WHERE playlist_type IN ($2::playlist_type, $3::playlist_type)",
             false,
             PlaylistType::Filter as PlaylistType,
             PlaylistType::Folder as PlaylistType
         )
-        .execute(&mut **tx.get())
+        .execute(&mut **tx)
         .await?;
 
         Ok(())
@@ -85,11 +83,11 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     /// - is_changed: 変更されたか
     async fn set_dap_change_flag_all<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         is_changed: bool,
     ) -> Result<()> {
         sqlx::query!("UPDATE playlists SET dap_changed = $1", is_changed,)
-            .execute(&mut **tx.get())
+            .execute(&mut **tx)
             .await?;
 
         Ok(())

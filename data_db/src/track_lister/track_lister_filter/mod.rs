@@ -4,13 +4,11 @@ mod tests;
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::NaiveDate;
-use murack_core_domain::{
-    db::DbTransaction,
-    filter::{
-        ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,
-        IntFilterRange, RootFilter, StringFilterRange, TagsFilterRange,
-    },
+use murack_core_domain::filter::{
+    ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,
+    IntFilterRange, RootFilter, StringFilterRange, TagsFilterRange,
 };
+use sqlx::PgTransaction;
 
 use super::esc::escs;
 use crate::like_esc;
@@ -23,7 +21,7 @@ pub trait TrackListerFilter {
     /// - filter: 検索に使用するフィルタ情報
     async fn list_track_id<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         filter: &RootFilter,
     ) -> Result<Vec<i32>>;
 }
@@ -38,7 +36,7 @@ impl TrackListerFilter for TrackListerFilterImpl {
     /// - filter: 検索に使用するフィルタ情報
     async fn list_track_id<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         filter: &RootFilter,
     ) -> Result<Vec<i32>> {
         let mut query_base = "SELECT tracks.id FROM tracks".to_owned();
@@ -49,9 +47,7 @@ impl TrackListerFilter for TrackListerFilterImpl {
             query_base = format!("{query_base} WHERE {query_where}");
         }
 
-        let list = sqlx::query_scalar(&query_base)
-            .fetch_all(&mut **tx.get())
-            .await?;
+        let list = sqlx::query_scalar(&query_base).fetch_all(&mut **tx).await?;
 
         Ok(list)
     }

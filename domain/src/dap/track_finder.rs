@@ -2,7 +2,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
 
-use crate::{db::DbTransaction, path::LibTrackPath, playlist::Playlist};
+use crate::{path::LibTrackPath, playlist::Playlist};
+use sqlx::PgTransaction;
 
 /// 曲データの検索機能
 #[async_trait]
@@ -12,7 +13,7 @@ pub trait TrackFinder {
     /// - plist 取得対象のプレイリスト情報
     async fn get_track_path_list<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<LibTrackPath>>;
 }
@@ -25,7 +26,7 @@ pub struct MockTrackFinder {
 impl TrackFinder for MockTrackFinder {
     async fn get_track_path_list<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<LibTrackPath>> {
         self.inner.get_track_path_list(plist)

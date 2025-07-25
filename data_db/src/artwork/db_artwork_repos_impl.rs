@@ -2,11 +2,9 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use murack_core_domain::{
-    artwork::{DbArtworkRepository, TrackArtwork},
-    db::DbTransaction,
-};
+use murack_core_domain::artwork::{DbArtworkRepository, TrackArtwork};
 use murack_core_media::picture::Picture;
+use sqlx::PgTransaction;
 
 use super::{ArtworkCache, ArtworkCachedData, ArtworkImageRow};
 
@@ -27,7 +25,7 @@ impl DbArtworkRepositoryImpl {
     /// 新規登録されたアートワーク、もしくは既存の同一データのID
     async fn register_artwork(
         &self,
-        tx: &mut DbTransaction<'_>,
+        tx: &mut PgTransaction<'_>,
         picture: &Arc<Picture>,
     ) -> Result<i32> {
         //対象データのMD5ハッシュを取得
@@ -46,7 +44,7 @@ impl DbArtworkRepositoryImpl {
             "SELECT id, image, mime_type FROM artworks WHERE hash = $1",
             &hash[..]
         )
-        .fetch_all(&mut **tx.get())
+        .fetch_all(&mut **tx)
         .await?;
         //見つかった各データを走査
         for existing in same_hash_list {
@@ -71,7 +69,7 @@ impl DbArtworkRepositoryImpl {
         let new_pk = sqlx::query_scalar!(
             "INSERT INTO artworks (hash, image, image_mini, mime_type) values($1,$2,$3,$4) RETURNING id",
             &hash[..], &picture.bytes, &image_mini[..], &picture.mime_type
-        ).fetch_one(&mut **tx.get()).await?;
+        ).fetch_one(&mut **tx).await?;
 
         //すぐに使う可能性が高いので、キャッシュに保存
         self.lock_cache()?.cache = Some(ArtworkCachedData {
@@ -99,7 +97,7 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
     /// 指定された曲に紐づく全アートワークの情報
     async fn get_track_artworks<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
     ) -> Result<Vec<TrackArtwork>> {
         let artworks = sqlx::query!(
@@ -121,7 +119,7 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
                 description: row.description,
             })
         })
-        .fetch_all(&mut **tx.get())
+        .fetch_all(&mut **tx)
         .await?;
 
         Ok(artworks.into_iter().collect::<anyhow::Result<_>>()?)
@@ -136,7 +134,7 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
     /// - track_artworks: 曲に紐づく全てのアートワークの情報
     async fn register_track_artworks<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
         track_artworks: &[TrackArtwork],
     ) -> Result<()> {
@@ -151,7 +149,7 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
             sqlx::query!(
                 "INSERT INTO track_artworks (track_id, order_index, artwork_id, picture_type, description) VALUES($1, $2, $3, $4, $5)",
                 track_id, artwork_idx as i32, artwork_id, artwork.picture_type as i32, artwork.description,
-            ).execute(&mut **tx.get()).await?;
+            ).execute(&mut **tx).await?;
         }
 
         Ok(())
@@ -165,7 +163,7 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
     /// - track_id 紐付けを削除する曲のID
     async fn unregister_track_artworks<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
     ) -> Result<()> {
         //今紐付いているアートワークのIDを取得
@@ -173,12 +171,12 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
             "SELECT artwork_id FROM track_artworks WHERE track_id = $1 ORDER BY order_index ASC",
             track_id,
         )
-        .fetch_all(&mut **tx.get())
+        .fetch_all(&mut **tx)
         .await?;
 
         //紐付きを解除
         sqlx::query!("DELETE FROM track_artworks WHERE track_id = $1", track_id,)
-            .execute(&mut **tx.get())
+            .execute(&mut **tx)
             .await?;
 
         for artwork_id in artwork_ids {
@@ -187,11 +185,11 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
                 r#"SELECT COUNT(*) AS "count!" FROM track_artworks WHERE artwork_id = $1"#,
                 artwork_id,
             )
-            .fetch_one(&mut **tx.get())
+            .fetch_one(&mut **tx)
             .await?;
             if use_count == 0 {
                 sqlx::query!("DELETE FROM artworks WHERE id = $1", artwork_id,)
-                    .execute(&mut **tx.get())
+                    .execute(&mut **tx)
                     .await?;
 
                 //キャッシュされていたら削除

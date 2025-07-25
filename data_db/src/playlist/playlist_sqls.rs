@@ -1,16 +1,16 @@
 use anyhow::Result;
-use murack_core_domain::db::DbTransaction;
+use sqlx::PgTransaction;
 
 /// プレイリストIDを指定して曲IDを取得
 pub async fn select_track_id_by_playlist_id<'c>(
-    tx: &mut DbTransaction<'c>,
+    tx: &mut PgTransaction<'c>,
     plist_id: i32,
 ) -> Result<Vec<i32>> {
     let id = sqlx::query_scalar!(
         "SELECT track_id FROM playlist_tracks WHERE playlist_id = $1",
         plist_id,
     )
-    .fetch_all(&mut **tx.get())
+    .fetch_all(&mut **tx)
     .await?;
 
     Ok(id)
@@ -18,7 +18,7 @@ pub async fn select_track_id_by_playlist_id<'c>(
 
 /// プレイリストに曲を新規登録
 pub async fn insert_playlist_track<'c>(
-    tx: &mut DbTransaction<'c>,
+    tx: &mut PgTransaction<'c>,
     plist_id: i32,
     track_id: i32,
     order: i32,
@@ -29,7 +29,7 @@ pub async fn insert_playlist_track<'c>(
         order,
         track_id,
     )
-    .execute(&mut **tx.get())
+    .execute(&mut **tx)
     .await?;
 
     Ok(())
@@ -39,12 +39,12 @@ pub async fn insert_playlist_track<'c>(
 ///
 /// # Arguments
 /// - plist_id: 削除元のプレイリストのID
-pub async fn delete_by_playlist_id<'c>(tx: &mut DbTransaction<'c>, plist_id: i32) -> Result<()> {
+pub async fn delete_by_playlist_id<'c>(tx: &mut PgTransaction<'c>, plist_id: i32) -> Result<()> {
     sqlx::query!(
         "DELETE FROM playlist_tracks WHERE playlist_id = $1",
         plist_id,
     )
-    .execute(&mut **tx.get())
+    .execute(&mut **tx)
     .await?;
 
     Ok(())

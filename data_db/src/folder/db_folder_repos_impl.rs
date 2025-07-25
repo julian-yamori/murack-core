@@ -4,7 +4,6 @@ mod tests;
 use anyhow::Result;
 use async_trait::async_trait;
 use murack_core_domain::{
-    db::DbTransaction,
     folder::{DbFolderRepository, FolderIdMayRoot},
     path::LibDirPath,
 };
@@ -90,7 +89,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     /// 新規登録されたデータ、もしくは既存のデータのID。
     async fn register_not_exists<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<FolderIdMayRoot> {
         //ライブラリルートならNone
@@ -101,7 +100,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
         //同一パスのデータを検索し、そのIDを取得
         let existing_id =
             sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
-                .fetch_optional(&mut **tx.get())
+                .fetch_optional(&mut **tx)
                 .await?;
 
         //見つかった場合はこのIDを返す
@@ -122,7 +121,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
             my_name,
             db_from_folder_id_may_root(parent_id)
         )
-        .fetch_one(&mut **tx.get())
+        .fetch_one(&mut **tx)
         .await?;
 
         Ok(FolderIdMayRoot::Folder(new_id))

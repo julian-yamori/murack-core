@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use mockall::mock;
 use sqlx::PgTransaction;
 
-use crate::{db::DbTransaction, folder::FolderIdMayRoot, path::LibDirPath};
+use crate::{folder::FolderIdMayRoot, path::LibDirPath};
 
 /// フォルダ関係のDBリポジトリ
 #[async_trait]
@@ -50,7 +50,7 @@ pub trait DbFolderRepository {
     /// 新規登録されたデータ、もしくは既存のデータのID。
     async fn register_not_exists<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<FolderIdMayRoot>;
 
@@ -101,7 +101,7 @@ impl DbFolderRepository for MockDbFolderRepository {
 
     async fn register_not_exists<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<FolderIdMayRoot> {
         self.inner.register_not_exists(path)

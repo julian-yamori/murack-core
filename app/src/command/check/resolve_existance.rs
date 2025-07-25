@@ -4,7 +4,6 @@ use mockall::automock;
 use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
     check::CheckIssueSummary,
-    db::DbTransaction,
     path::LibTrackPath,
     sync::{DbTrackSyncRepository, SyncUsecase, TrackSync},
     track::TrackUsecase,
@@ -94,9 +93,7 @@ where
 
         //DBデータ読み込み
         let db_data_opt = {
-            let mut tx = DbTransaction::PgTransaction {
-                tx: db_pool.begin().await?,
-            };
+            let mut tx = db_pool.begin().await?;
 
             self.db_track_sync_repository
                 .get_by_path(&mut tx, track_path)
@@ -463,9 +460,7 @@ where
         track_path: &LibTrackPath,
         pc_track: &mut TrackSync,
     ) -> Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
 
         self.sync_usecase
             .register_db(&mut tx, track_path, pc_track)
@@ -477,9 +472,7 @@ where
 
     /// DBから曲を削除
     async fn delete_track_db(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
 
         self.track_usecase
             .delete_track_db(&mut tx, track_path)

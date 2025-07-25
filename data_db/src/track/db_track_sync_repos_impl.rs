@@ -3,11 +3,11 @@ use async_trait::async_trait;
 use murack_core_domain::{
     Error as DomainError,
     artwork::DbArtworkRepository,
-    db::DbTransaction,
     folder::FolderIdMayRoot,
     path::LibTrackPath,
     sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
 };
+use sqlx::PgTransaction;
 
 use crate::converts::enums::db_from_folder_id_may_root;
 
@@ -35,11 +35,11 @@ where
     /// 該当する曲の情報（見つからない場合はNone）
     async fn get_by_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<Option<DbTrackSync>> {
         //一旦trackテーブルから検索
-        let track_row = match sqlx::query_as!(TrackSyncRow, "SELECT id, duration, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, memo, lyrics FROM tracks WHERE path = $1", path.as_str()).fetch_optional(&mut **tx.get()).await? {
+        let track_row = match sqlx::query_as!(TrackSyncRow, "SELECT id, duration, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, memo, lyrics FROM tracks WHERE path = $1", path.as_str()).fetch_optional(&mut **tx).await? {
             Some(t) => t,
             None => return Ok(None),
         };
@@ -82,7 +82,7 @@ where
     /// 追加した曲のID
     async fn register<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_path: &LibTrackPath,
         track_sync: &TrackSync,
         folder_id: FolderIdMayRoot,
@@ -129,7 +129,7 @@ where
             album_artist_order,
             composer_order,
             genre_order,
-        ).fetch_one(&mut **tx.get()).await?;
+        ).fetch_one(&mut **tx).await?;
 
         //アートワークを登録
         self.db_artwork_repository
@@ -145,7 +145,7 @@ where
     /// ArtworkRepositoryの保存処理を直接呼び出すこと。
     async fn save_exclude_artwork<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track: &DbTrackSync,
     ) -> Result<()> {
         let sync = &track.track_sync;
@@ -184,7 +184,7 @@ where
             &composer_order,
             &genre_order,
             track.id,
-        ).execute(&mut **tx.get()).await?;
+        ).execute(&mut **tx).await?;
 
         Ok(())
     }

@@ -1,6 +1,5 @@
 use anyhow::Result;
 use murack_core_domain::{
-    db::DbTransaction,
     folder::{DbFolderRepository, FolderIdMayRoot},
     path::LibDirPath,
 };
@@ -23,9 +22,7 @@ mod test_register_not_exists {
 
         let target = DbFolderRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target.register_not_exists(&mut tx, &lib_dir_path).await?;
 
@@ -37,7 +34,7 @@ mod test_register_not_exists {
             "SELECT COUNT(*) FROM folder_paths WHERE path = $1",
             "test/hoge/fuga/"
         )
-        .fetch_one(&mut **tx.get())
+        .fetch_one(&mut *tx)
         .await?;
         assert_eq!(exists, Some(1));
 
@@ -46,14 +43,14 @@ mod test_register_not_exists {
             "SELECT COUNT(*) FROM folder_paths WHERE path = $1",
             "test/hoge/"
         )
-        .fetch_one(&mut **tx.get())
+        .fetch_one(&mut *tx)
         .await?;
         assert_eq!(parent_exists, Some(1));
 
         // 元々存在していた "test" フォルダが残っていることを確認（fixture で INSERT しているもの）
         let root_test_exists =
             sqlx::query_scalar!("SELECT COUNT(*) FROM folder_paths WHERE path = $1", "test/")
-                .fetch_one(&mut **tx.get())
+                .fetch_one(&mut *tx)
                 .await?;
         assert_eq!(root_test_exists, Some(1));
 
@@ -71,9 +68,7 @@ mod test_register_not_exists {
 
         let target = DbFolderRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target.register_not_exists(&mut tx, &lib_dir_path).await?;
 
@@ -83,7 +78,7 @@ mod test_register_not_exists {
         // 対象フォルダが実際に作成されたことを確認
         let exists =
             sqlx::query_scalar!("SELECT COUNT(*) FROM folder_paths WHERE path = $1", "test/")
-                .fetch_one(&mut **tx.get())
+                .fetch_one(&mut *tx)
                 .await?;
         assert_eq!(exists, Some(1));
 
@@ -92,7 +87,7 @@ mod test_register_not_exists {
             "SELECT parent_id FROM folder_paths WHERE path = $1",
             "test/"
         )
-        .fetch_one(&mut **tx.get())
+        .fetch_one(&mut *tx)
         .await?;
         assert_eq!(parent_id, None);
 
@@ -110,9 +105,7 @@ mod test_register_not_exists {
 
         let target = DbFolderRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target.register_not_exists(&mut tx, &lib_dir_path).await?;
 
@@ -121,7 +114,7 @@ mod test_register_not_exists {
 
         // フォルダ数が変わっていないことを確認（新規作成されていない）
         let total_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM folder_paths"#)
-            .fetch_one(&mut **tx.get())
+            .fetch_one(&mut *tx)
             .await?;
         assert_eq!(total_count, 3); // fixture で3個作成している
 

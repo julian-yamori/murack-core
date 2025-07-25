@@ -5,7 +5,6 @@ use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
     artwork::{DbArtworkRepository, TrackArtwork},
     check::CheckUsecase,
-    db::DbTransaction,
     path::LibTrackPath,
     sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
     track::TrackItemKind,
@@ -319,9 +318,7 @@ where
         match input {
             //PCからDBへ上書き
             '1' => {
-                let mut tx = DbTransaction::PgTransaction {
-                    tx: db_pool.begin().await?,
-                };
+                let mut tx = db_pool.begin().await?;
 
                 //DBに上書き保存
                 let track_id = db_track.id;
@@ -424,9 +421,7 @@ where
         db_pool: &PgPool,
         track_path: &LibTrackPath,
     ) -> Result<DbTrackSync> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
 
         self.db_track_sync_repository
             .get_by_path(&mut tx, track_path)
@@ -440,9 +435,7 @@ where
         db_pool: &PgPool,
         db_track: &DbTrackSync,
     ) -> Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
 
         self.db_track_sync_repository
             .save_exclude_artwork(&mut tx, db_track)

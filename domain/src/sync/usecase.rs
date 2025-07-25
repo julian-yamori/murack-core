@@ -4,11 +4,11 @@ use mockall::mock;
 
 use super::{DbTrackSyncRepository, TrackSync};
 use crate::{
-    db::DbTransaction,
     folder::{DbFolderRepository, FolderIdMayRoot},
     path::LibTrackPath,
     playlist::DbPlaylistRepository,
 };
+use sqlx::PgTransaction;
 
 /// DB・PC連携のUseCase
 #[async_trait]
@@ -22,7 +22,7 @@ pub trait SyncUsecase {
     /// - entry_date: 登録日
     async fn register_db<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_path: &LibTrackPath,
         track_sync: &mut TrackSync,
     ) -> Result<()>;
@@ -56,7 +56,7 @@ where
     /// - entry_date: 登録日
     async fn register_db<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_path: &LibTrackPath,
         track_sync: &mut TrackSync,
     ) -> Result<()> {
@@ -95,7 +95,7 @@ pub struct MockSyncUsecase {
 impl SyncUsecase for MockSyncUsecase {
     async fn register_db<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         track_path: &LibTrackPath,
         track_sync: &mut TrackSync,
     ) -> Result<()> {
@@ -118,6 +118,7 @@ mod tests {
 
     use chrono::NaiveDate;
     use murack_core_media::picture::Picture;
+    use sqlx::PgPool;
 
     use super::super::MockDbTrackSyncRepository;
     use super::*;
@@ -174,8 +175,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_register_db_root_folder() -> anyhow::Result<()> {
+    #[sqlx::test]
+    async fn test_register_db_root_folder(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
             LibTrackPath::new("track.flac")
         }
@@ -205,7 +206,7 @@ mod tests {
             .times(1)
             .returning(|| Ok(()));
 
-        let mut tx = DbTransaction::Dummy;
+        let mut tx = pool.begin().await?;
 
         let mut s = track_sync();
         target.register_db(&mut tx, &track_path(), &mut s).await?;
@@ -216,8 +217,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_register_db_no_title() -> anyhow::Result<()> {
+    #[sqlx::test]
+    async fn test_register_db_no_title(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
             LibTrackPath::new("test/hoge/fuga.mp3")
         }
@@ -251,7 +252,7 @@ mod tests {
             .times(1)
             .returning(|| Ok(()));
 
-        let mut tx = DbTransaction::Dummy;
+        let mut tx = pool.begin().await?;
 
         let mut s = track_sync();
         s.title = None;

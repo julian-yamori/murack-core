@@ -1,5 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{db::DbTransaction, playlist::DbPlaylistRepository};
+use murack_core_domain::playlist::DbPlaylistRepository;
 use sqlx::PgPool;
 
 use crate::playlist::DbPlaylistRepositoryImpl;
@@ -14,9 +14,7 @@ mod test_get_playlist_tree {
     async fn 空の場合(pool: PgPool) -> Result<()> {
         let target = DbPlaylistRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target.get_playlist_tree(&mut tx).await?;
 
@@ -25,7 +23,7 @@ mod test_get_playlist_tree {
 
         // データベースにプレイリストが存在しないことを確認
         let count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM playlists"#)
-            .fetch_one(&mut **tx.get())
+            .fetch_one(&mut *tx)
             .await?;
         assert_eq!(count, 0);
 
@@ -38,9 +36,7 @@ mod test_get_playlist_tree {
     async fn フラット構造(pool: PgPool) -> Result<()> {
         let target = DbPlaylistRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target.get_playlist_tree(&mut tx).await?;
 
@@ -71,9 +67,7 @@ mod test_get_playlist_tree {
     async fn 階層構造(pool: PgPool) -> Result<()> {
         let target = DbPlaylistRepositoryImpl::new();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let result = target.get_playlist_tree(&mut tx).await?;
 

@@ -1,7 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use murack_core_domain::{
-    db::DbTransaction,
     folder::FolderIdMayRoot,
     path::{LibDirPath, LibPathStr, LibTrackPath},
     track::DbTrackRepository,
@@ -21,11 +20,11 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     /// パスから曲IDを取得
     async fn get_id_by_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<Option<i32>> {
         let id = sqlx::query_scalar!("SELECT id FROM tracks WHERE path = $1", path.as_str(),)
-            .fetch_optional(&mut **tx.get())
+            .fetch_optional(&mut **tx)
             .await?;
 
         Ok(id)
@@ -34,7 +33,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     /// 文字列でパスを指定して、該当曲のパスリストを取得
     async fn get_path_by_path_str<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>> {
         //ディレクトリ指定とみなして検索
@@ -57,14 +56,14 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     /// 指定されたディレクトリ内の、全ての曲のパス
     async fn get_path_by_directory<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Vec<LibTrackPath>> {
         if path.is_root() {
             //ルートフォルダ指定なら、全曲
             let paths = sqlx::query!("SELECT path FROM tracks")
                 .map(|row| LibTrackPath::new(row.path))
-                .fetch_all(&mut **tx.get())
+                .fetch_all(&mut **tx)
                 .await?;
             Ok(paths)
         } else {
@@ -83,7 +82,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
             let paths = sqlx::query(&sql)
                 .bind(cmp_value)
                 .map(|row: PgRow| LibTrackPath::new(row.get::<&str, _>(0)))
-                .fetch_all(&mut **tx.get())
+                .fetch_all(&mut **tx)
                 .await?;
 
             Ok(paths)
@@ -93,7 +92,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     /// 指定したパスの曲が存在するか確認
     async fn is_exist_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<bool> {
         track_sqls::exists_path(tx, path).await
@@ -124,7 +123,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     /// - new_folder_id: 新しい親フォルダのID
     async fn update_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         old_path: &LibTrackPath,
         new_path: &LibTrackPath,
         new_folder_id: FolderIdMayRoot,
@@ -137,7 +136,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
             folder_id_value,
             old_path.as_str(),
         )
-        .execute(&mut **tx.get())
+        .execute(&mut **tx)
         .await?;
 
         Ok(())
@@ -146,7 +145,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     /// 曲の再生時間を書き換え
     async fn update_duration<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
         duration: u32,
     ) -> Result<()> {
@@ -157,7 +156,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
             duration_i32,
             track_id,
         )
-        .execute(&mut **tx.get())
+        .execute(&mut **tx)
         .await?;
 
         Ok(())
@@ -167,9 +166,9 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     ///
     /// # Arguments
     /// - track_id: 削除する曲のID
-    async fn delete<'c>(&self, tx: &mut DbTransaction<'c>, track_id: i32) -> Result<()> {
+    async fn delete<'c>(&self, tx: &mut PgTransaction<'c>, track_id: i32) -> Result<()> {
         sqlx::query!("DELETE FROM tracks WHERE id = $1", track_id,)
-            .execute(&mut **tx.get())
+            .execute(&mut **tx)
             .await?;
 
         Ok(())

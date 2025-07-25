@@ -1,9 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
+use sqlx::PgTransaction;
 
 use super::TrackArtwork;
-use crate::db::DbTransaction;
 
 /// アートワーク関係のDBリポジトリ
 #[async_trait]
@@ -15,7 +15,7 @@ pub trait DbArtworkRepository {
     /// 指定された曲に紐づく全アートワークの情報
     async fn get_track_artworks<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
     ) -> Result<Vec<TrackArtwork>>;
 
@@ -28,7 +28,7 @@ pub trait DbArtworkRepository {
     /// - track_artworks: 曲に紐づく全てのアートワークの情報
     async fn register_track_artworks<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
         track_artworks: &[TrackArtwork],
     ) -> Result<()>;
@@ -41,7 +41,7 @@ pub trait DbArtworkRepository {
     /// - track_id 紐付けを削除する曲のID
     async fn unregister_track_artworks<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
     ) -> Result<()>;
 }
@@ -54,7 +54,7 @@ pub struct MockDbArtworkRepository {
 impl DbArtworkRepository for MockDbArtworkRepository {
     async fn get_track_artworks<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         track_id: i32,
     ) -> Result<Vec<TrackArtwork>> {
         self.inner.get_track_artworks(track_id)
@@ -62,7 +62,7 @@ impl DbArtworkRepository for MockDbArtworkRepository {
 
     async fn register_track_artworks<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         track_id: i32,
         track_artworks: &[TrackArtwork],
     ) -> Result<()> {
@@ -71,7 +71,7 @@ impl DbArtworkRepository for MockDbArtworkRepository {
 
     async fn unregister_track_artworks<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         track_id: i32,
     ) -> Result<()> {
         self.inner.unregister_track_artworks(track_id)

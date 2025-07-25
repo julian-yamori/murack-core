@@ -1,9 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use murack_core_domain::{
-    db::DbTransaction,
-    playlist::{DbPlaylistTrackRepository, PlaylistType, SortType},
-};
+use murack_core_domain::playlist::{DbPlaylistTrackRepository, PlaylistType, SortType};
+use sqlx::PgTransaction;
 
 use crate::playlist::playlist_row::PlaylistRow;
 
@@ -18,11 +16,11 @@ impl DbPlaylistTrackRepository for DbPlaylistTrackRepositoryImpl {
     //曲を全プレイリストから削除
     async fn delete_track_from_all_playlists<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
     ) -> Result<()> {
         let playlist_rows = sqlx::query_as!(PlaylistRow, r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists"#)
-            .fetch_all(&mut **tx.get())
+            .fetch_all(&mut **tx)
             .await?;
 
         //全てのプレイリストについて繰り返す

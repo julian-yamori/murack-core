@@ -1,6 +1,6 @@
 //! TrackListerFilterのテスト
 
-use murack_core_domain::{db::DbTransaction, test_utils::assert_eq_not_orderd};
+use murack_core_domain::test_utils::assert_eq_not_orderd;
 use sqlx::PgPool;
 
 use super::*;
@@ -16,9 +16,7 @@ mod test_group_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("group_filter"))]
     async fn complex_and_or_combination(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let filter = FilterTarget::FilterGroup {
             op: GroupOperand::And,
@@ -67,9 +65,7 @@ mod test_string_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("string_filter"))]
     async fn equal(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -87,9 +83,7 @@ mod test_string_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("string_filter"))]
     async fn not_equal(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -107,9 +101,7 @@ mod test_string_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("string_filter"))]
     async fn start(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -127,9 +119,7 @@ mod test_string_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("string_filter"))]
     async fn end(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -147,9 +137,7 @@ mod test_string_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("string_filter"))]
     async fn contain(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -167,9 +155,7 @@ mod test_string_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("string_filter"))]
     async fn not_contain(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -187,9 +173,7 @@ mod test_string_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("string_filter"))]
     async fn equal_with_special_chars(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -207,9 +191,7 @@ mod test_string_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("string_filter"))]
     async fn contain_with_special_chars(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -246,9 +228,7 @@ mod test_int_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("int_filter"))]
     async fn equal(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -261,9 +241,7 @@ mod test_int_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("int_filter"))]
     async fn not_equal(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         // ※nullは含めない仕様(WalkBase1がそうなっていたので)
@@ -277,9 +255,7 @@ mod test_int_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("int_filter"))]
     async fn large_equal(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -292,9 +268,7 @@ mod test_int_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("int_filter"))]
     async fn small_equal(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -307,9 +281,7 @@ mod test_int_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("int_filter"))]
     async fn range_in(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -325,9 +297,7 @@ mod test_int_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("int_filter"))]
     async fn range_out(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -352,9 +322,7 @@ mod test_tags_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("tags_filter"))]
     async fn contain_existing_tag(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -367,9 +335,7 @@ mod test_tags_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("tags_filter"))]
     async fn not_contain_existing_tag(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -382,9 +348,7 @@ mod test_tags_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("tags_filter"))]
     async fn contain_nonexistent_tag(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -397,9 +361,7 @@ mod test_tags_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("tags_filter"))]
     async fn not_contain_nonexistent_tag(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -412,9 +374,7 @@ mod test_tags_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("tags_filter"))]
     async fn contain_another_tag(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -427,9 +387,7 @@ mod test_tags_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("tags_filter"))]
     async fn not_contain_another_tag(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -442,9 +400,7 @@ mod test_tags_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("tags_filter"))]
     async fn none(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -466,9 +422,7 @@ mod test_bool_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("bool_filter"))]
     async fn is_true(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -481,9 +435,7 @@ mod test_bool_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("bool_filter"))]
     async fn is_false(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -505,9 +457,7 @@ mod test_artwork_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("artwork_filter"))]
     async fn has_artwork(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -520,9 +470,7 @@ mod test_artwork_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("artwork_filter"))]
     async fn no_artwork(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -545,9 +493,7 @@ mod test_date_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("date_filter"))]
     async fn equal(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -565,9 +511,7 @@ mod test_date_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("date_filter"))]
     async fn not_equal(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         // ※nullは含めない仕様(WalkBase1がそうなっていたので)
@@ -586,9 +530,7 @@ mod test_date_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("date_filter"))]
     async fn before(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -606,9 +548,7 @@ mod test_date_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("date_filter"))]
     async fn after(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target
@@ -626,9 +566,7 @@ mod test_date_filter {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("date_filter"))]
     async fn none(pool: PgPool) -> anyhow::Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         let target = target();
         let result = target

@@ -8,10 +8,10 @@ use sqlx::PgPool;
 
 use super::{DapPlaylistObserver, DapRepository, TrackFinder};
 use crate::{
-    db::DbTransaction,
     path::LibTrackPath,
     playlist::{DbPlaylistRepository, Playlist},
 };
+use sqlx::PgTransaction;
 
 /// DAPとのプレイリスト同期のUsecase
 #[async_trait]
@@ -74,9 +74,7 @@ where
             .into_iter()
             .collect();
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
 
         //全て更新するなら、一旦全プレイリストを変更済みとする
         if all_flag {
@@ -147,7 +145,7 @@ where
     async fn save_plists_recursive<'c>(
         &self,
         plist_trees: &[Playlist],
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         root_path: &Path,
         save_offset: u32,
         save_count: u32,

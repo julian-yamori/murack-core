@@ -1,7 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{
-    Error as DomainError, db::DbTransaction, path::LibPathStr, track::TrackUsecase,
-};
+use murack_core_domain::{Error as DomainError, path::LibPathStr, track::TrackUsecase};
 use sqlx::PgPool;
 
 use crate::{Config, Error, cui::Cui};
@@ -50,9 +48,7 @@ where
 
     /// DBから削除
     pub async fn remove_db(&self, db_pool: &PgPool) -> Result<()> {
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
         let track_path_list = self
             .track_usecase
             .delete_path_str_db(&mut tx, &self.args.path)

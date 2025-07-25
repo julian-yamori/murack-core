@@ -8,12 +8,12 @@ use super::DbTrackRepository;
 use crate::{
     Error, FileLibraryRepository,
     artwork::DbArtworkRepository,
-    db::DbTransaction,
     folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
     path::{LibPathStr, LibTrackPath, RelativeTrackPath},
     playlist::{DbPlaylistRepository, DbPlaylistTrackRepository},
     tag::DbTrackTagRepository,
 };
+use sqlx::PgTransaction;
 
 /// 曲関係のUsecase
 #[async_trait]
@@ -21,7 +21,7 @@ pub trait TrackUsecase {
     /// パス文字列を指定してDBの曲パスを移動
     async fn move_path_str_db<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         src: &LibPathStr,
         dest: &LibPathStr,
     ) -> Result<()>;
@@ -46,7 +46,7 @@ pub trait TrackUsecase {
     /// - path: 削除する曲のパス
     async fn delete_track_db<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<()>;
 
@@ -73,7 +73,7 @@ pub trait TrackUsecase {
     /// 削除した曲のパスリスト
     async fn delete_path_str_db<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path_str: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>>;
 }
@@ -118,7 +118,7 @@ where
     /// パス文字列を指定してDBの曲パスを移動
     async fn move_path_str_db<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         src: &LibPathStr,
         dest: &LibPathStr,
     ) -> Result<()> {
@@ -179,7 +179,7 @@ where
     /// - path: 削除する曲のパス
     async fn delete_track_db<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<()> {
         let db_track_repository = &self.db_track_repository;
@@ -210,7 +210,7 @@ where
 
         //他に使用する曲がなければ、フォルダを削除
         self.folder_usecase
-            .delete_db_if_empty(tx.get(), &path.parent())
+            .delete_db_if_empty(tx, &path.parent())
             .await?;
 
         self.db_playlist_repository.reset_listuped_flag(tx).await?;
@@ -253,7 +253,7 @@ where
     /// 削除した曲のパスリスト
     async fn delete_path_str_db<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path_str: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>> {
         let track_path_list = self
@@ -283,7 +283,7 @@ where
     /// 曲一つのDB内パス移動処理
     async fn move_track_db_unit<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         src: &LibTrackPath,
         dest: &LibTrackPath,
     ) -> Result<()> {
@@ -308,7 +308,7 @@ where
 
         //子要素がなくなった親フォルダを削除
         self.folder_usecase
-            .delete_db_if_empty(tx.get(), &src.parent())
+            .delete_db_if_empty(tx, &src.parent())
             .await?;
 
         //パスを使用したフィルタがあるかもしれないので、
@@ -332,7 +332,7 @@ pub struct MockTrackUsecase {
 impl TrackUsecase for MockTrackUsecase {
     async fn move_path_str_db<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         src: &LibPathStr,
         dest: &LibPathStr,
     ) -> Result<()> {
@@ -349,7 +349,7 @@ impl TrackUsecase for MockTrackUsecase {
 
     async fn delete_track_db<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<()> {
         self.inner.delete_track_db(path)
@@ -365,7 +365,7 @@ impl TrackUsecase for MockTrackUsecase {
 
     async fn delete_path_str_db<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path_str: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>> {
         self.inner.delete_path_str_db(path_str)
@@ -515,9 +515,7 @@ mod tests {
             .times(1)
             .returning(|| Ok(()));
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         target.delete_track_db(&mut tx, &track_path()).await?;
 
@@ -525,8 +523,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_delete_db_no_track() -> anyhow::Result<()> {
+    #[sqlx::test]
+    async fn test_delete_db_no_track(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
             LibTrackPath::new("hoge.mp3")
         }
@@ -571,7 +569,7 @@ mod tests {
             .expect_reset_listuped_flag()
             .times(0);
 
-        let mut tx = DbTransaction::Dummy;
+        let mut tx = pool.begin().await?;
 
         assert!(match target
             .delete_track_db(&mut tx, &track_path())
@@ -646,9 +644,7 @@ mod tests {
             .times(1)
             .returning(|| Ok(()));
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: pool.begin().await?,
-        };
+        let mut tx = pool.begin().await?;
 
         target.delete_track_db(&mut tx, &track_path()).await?;
 

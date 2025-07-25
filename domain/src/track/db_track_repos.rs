@@ -4,7 +4,6 @@ use mockall::mock;
 use sqlx::PgTransaction;
 
 use crate::{
-    db::DbTransaction,
     folder::FolderIdMayRoot,
     path::{LibDirPath, LibPathStr, LibTrackPath},
 };
@@ -15,14 +14,14 @@ pub trait DbTrackRepository {
     /// パスから曲IDを取得
     async fn get_id_by_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<Option<i32>>;
 
     /// 文字列でパスを指定して、該当曲のパスリストを取得
     async fn get_path_by_path_str<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>>;
 
@@ -33,14 +32,14 @@ pub trait DbTrackRepository {
     /// 指定されたディレクトリ内の、全ての曲のパス
     async fn get_path_by_directory<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Vec<LibTrackPath>>;
 
     /// 指定したパスの曲が存在するか確認
     async fn is_exist_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<bool>;
 
@@ -59,7 +58,7 @@ pub trait DbTrackRepository {
     /// - new_folder_id: 新しい親フォルダのID
     async fn update_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         old_path: &LibTrackPath,
         new_path: &LibTrackPath,
         new_folder_id: FolderIdMayRoot,
@@ -68,7 +67,7 @@ pub trait DbTrackRepository {
     /// 曲の再生時間を書き換え
     async fn update_duration<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_id: i32,
         duration: u32,
     ) -> Result<()>;
@@ -77,7 +76,7 @@ pub trait DbTrackRepository {
     ///
     /// # Arguments
     /// - track_id: 削除する曲のID
-    async fn delete<'c>(&self, tx: &mut DbTransaction<'c>, track_id: i32) -> Result<()>;
+    async fn delete<'c>(&self, tx: &mut PgTransaction<'c>, track_id: i32) -> Result<()>;
 }
 
 #[derive(Default)]
@@ -88,7 +87,7 @@ pub struct MockDbTrackRepository {
 impl DbTrackRepository for MockDbTrackRepository {
     async fn get_id_by_path<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<Option<i32>> {
         self.inner.get_id_by_path(path)
@@ -96,7 +95,7 @@ impl DbTrackRepository for MockDbTrackRepository {
 
     async fn get_path_by_path_str<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>> {
         self.inner.get_path_by_path_str(path)
@@ -104,7 +103,7 @@ impl DbTrackRepository for MockDbTrackRepository {
 
     async fn get_path_by_directory<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Vec<LibTrackPath>> {
         self.inner.get_path_by_directory(path)
@@ -112,7 +111,7 @@ impl DbTrackRepository for MockDbTrackRepository {
 
     async fn is_exist_path<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<bool> {
         self.inner.is_exist_path(path)
@@ -128,7 +127,7 @@ impl DbTrackRepository for MockDbTrackRepository {
 
     async fn update_path<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         old_path: &LibTrackPath,
         new_path: &LibTrackPath,
         new_folder_id: FolderIdMayRoot,
@@ -138,14 +137,14 @@ impl DbTrackRepository for MockDbTrackRepository {
 
     async fn update_duration<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         track_id: i32,
         duration: u32,
     ) -> Result<()> {
         self.inner.update_duration(track_id, duration)
     }
 
-    async fn delete<'c>(&self, _db: &mut DbTransaction<'c>, track_id: i32) -> Result<()> {
+    async fn delete<'c>(&self, _db: &mut PgTransaction<'c>, track_id: i32) -> Result<()> {
         self.inner.delete(track_id)
     }
 }

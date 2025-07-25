@@ -1,9 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
+use sqlx::PgTransaction;
 
 use super::Playlist;
-use crate::db::DbTransaction;
 
 /// プレイリスト関係のDBリポジトリ
 #[async_trait]
@@ -13,24 +13,24 @@ pub trait DbPlaylistRepository {
     /// id: playlist.rowid
     async fn get_playlist<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         id: i32,
     ) -> Result<Option<Playlist>>;
 
     /// プレイリストのツリー構造を取得
     /// # Returns
     /// 最上位プレイリストのリスト
-    async fn get_playlist_tree<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<Playlist>>;
+    async fn get_playlist_tree<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<Playlist>>;
 
     /// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
-    async fn reset_listuped_flag<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<()>;
+    async fn reset_listuped_flag<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<()>;
 
     /// 全プレイリストの、DAP に保存してからの変更フラグを設定
     /// # Arguments
     /// - is_changed: 変更されたか
     async fn set_dap_change_flag_all<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         is_changed: bool,
     ) -> Result<()>;
 }
@@ -43,23 +43,23 @@ pub struct MockDbPlaylistRepository {
 impl DbPlaylistRepository for MockDbPlaylistRepository {
     async fn get_playlist<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         id: i32,
     ) -> Result<Option<Playlist>> {
         self.inner.get_playlist(id)
     }
 
-    async fn get_playlist_tree<'c>(&self, _db: &mut DbTransaction<'c>) -> Result<Vec<Playlist>> {
+    async fn get_playlist_tree<'c>(&self, _db: &mut PgTransaction<'c>) -> Result<Vec<Playlist>> {
         self.inner.get_playlist_tree()
     }
 
-    async fn reset_listuped_flag<'c>(&self, _db: &mut DbTransaction<'c>) -> Result<()> {
+    async fn reset_listuped_flag<'c>(&self, _db: &mut PgTransaction<'c>) -> Result<()> {
         self.inner.reset_listuped_flag()
     }
 
     async fn set_dap_change_flag_all<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         is_changed: bool,
     ) -> Result<()> {
         self.inner.set_dap_change_flag_all(is_changed)

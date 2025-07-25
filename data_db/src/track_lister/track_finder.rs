@@ -5,10 +5,10 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use murack_core_domain::{
     dap::TrackFinder,
-    db::DbTransaction,
     path::LibTrackPath,
     playlist::{Playlist, PlaylistType, SortType},
 };
+use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
 use super::{TrackListerFilter, esc::esci};
@@ -36,7 +36,7 @@ where
     /// - plist 取得対象のプレイリスト情報(※childrenは不要)
     async fn get_track_path_list<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<LibTrackPath>> {
         //対象プレイリストのクエリ(from,join,where句)を取得
@@ -61,7 +61,7 @@ where
 
         let list: Vec<LibTrackPath> = sqlx::query(&query)
             .map(|row: PgRow| LibTrackPath::new(row.get::<&str, _>(0)))
-            .fetch_all(&mut **tx.get())
+            .fetch_all(&mut **tx)
             .await?;
 
         Ok(list)
@@ -82,7 +82,7 @@ where
     /// from,join,where句のクエリ
     async fn get_query_by_playlist<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         plist: &Playlist,
     ) -> Result<String> {
         //リストアップされていなければ、まずリストアップする
@@ -100,7 +100,7 @@ where
     /// プレイリストの曲をリストアップし、playlist_trackテーブルを更新する
     /// # Arguments
     /// - plist: 対象プレイリスト情報
-    async fn listup_tracks<'c>(&self, tx: &mut DbTransaction<'c>, plist: &Playlist) -> Result<()> {
+    async fn listup_tracks<'c>(&self, tx: &mut PgTransaction<'c>, plist: &Playlist) -> Result<()> {
         //通常プレイリストなら、リストアップ済みフラグを立てるのみ
         if plist.playlist_type != PlaylistType::Normal {
             //元々保存されていた曲リストを取得
@@ -142,7 +142,7 @@ where
                     "UPDATE playlists SET dap_changed = true WHERE id = $1",
                     plist.rowid,
                 )
-                .execute(&mut **tx.get())
+                .execute(&mut **tx)
                 .await?;
             }
         }
@@ -153,7 +153,7 @@ where
             true,
             plist.rowid,
         )
-        .execute(&mut **tx.get())
+        .execute(&mut **tx)
         .await?;
 
         Ok(())
@@ -165,7 +165,7 @@ where
     #[async_recursion]
     async fn search_plist_tracks_folder<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<i32>> {
         let children = sqlx::query_as!(
@@ -174,7 +174,7 @@ where
             Some(plist.rowid)
         )
             .map(Playlist::try_from)
-            .fetch_all(&mut **tx.get())
+            .fetch_all(&mut **tx)
             .await?;
 
         //子プレイリストの曲IDを追加していくSet
@@ -189,7 +189,7 @@ where
                 self.get_query_by_playlist(tx, &child).await?
             );
             let child_tracks: Vec<i32> = sqlx::query_scalar(&child_query)
-                .fetch_all(&mut **tx.get())
+                .fetch_all(&mut **tx)
                 .await?;
 
             //Setに追加
@@ -206,7 +206,7 @@ where
     /// - plist: 対象プレイリスト情報
     async fn search_plist_tracks_filter<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<i32>> {
         let filter = plist

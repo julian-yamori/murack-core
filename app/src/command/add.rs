@@ -1,7 +1,6 @@
 use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
-    db::DbTransaction,
     path::{LibPathStr, LibTrackPath},
     sync::SyncUsecase,
 };
@@ -88,9 +87,7 @@ where
             .read_track_sync(&self.config.pc_lib, track_path)?;
 
         //DBに登録
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
         self.sync_usecase
             .register_db(&mut tx, track_path, &mut pc_track)
             .await?;

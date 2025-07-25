@@ -1,7 +1,6 @@
 use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
-    db::DbTransaction,
     folder::DbFolderRepository,
     path::LibPathStr,
     track::{DbTrackRepository, TrackUsecase},
@@ -78,9 +77,7 @@ where
         )?;
 
         //DB内で移動
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
         self.track_usecase
             .move_path_str_db(&mut tx, src_path_str, dest_path_str)
             .await?;
@@ -130,9 +127,7 @@ where
     async fn check_db_exist(&self, db_pool: &PgPool) -> Result<()> {
         let dest_path_str = &self.args.dest_path;
 
-        let mut tx = DbTransaction::PgTransaction {
-            tx: db_pool.begin().await?,
-        };
+        let mut tx = db_pool.begin().await?;
 
         //曲のチェック
         let dest_track_path = dest_path_str.to_track_path();
@@ -148,7 +143,7 @@ where
         let dest_dir_path = dest_path_str.to_dir_path();
         if self
             .db_folder_repository
-            .is_exist_path(tx.get(), &dest_dir_path)
+            .is_exist_path(&mut tx, &dest_dir_path)
             .await?
         {
             return Err(DomainError::DbFolderAlreadyExists(dest_dir_path).into());

@@ -1,9 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
+use sqlx::PgTransaction;
 
 use crate::{
-    db::DbTransaction,
     folder::FolderIdMayRoot,
     path::LibTrackPath,
     sync::{DbTrackSync, TrackSync},
@@ -20,7 +20,7 @@ pub trait DbTrackSyncRepository {
     /// 該当する曲の情報（見つからない場合はNone）
     async fn get_by_path<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<Option<DbTrackSync>>;
 
@@ -35,7 +35,7 @@ pub trait DbTrackSyncRepository {
     /// 追加した曲のID
     async fn register<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track_path: &LibTrackPath,
         track_sync: &TrackSync,
         folder_id: FolderIdMayRoot,
@@ -47,7 +47,7 @@ pub trait DbTrackSyncRepository {
     /// DbArtworkRepositoryの保存処理を直接呼び出すこと。
     async fn save_exclude_artwork<'c>(
         &self,
-        tx: &mut DbTransaction<'c>,
+        tx: &mut PgTransaction<'c>,
         track: &DbTrackSync,
     ) -> Result<()>;
 }
@@ -60,7 +60,7 @@ pub struct MockDbTrackSyncRepository {
 impl DbTrackSyncRepository for MockDbTrackSyncRepository {
     async fn get_by_path<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<Option<DbTrackSync>> {
         self.inner.get_by_path(path)
@@ -68,7 +68,7 @@ impl DbTrackSyncRepository for MockDbTrackSyncRepository {
 
     async fn register<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         track_path: &LibTrackPath,
         track_sync: &TrackSync,
         folder_id: FolderIdMayRoot,
@@ -78,7 +78,7 @@ impl DbTrackSyncRepository for MockDbTrackSyncRepository {
 
     async fn save_exclude_artwork<'c>(
         &self,
-        _db: &mut DbTransaction<'c>,
+        _db: &mut PgTransaction<'c>,
         track: &DbTrackSync,
     ) -> Result<()> {
         self.inner.save_exclude_artwork(track)
