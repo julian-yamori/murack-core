@@ -63,61 +63,61 @@ pub fn read(path: &Path) -> Result<AudioMetaData> {
 ///
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
-/// - song: 書き込む曲の情報
+/// - track: 書き込む曲の情報
 pub fn overwrite(
     path: &Path,
-    song: &AudioMetaDataEntry,
+    track: &AudioMetaDataEntry,
     artworks: &[AudioPictureEntry],
 ) -> Result<()> {
     let mut tag = Tag::read_from_path(path)?;
 
-    match song.title {
+    match track.title {
         Some(v) => tag.set_title(v),
         None => tag.remove_title(),
     }
-    match song.artist {
+    match track.artist {
         Some(v) => tag.set_artist(v),
         None => tag.remove_artist(),
     }
-    match song.album {
+    match track.album {
         Some(v) => tag.set_album(v),
         None => tag.remove_album(),
     }
-    match song.genre {
+    match track.genre {
         Some(v) => tag.set_genre(v),
         None => tag.remove_genre(),
     }
-    match song.album_artist {
+    match track.album_artist {
         Some(v) => tag.set_album_artist(v),
         None => tag.remove_album_artist(),
     }
-    match song.composer {
+    match track.composer {
         Some(v) => tag.set_text(KEY_COMPOSER, v),
         None => {
             tag.remove(KEY_COMPOSER);
         }
     }
-    match song.track_number {
+    match track.track_number {
         Some(v) => tag.set_track(v as u32),
         None => tag.remove_track(),
     }
-    match song.track_max {
+    match track.track_max {
         Some(v) => tag.set_total_tracks(v as u32),
         None => tag.remove_total_tracks(),
     }
-    match song.disc_number {
+    match track.disc_number {
         Some(v) => tag.set_disc(v as u32),
         None => tag.remove_disc(),
     }
-    match song.disc_max {
+    match track.disc_max {
         Some(v) => tag.set_total_discs(v as u32),
         None => tag.remove_total_discs(),
     }
 
-    id3_set_release_date(&mut tag, &song.release_date);
+    id3_set_release_date(&mut tag, &track.release_date);
 
     tag.remove_comment(Some(""), None);
-    if let Some(s) = song.memo {
+    if let Some(s) = track.memo {
         tag.add_frame(id3::frame::Comment {
             lang: "".to_owned(),
             description: "".to_owned(),
@@ -126,7 +126,7 @@ pub fn overwrite(
     }
     /*
     tag.remove_all_lyrics();
-    if let Some(s) = &song.lyrics {
+    if let Some(s) = &track.lyrics {
         tag.add_lyrics(id3::frame::Lyrics {
             lang: "".to_owned(),
             description: "".to_owned(),

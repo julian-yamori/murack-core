@@ -1,6 +1,6 @@
 use crate::{
-    path::{LibPathStr, LibSongPath},
-    sync::SongSync,
+    path::{LibPathStr, LibTrackPath},
+    sync::TrackSync,
 };
 use anyhow::Result;
 use mockall::automock;
@@ -32,7 +32,8 @@ pub trait FileLibraryRepository {
     /// # Arguments
     /// - lib_root: ライブラリルートの絶対パス
     /// - target: 検索対象のライブラリ内パス
-    fn search_by_lib_path(&self, lib_root: &Path, target: &LibPathStr) -> Result<Vec<LibSongPath>>;
+    fn search_by_lib_path(&self, lib_root: &Path, target: &LibPathStr)
+    -> Result<Vec<LibTrackPath>>;
 
     /// ライブラリ外で、指定パスに該当する曲のパスを列挙
     ///
@@ -45,33 +46,33 @@ pub trait FileLibraryRepository {
     ///
     /// # Arguments
     /// - target: 検索する絶対パス
-    fn search_song_outside_lib(&self, target: &Path) -> Result<Vec<PathBuf>>;
+    fn search_track_outside_lib(&self, target: &Path) -> Result<Vec<PathBuf>>;
 
     /// 曲のオーディオメタデータを読み込み
     ///
     /// # Arguments
     /// - lib_root: ライブラリルートの絶対パス
-    /// - song_path: 取得対象の曲のライブラリ内パス
-    fn read_audio_meta(&self, lib_root: &Path, song_path: &LibSongPath) -> Result<AudioMetaData>;
+    /// - track_path: 取得対象の曲のライブラリ内パス
+    fn read_audio_meta(&self, lib_root: &Path, track_path: &LibTrackPath) -> Result<AudioMetaData>;
 
     /// DBと連携する曲データを読み込み
     ///
     /// # Arguments
     /// - lib_root: ライブラリルートの絶対パス
-    /// - song_path: 取得対象の曲のライブラリ内パス
-    fn read_song_sync(&self, lib_root: &Path, song_path: &LibSongPath) -> Result<SongSync>;
+    /// - track_path: 取得対象の曲のライブラリ内パス
+    fn read_track_sync(&self, lib_root: &Path, track_path: &LibTrackPath) -> Result<TrackSync>;
 
     /// DBと連携する曲データを上書き
     ///
     /// # Arguments
     /// - lib_root: ライブラリルートの絶対パス
-    /// - song_path: 保存対象の曲のライブラリ内パス
-    /// - song_sync: 保存する曲データ
-    fn overwrite_song_sync(
+    /// - track_path: 保存対象の曲のライブラリ内パス
+    /// - track_sync: 保存する曲データ
+    fn overwrite_track_sync(
         &self,
         lib_root: &Path,
-        song_path: &LibSongPath,
-        song_sync: &SongSync,
+        track_path: &LibTrackPath,
+        track_sync: &TrackSync,
     ) -> Result<()>;
 
     /// ライブラリからライブラリへ、曲データをコピー
@@ -82,11 +83,11 @@ pub trait FileLibraryRepository {
     /// - src_lib: コピー元のライブラリのルート絶対パス
     /// - dest_lib: コピー先のライブラリのルート絶対パス
     /// - target: コピーする曲のライブラリ内パス
-    fn copy_song_over_lib(
+    fn copy_track_over_lib(
         &self,
         src_lib: &Path,
         dest_lib: &Path,
-        target: &LibSongPath,
+        target: &LibTrackPath,
     ) -> Result<()>;
 
     /// ライブラリ外からライブラリ内にファイルをコピー
@@ -95,12 +96,12 @@ pub trait FileLibraryRepository {
     ///
     /// # Arguments
     /// - lib_root: ライブラリルートの絶対パス
-    /// - song_path: コピー先のライブラリ内パス
+    /// - track_path: コピー先のライブラリ内パス
     /// - src_path: コピー元のライブラリ外のファイル絶対パス
     fn copy_from_outside_lib(
         &self,
         lib_root: &Path,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
         src_path: &Path,
     ) -> Result<()>;
 
@@ -110,11 +111,11 @@ pub trait FileLibraryRepository {
     /// - src_lib: コピー元のライブラリのルート絶対パス
     /// - dest_lib: 上書き先のライブラリのルート絶対パス
     /// - target: コピーする曲のライブラリ内パス
-    fn overwrite_song_over_lib(
+    fn overwrite_track_over_lib(
         &self,
         src_lib: &Path,
         dest_lib: &Path,
-        target: &LibSongPath,
+        target: &LibTrackPath,
     ) -> Result<()>;
 
     /// パス文字列を指定してライブラリ内のファイル/フォルダを移動
@@ -130,7 +131,7 @@ pub trait FileLibraryRepository {
     /// # Arguments
     /// - lib_root: ライブラリルートの絶対パス
     /// - target: 削除対象の曲のライブラリ内パス
-    fn delete_song(&self, lib_root: &Path, target: &LibSongPath) -> Result<()>;
+    fn delete_track(&self, lib_root: &Path, target: &LibTrackPath) -> Result<()>;
 
     /// パス文字列を指定してライブラリから削除
     ///
@@ -147,7 +148,7 @@ pub trait FileLibraryRepository {
     /// # Arguments
     /// - lib_root: ライブラリルートの絶対パス
     /// - target: 削除対象の曲のライブラリ内パス
-    fn trash_song(&self, lib_root: &Path, target: &LibSongPath) -> Result<()>;
+    fn trash_track(&self, lib_root: &Path, target: &LibTrackPath) -> Result<()>;
 
     /// パス文字列を指定してライブラリからゴミ箱に移動
     ///

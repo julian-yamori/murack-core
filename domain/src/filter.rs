@@ -15,7 +15,7 @@ pub enum FilterTarget {
         children: Vec<FilterTarget>,
     },
 
-    /// タグ (song_tags.tag_id)
+    /// タグ (track_tags.tag_id)
     #[serde(rename = "tags")]
     Tags { range: TagsFilterRange },
 
@@ -47,7 +47,7 @@ pub enum FilterTarget {
     #[serde(rename = "title")]
     Title { range: StringFilterRange },
 
-    /// アートワーク (song_artworkテーブル)
+    /// アートワーク (track_artworkテーブル)
     #[serde(rename = "artwork")]
     Artwork { range: ArtworkFilterRange },
 
@@ -89,9 +89,9 @@ pub enum FilterTarget {
     #[serde(rename = "entry_date")]
     EntryDate { range: DateFilterRange },
 
-    /// 原曲 (original_song)
-    #[serde(rename = "original_song")]
-    OriginalSong { range: StringFilterRange },
+    /// 原曲 (original_track)
+    #[serde(rename = "original_track")]
+    OriginalTrack { range: StringFilterRange },
 
     /// サジェスト対象 (suggest_target)
     #[serde(rename = "suggest_target")]

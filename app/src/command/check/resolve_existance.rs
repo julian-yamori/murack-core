@@ -5,9 +5,9 @@ use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
     check::CheckIssueSummary,
     db::DbTransaction,
-    path::LibSongPath,
-    song::SongUsecase,
-    sync::{DbSongSyncRepository, SongSync, SyncUsecase},
+    path::LibTrackPath,
+    sync::{DbTrackSyncRepository, SyncUsecase, TrackSync},
+    track::TrackUsecase,
 };
 use sqlx::PgPool;
 
@@ -24,11 +24,11 @@ pub trait ResolveExistance {
     /// - config: アプリの設定情報
     /// - args: checkコマンドの引数
     /// - cui: CUI実装
-    /// - song_path: 作業対象の曲のパス
+    /// - track_path: 作業対象の曲のパス
     async fn resolve(
         &self,
         db_pool: &PgPool,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> Result<ResolveFileExistanceResult>;
 }
 
@@ -37,16 +37,16 @@ pub struct ResolveExistanceImpl<'config, 'cui, CUI, FR, SOS, SYS, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
-    SOS: SongUsecase + Send + Sync,
+    SOS: TrackUsecase + Send + Sync,
     SYS: SyncUsecase + Send + Sync,
-    SSR: DbSongSyncRepository + Send + Sync,
+    SSR: DbTrackSyncRepository + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
     file_library_repository: FR,
-    song_usecase: SOS,
+    track_usecase: SOS,
     sync_usecase: SYS,
-    db_song_sync_repository: SSR,
+    db_track_sync_repository: SSR,
 }
 
 #[async_trait]
@@ -55,9 +55,9 @@ impl<'config, 'cui, CUI, FR, SOS, SYS, SSR> ResolveExistance
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
-    SOS: SongUsecase + Send + Sync,
+    SOS: TrackUsecase + Send + Sync,
     SYS: SyncUsecase + Send + Sync,
-    SSR: DbSongSyncRepository + Send + Sync,
+    SSR: DbTrackSyncRepository + Send + Sync,
 {
     /// データ存在系の解決処理
     ///
@@ -65,20 +65,20 @@ where
     /// - config: アプリの設定情報
     /// - args: checkコマンドの引数
     /// - cui: CUI実装
-    /// - song_path: 作業対象の曲のパス
+    /// - track_path: 作業対象の曲のパス
     async fn resolve(
         &self,
         db_pool: &PgPool,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         //PCデータ読み込み
         let pc_read_result = self
             .file_library_repository
-            .read_song_sync(&self.config.pc_lib, song_path);
+            .read_track_sync(&self.config.pc_lib, track_path);
         let pc_data_opt = match pc_read_result {
             Ok(d) => Some(d),
             Err(e) => match e.downcast_ref() {
-                Some(DomainError::FileSongNotFound { .. }) => None,
+                Some(DomainError::FileTrackNotFound { .. }) => None,
                 _ => {
                     //読み込み失敗の場合は専用の解決処理
                     //実態は通知のみで、
@@ -98,31 +98,31 @@ where
                 tx: db_pool.begin().await?,
             };
 
-            self.db_song_sync_repository
-                .get_by_path(&mut tx, song_path)
+            self.db_track_sync_repository
+                .get_by_path(&mut tx, track_path)
                 .await?
         };
 
         //DAP存在確認
-        let dap_exists = song_path.abs(&self.config.dap_lib).exists();
+        let dap_exists = track_path.abs(&self.config.dap_lib).exists();
 
         let pc_exists = pc_data_opt.is_some();
         let db_exists = db_data_opt.is_some();
 
         let result = if pc_exists && db_exists && !dap_exists {
-            self.resolve_not_exists_dap(song_path)?
+            self.resolve_not_exists_dap(track_path)?
         } else if pc_exists && !db_exists && dap_exists {
-            self.resolve_not_exists_db(db_pool, song_path, &mut pc_data_opt.unwrap())
+            self.resolve_not_exists_db(db_pool, track_path, &mut pc_data_opt.unwrap())
                 .await?
         } else if pc_exists && !db_exists && !dap_exists {
-            self.resolve_not_exists_db_dap(db_pool, song_path, &mut pc_data_opt.unwrap())
+            self.resolve_not_exists_db_dap(db_pool, track_path, &mut pc_data_opt.unwrap())
                 .await?
         } else if !pc_exists && db_exists && dap_exists {
-            self.resolve_not_exists_pc(db_pool, song_path).await?
+            self.resolve_not_exists_pc(db_pool, track_path).await?
         } else if !pc_exists && db_exists && !dap_exists {
-            self.resolve_not_exists_pc_dap(db_pool, song_path).await?
+            self.resolve_not_exists_pc_dap(db_pool, track_path).await?
         } else if !pc_exists && !db_exists && dap_exists {
-            self.resolve_not_exists_pc_db(db_pool, song_path).await?
+            self.resolve_not_exists_pc_db(db_pool, track_path).await?
         } else {
             //問題なし
             ResolveFileExistanceResult::Resolved
@@ -137,25 +137,25 @@ impl<'config, 'cui, CUI, FR, SOS, SYS, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
-    SOS: SongUsecase + Send + Sync,
+    SOS: TrackUsecase + Send + Sync,
     SYS: SyncUsecase + Send + Sync,
-    SSR: DbSongSyncRepository + Send + Sync,
+    SSR: DbTrackSyncRepository + Send + Sync,
 {
     pub fn new(
         config: &'config Config,
         cui: &'cui CUI,
         file_library_repository: FR,
-        song_usecase: SOS,
+        track_usecase: SOS,
         sync_usecase: SYS,
-        db_song_sync_repository: SSR,
+        db_track_sync_repository: SSR,
     ) -> Self {
         Self {
             config,
             cui,
             file_library_repository,
-            song_usecase,
+            track_usecase,
             sync_usecase,
-            db_song_sync_repository,
+            db_track_sync_repository,
         }
     }
 
@@ -188,7 +188,7 @@ where
     /// DAPにのみ存在しない状態の解決
     fn resolve_not_exists_dap(
         &self,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         let cui = &self.cui;
 
@@ -206,10 +206,10 @@ where
         match input {
             //PCからDAPへコピー
             '1' => {
-                self.file_library_repository.copy_song_over_lib(
+                self.file_library_repository.copy_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
-                    song_path,
+                    track_path,
                 )?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
@@ -223,8 +223,8 @@ where
     async fn resolve_not_exists_db(
         &self,
         db_pool: &PgPool,
-        song_path: &LibSongPath,
-        pc_song: &mut SongSync,
+        track_path: &LibTrackPath,
+        pc_track: &mut TrackSync,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -245,16 +245,16 @@ where
         match input {
             //DBに曲を追加
             '1' => {
-                self.add_song_db_from_pc(db_pool, song_path, pc_song)
+                self.add_track_db_from_pc(db_pool, track_path, pc_track)
                     .await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //PCとDAPからファイルを削除
             '2' => {
-                self.song_usecase
-                    .delete_song_pc(&self.config.pc_lib, song_path)?;
-                self.song_usecase
-                    .delete_song_dap(&self.config.dap_lib, song_path)?;
+                self.track_usecase
+                    .delete_track_pc(&self.config.pc_lib, track_path)?;
+                self.track_usecase
+                    .delete_track_dap(&self.config.dap_lib, track_path)?;
                 Ok(ResolveFileExistanceResult::Deleted)
             }
             '0' => Ok(ResolveFileExistanceResult::UnResolved),
@@ -267,8 +267,8 @@ where
     async fn resolve_not_exists_db_dap(
         &self,
         db_pool: &PgPool,
-        song_path: &LibSongPath,
-        pc_song: &mut SongSync,
+        track_path: &LibTrackPath,
+        pc_track: &mut TrackSync,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -290,21 +290,21 @@ where
         match input {
             //DBに曲を追加し、DAPにもコピー
             '1' => {
-                self.add_song_db_from_pc(db_pool, song_path, pc_song)
+                self.add_track_db_from_pc(db_pool, track_path, pc_track)
                     .await?;
 
-                self.file_library_repository.copy_song_over_lib(
+                self.file_library_repository.copy_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
-                    song_path,
+                    track_path,
                 )?;
 
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //PCからファイルを削除
             '2' => {
-                self.song_usecase
-                    .delete_song_pc(&self.config.pc_lib, song_path)?;
+                self.track_usecase
+                    .delete_track_pc(&self.config.pc_lib, track_path)?;
 
                 Ok(ResolveFileExistanceResult::Deleted)
             }
@@ -318,7 +318,7 @@ where
     async fn resolve_not_exists_pc(
         &self,
         db_pool: &PgPool,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -339,20 +339,20 @@ where
         match input {
             //DAPからPCにファイルをコピー
             '1' => {
-                self.file_library_repository.copy_song_over_lib(
+                self.file_library_repository.copy_track_over_lib(
                     &self.config.dap_lib,
                     &self.config.pc_lib,
-                    song_path,
+                    track_path,
                 )?;
 
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //DBとDAPから曲を削除
             '2' => {
-                self.delete_song_db(db_pool, song_path).await?;
+                self.delete_track_db(db_pool, track_path).await?;
 
-                self.song_usecase
-                    .delete_song_dap(&self.config.dap_lib, song_path)?;
+                self.track_usecase
+                    .delete_track_dap(&self.config.dap_lib, track_path)?;
 
                 Ok(ResolveFileExistanceResult::Deleted)
             }
@@ -366,7 +366,7 @@ where
     async fn resolve_not_exists_pc_dap(
         &self,
         db_pool: &PgPool,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -387,7 +387,7 @@ where
         match input {
             //DBから曲を削除
             '2' => {
-                self.delete_song_db(db_pool, song_path).await?;
+                self.delete_track_db(db_pool, track_path).await?;
                 Ok(ResolveFileExistanceResult::Deleted)
             }
             '0' => Ok(ResolveFileExistanceResult::UnResolved),
@@ -400,7 +400,7 @@ where
     async fn resolve_not_exists_pc_db(
         &self,
         db_pool: &PgPool,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         let cui = &self.cui;
 
@@ -421,16 +421,16 @@ where
             //DAPからPCにファイルをコピーし、DBにも追加
             '1' => {
                 //DAPからPCにコピー
-                self.file_library_repository.copy_song_over_lib(
+                self.file_library_repository.copy_track_over_lib(
                     &self.config.dap_lib,
                     &self.config.pc_lib,
-                    song_path,
+                    track_path,
                 )?;
 
                 //DAPからコピーしたPCデータを読み込む
-                let mut pc_song = match self
+                let mut pc_track = match self
                     .file_library_repository
-                    .read_song_sync(&self.config.pc_lib, song_path)
+                    .read_track_sync(&self.config.pc_lib, track_path)
                 {
                     Ok(d) => d,
                     Err(e) => {
@@ -440,14 +440,14 @@ where
                 };
 
                 //DBに追加
-                self.add_song_db_from_pc(db_pool, song_path, &mut pc_song)
+                self.add_track_db_from_pc(db_pool, track_path, &mut pc_track)
                     .await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //DAPからファイルを削除
             '2' => {
-                self.song_usecase
-                    .delete_song_dap(&self.config.dap_lib, song_path)?;
+                self.track_usecase
+                    .delete_track_dap(&self.config.dap_lib, track_path)?;
                 Ok(ResolveFileExistanceResult::Deleted)
             }
             '0' => Ok(ResolveFileExistanceResult::UnResolved),
@@ -457,18 +457,18 @@ where
     }
 
     /// PCのファイルデータを元にDBに曲を追加
-    async fn add_song_db_from_pc(
+    async fn add_track_db_from_pc(
         &self,
         db_pool: &PgPool,
-        song_path: &LibSongPath,
-        pc_song: &mut SongSync,
+        track_path: &LibTrackPath,
+        pc_track: &mut TrackSync,
     ) -> Result<()> {
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
         };
 
         self.sync_usecase
-            .register_db(&mut tx, song_path, pc_song)
+            .register_db(&mut tx, track_path, pc_track)
             .await?;
 
         tx.commit().await?;
@@ -476,12 +476,14 @@ where
     }
 
     /// DBから曲を削除
-    async fn delete_song_db(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<()> {
+    async fn delete_track_db(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<()> {
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
         };
 
-        self.song_usecase.delete_song_db(&mut tx, song_path).await?;
+        self.track_usecase
+            .delete_track_db(&mut tx, track_path)
+            .await?;
 
         tx.commit().await?;
         Ok(())

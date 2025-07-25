@@ -1,7 +1,7 @@
 use crate::{Config, Error, cui::Cui};
 
 use anyhow::{Context, Result, anyhow};
-use murack_core_domain::{FileLibraryRepository, path::LibSongPath};
+use murack_core_domain::{FileLibraryRepository, path::LibTrackPath};
 
 use std::{
     fs,
@@ -49,13 +49,13 @@ where
         //名前をdest_pathあたりにした方がわかりやすいか？
         let artwork_path = match &self.args.artwork_path {
             Some(p) => p.clone(),
-            None => self.args.song_path.abs(&self.config.pc_lib),
+            None => self.args.track_path.abs(&self.config.pc_lib),
         };
 
         //指定された曲ファイルを解析
         let audio_meta = self
             .file_library_repository
-            .read_audio_meta(&self.config.pc_lib, &self.args.song_path)?;
+            .read_audio_meta(&self.config.pc_lib, &self.args.track_path)?;
 
         //各アートワークを出力
         let artworks_len = audio_meta.artworks.len();
@@ -128,14 +128,14 @@ fn make_output_path(
 /// コマンドの引数
 pub struct CommandArtworkGetArgs {
     /// 曲ファイルのパス
-    pub song_path: LibSongPath,
+    pub track_path: LibTrackPath,
 
     /// 画像ファイルの保存先パス
     ///
     /// 拡張子は不要。
     /// アートワークの種類により、自動で付与される。
     ///
-    /// Noneの場合、songPathを使用する。
+    /// Noneの場合、trackPathを使用する。
     pub artwork_path: Option<PathBuf>,
 }
 
@@ -143,12 +143,12 @@ impl CommandArtworkGetArgs {
     /// コマンドの引数を解析
     pub fn parse(command_line: &[String]) -> Result<CommandArtworkGetArgs> {
         match command_line {
-            [song, artwork, ..] => Ok(CommandArtworkGetArgs {
-                song_path: LibSongPath::new(song),
+            [track, artwork, ..] => Ok(CommandArtworkGetArgs {
+                track_path: LibTrackPath::new(track),
                 artwork_path: Some(artwork.into()),
             }),
-            [song] => Ok(CommandArtworkGetArgs {
-                song_path: LibSongPath::new(song),
+            [track] => Ok(CommandArtworkGetArgs {
+                track_path: LibTrackPath::new(track),
                 artwork_path: None,
             }),
             [] => Err(Error::InvalidCommandArgument {

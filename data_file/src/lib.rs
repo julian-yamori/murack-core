@@ -13,6 +13,6 @@ mod copy;
 mod delete;
 mod mod_move;
 mod search;
-mod song_sync;
+mod track_sync;
 
 mod utils;

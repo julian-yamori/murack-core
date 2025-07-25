@@ -53,29 +53,29 @@ pub fn read(path: &Path) -> Result<AudioMetaData> {
 ///
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
-/// - song: 書き込む曲の情報
+/// - track: 書き込む曲の情報
 /// - artworks: 曲に書き込むアートワークの情報
 pub fn overwrite(
     path: &Path,
-    song: &AudioMetaDataEntry,
+    track: &AudioMetaDataEntry,
     artworks: &[AudioPictureEntry],
 ) -> Result<()> {
     let mut tag = Tag::read_from_path(path)?;
     let v = tag.vorbis_comments_mut();
 
-    v.set_title(str_to_vec(song.title));
-    v.set_artist(str_to_vec(song.artist));
-    v.set_album(str_to_vec(song.album));
-    v.set_genre(str_to_vec(song.genre));
-    v.set_album_artist(str_to_vec(song.album_artist));
-    v.set(KEY_COMPOSER, str_to_vec(song.composer));
+    v.set_title(str_to_vec(track.title));
+    v.set_artist(str_to_vec(track.artist));
+    v.set_album(str_to_vec(track.album));
+    v.set_genre(str_to_vec(track.genre));
+    v.set_album_artist(str_to_vec(track.album_artist));
+    v.set(KEY_COMPOSER, str_to_vec(track.composer));
 
-    v.set(KEY_TRACK_NUMBER, int_to_track_number(&song.track_number));
-    v.set(KEY_TRACK_MAX, int_to_track_number(&song.track_max));
-    v.set(KEY_DISC_NUMBER, int_to_track_number(&song.disc_number));
-    v.set(KEY_DISC_MAX, int_to_track_number(&song.disc_max));
+    v.set(KEY_TRACK_NUMBER, int_to_track_number(&track.track_number));
+    v.set(KEY_TRACK_MAX, int_to_track_number(&track.track_max));
+    v.set(KEY_DISC_NUMBER, int_to_track_number(&track.disc_number));
+    v.set(KEY_DISC_MAX, int_to_track_number(&track.disc_max));
 
-    match song.release_date {
+    match track.release_date {
         Some(date) => {
             let s = date.format("%Y-%m-%d").to_string();
             v.set(KEY_DATE, vec![s]);
@@ -83,8 +83,8 @@ pub fn overwrite(
         None => v.remove(KEY_DATE),
     }
 
-    v.set(KEY_MEMO, str_to_vec(song.memo));
-    //v.set_lyrics(str_to_vec(&song.lyrics));
+    v.set(KEY_MEMO, str_to_vec(track.memo));
+    //v.set_lyrics(str_to_vec(&track.lyrics));
 
     tag.remove_blocks(BlockType::Picture);
     for artwork in artworks {

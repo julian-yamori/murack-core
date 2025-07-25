@@ -9,8 +9,8 @@ use murack_core_domain::{
     FileLibraryRepository,
     check::{CheckIssueSummary, CheckUsecase},
     db::DbTransaction,
-    path::LibSongPath,
-    song::DbSongRepository,
+    path::LibTrackPath,
+    track::DbTrackRepository,
 };
 use sqlx::PgPool;
 
@@ -27,7 +27,7 @@ where
     RDP: ResolveDap,
     FR: FileLibraryRepository,
     CS: CheckUsecase,
-    SR: DbSongRepository,
+    SR: DbTrackRepository,
 {
     args: CommandCheckArgs,
 
@@ -39,7 +39,7 @@ where
     cui: &'cui CUI,
     file_library_repository: FR,
     check_usecase: CS,
-    db_song_repository: SR,
+    db_track_repository: SR,
 }
 
 impl<'config, 'cui, CUI, REX, RDM, RDP, FR, CS, SR>
@@ -51,7 +51,7 @@ where
     RDP: ResolveDap,
     FR: FileLibraryRepository,
     CS: CheckUsecase,
-    SR: DbSongRepository,
+    SR: DbTrackRepository,
 {
     #[allow(clippy::too_many_arguments)] // todo
     pub fn new(
@@ -64,7 +64,7 @@ where
         cui: &'cui CUI,
         file_library_repository: FR,
         check_usecase: CS,
-        db_song_repository: SR,
+        db_track_repository: SR,
     ) -> Self {
         Self {
             args,
@@ -75,20 +75,20 @@ where
             cui,
             file_library_repository,
             check_usecase,
-            db_song_repository,
+            db_track_repository,
         }
     }
 
     /// このコマンドを実行
     pub async fn run(&self, db_pool: &PgPool) -> Result<()> {
-        let path_list = self.listup_song_path(db_pool).await?;
+        let path_list = self.listup_track_path(db_pool).await?;
         let conflict_list = self.summary_check(db_pool, path_list).await?;
 
         if !self.summary_result_cui(&conflict_list)? {
             return Ok(());
         }
 
-        let terminated = self.resolve_all_songs(db_pool, &conflict_list).await?;
+        let terminated = self.resolve_all_tracks(db_pool, &conflict_list).await?;
 
         if !terminated {
             let cui = &self.cui;
@@ -103,11 +103,11 @@ where
     /// 全ての対象曲をリストアップ
     /// # Returns
     /// 全対象曲のパス
-    async fn listup_song_path(&self, db_pool: &PgPool) -> Result<Vec<LibSongPath>> {
+    async fn listup_track_path(&self, db_pool: &PgPool) -> Result<Vec<LibTrackPath>> {
         let cui = &self.cui;
 
         //マージ用set
-        let mut set = BTreeSet::<LibSongPath>::new();
+        let mut set = BTreeSet::<LibTrackPath>::new();
 
         //PCからリストアップ
         cui_outln!(cui, "PCの検索中...")?;
@@ -135,7 +135,7 @@ where
         };
 
         for path in self
-            .db_song_repository
+            .db_track_repository
             .get_path_by_path_str(&mut tx, &self.args.path)
             .await?
         {
@@ -153,11 +153,11 @@ where
     async fn summary_check(
         &self,
         db_pool: &PgPool,
-        path_list: Vec<LibSongPath>,
-    ) -> Result<Vec<LibSongPath>> {
+        path_list: Vec<LibTrackPath>,
+    ) -> Result<Vec<LibTrackPath>> {
         let cui = &self.cui;
 
-        let mut conflict_list = Vec::<(LibSongPath, Vec<CheckIssueSummary>)>::new();
+        let mut conflict_list = Vec::<(LibTrackPath, Vec<CheckIssueSummary>)>::new();
 
         //全曲に対して整合性チェック
         let all_count = path_list.len();
@@ -199,7 +199,7 @@ where
     /// 簡易チェックの結果確認CUI処理
     /// # Returns
     /// 次の解決処理に進むならtrue
-    fn summary_result_cui(&self, conflict_list: &[LibSongPath]) -> Result<bool> {
+    fn summary_result_cui(&self, conflict_list: &[LibTrackPath]) -> Result<bool> {
         let cui = &self.cui;
 
         //齟齬がなければ終了
@@ -224,23 +224,23 @@ where
     /// 問題があった全ての曲の解決処理
     /// # Returns
     /// 強制終了されたらtrue
-    async fn resolve_all_songs(
+    async fn resolve_all_tracks(
         &self,
         db_pool: &PgPool,
-        conflict_list: &[LibSongPath],
+        conflict_list: &[LibTrackPath],
     ) -> Result<bool> {
         let all_count = conflict_list.len();
-        for (current_index, song_path) in conflict_list.iter().enumerate() {
+        for (current_index, track_path) in conflict_list.iter().enumerate() {
             {
                 let cui = &self.cui;
 
                 cui_outln!(cui, "====================")?;
-                cui_outln!(cui, "{}", song_path)?;
+                cui_outln!(cui, "{}", track_path)?;
                 cui_outln!(cui, "({}/{})", current_index + 1, all_count)?;
                 cui_outln!(cui)?;
             }
 
-            if !self.resolve_song(db_pool, song_path).await? {
+            if !self.resolve_track(db_pool, track_path).await? {
                 return Ok(true);
             }
 
@@ -254,13 +254,13 @@ where
     /// 1曲についての問題の全解決処理の実行
     ///
     /// # Arguments
-    /// - song_path: 作業対象の曲のパス
+    /// - track_path: 作業対象の曲のパス
     ///
     /// # Returns
     /// 次の曲の解決処理へ継続するか
-    async fn resolve_song(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<bool> {
+    async fn resolve_track(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<bool> {
         //存在チェック・解決処理
-        match self.resolve_existance.resolve(db_pool, song_path).await? {
+        match self.resolve_existance.resolve(db_pool, track_path).await? {
             ResolveFileExistanceResult::Resolved => {}
             ResolveFileExistanceResult::Deleted => return Ok(true),
             ResolveFileExistanceResult::UnResolved => return Ok(true),
@@ -268,12 +268,12 @@ where
         }
 
         //データ同一性の解決処理
-        if !self.resolve_data_match.resolve(db_pool, song_path).await? {
+        if !self.resolve_data_match.resolve(db_pool, track_path).await? {
             return Ok(false);
         }
 
         //PC・DAP間の齟齬の解決処理
-        if !self.resolve_dap.resolve_pc_dap_conflict(song_path)? {
+        if !self.resolve_dap.resolve_pc_dap_conflict(track_path)? {
             return Ok(false);
         }
 
@@ -288,7 +288,7 @@ mod tests {
     use crate::cui::BufferCui;
     use murack_core_domain::{
         MockFileLibraryRepository, check::MockCheckUsecase, path::LibPathStr,
-        song::MockDbSongRepository,
+        track::MockDbTrackRepository,
     };
     use std::path::PathBuf;
 
@@ -306,7 +306,7 @@ mod tests {
         MockResolveDap,
         MockFileLibraryRepository,
         MockCheckUsecase,
-        MockDbSongRepository,
+        MockDbTrackRepository,
     > {
         CommandCheck {
             args: CommandCheckArgs {
@@ -320,7 +320,7 @@ mod tests {
             resolve_dap: MockResolveDap::default(),
             file_library_repository: MockFileLibraryRepository::default(),
             check_usecase: MockCheckUsecase::default(),
-            db_song_repository: MockDbSongRepository::default(),
+            db_track_repository: MockDbTrackRepository::default(),
         }
     }
 
@@ -332,7 +332,7 @@ mod tests {
             MockResolveDap,
             MockFileLibraryRepository,
             MockCheckUsecase,
-            MockDbSongRepository,
+            MockDbTrackRepository,
         >,
     ) {
         target.resolve_existance.checkpoint();
@@ -340,7 +340,7 @@ mod tests {
         target.resolve_dap.checkpoint();
         target.file_library_repository.checkpoint();
         target.check_usecase.checkpoint();
-        target.db_song_repository.inner.checkpoint();
+        target.db_track_repository.inner.checkpoint();
     }
 
     fn pc_lib() -> PathBuf {
@@ -351,16 +351,16 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn test_listup_song_path_green(db_pool: PgPool) -> anyhow::Result<()> {
+    fn test_listup_track_path_green(db_pool: PgPool) -> anyhow::Result<()> {
         fn search_path() -> LibPathStr {
             "test/hoge".to_owned().into()
         }
-        fn song_paths() -> Vec<LibSongPath> {
+        fn track_paths() -> Vec<LibTrackPath> {
             vec![
-                LibSongPath::new("test/hoge/child/song3.flac"),
-                LibSongPath::new("test/hoge/child/song4.flac"),
-                LibSongPath::new("test/hoge/song1.flac"),
-                LibSongPath::new("test/hoge/song2.flac"),
+                LibTrackPath::new("test/hoge/child/track3.flac"),
+                LibTrackPath::new("test/hoge/child/track4.flac"),
+                LibTrackPath::new("test/hoge/track1.flac"),
+                LibTrackPath::new("test/hoge/track2.flac"),
             ]
         }
 
@@ -375,7 +375,7 @@ mod tests {
             .times(1)
             .returning(|_, search| {
                 assert_eq!(search, &search_path());
-                Ok(song_paths())
+                Ok(track_paths())
             });
         target
             .file_library_repository
@@ -384,27 +384,27 @@ mod tests {
             .times(1)
             .returning(|_, search| {
                 assert_eq!(search, &search_path());
-                Ok(song_paths())
+                Ok(track_paths())
             });
         target
-            .db_song_repository
+            .db_track_repository
             .inner
             .expect_get_path_by_path_str()
             .times(1)
             .returning(|search| {
                 assert_eq!(search, &search_path());
                 //なんとなく逆順
-                Ok(song_paths().into_iter().rev().collect())
+                Ok(track_paths().into_iter().rev().collect())
             });
 
-        assert_eq!(target.listup_song_path(&db_pool).await?, song_paths());
+        assert_eq!(target.listup_track_path(&db_pool).await?, track_paths());
 
         checkpoint_all(&mut target);
         Ok(())
     }
 
     #[sqlx::test]
-    fn test_listup_song_path_conflict(db_pool: PgPool) -> anyhow::Result<()> {
+    fn test_listup_track_path_conflict(db_pool: PgPool) -> anyhow::Result<()> {
         let config = Config::dummy();
         let cui = BufferCui::new();
         let mut target = target("test/hoge".to_owned().into(), false, &config, &cui);
@@ -415,10 +415,10 @@ mod tests {
             .withf(|lib, _| lib == pc_lib())
             .returning(|_, _| {
                 Ok(vec![
-                    LibSongPath::new("test/hoge/child/song1.flac"),
-                    LibSongPath::new("test/hoge/child/pc1.flac"),
-                    LibSongPath::new("test/hoge/song2.flac"),
-                    LibSongPath::new("test/hoge/pc2.flac"),
+                    LibTrackPath::new("test/hoge/child/track1.flac"),
+                    LibTrackPath::new("test/hoge/child/pc1.flac"),
+                    LibTrackPath::new("test/hoge/track2.flac"),
+                    LibTrackPath::new("test/hoge/pc2.flac"),
                 ])
             });
         target
@@ -427,32 +427,32 @@ mod tests {
             .withf(|lib, _| lib == dap_lib())
             .returning(|_, _| {
                 Ok(vec![
-                    LibSongPath::new("test/hoge/child/song1.flac"),
-                    LibSongPath::new("test/hoge/child/dap1.flac"),
-                    LibSongPath::new("test/hoge/song2.flac"),
+                    LibTrackPath::new("test/hoge/child/track1.flac"),
+                    LibTrackPath::new("test/hoge/child/dap1.flac"),
+                    LibTrackPath::new("test/hoge/track2.flac"),
                 ])
             });
         target
-            .db_song_repository
+            .db_track_repository
             .inner
             .expect_get_path_by_path_str()
             .returning(|_| {
                 Ok(vec![
-                    LibSongPath::new("test/hoge/child/song1.flac"),
-                    LibSongPath::new("test/hoge/song2.flac"),
-                    LibSongPath::new("test/hoge/db1.flac"),
+                    LibTrackPath::new("test/hoge/child/track1.flac"),
+                    LibTrackPath::new("test/hoge/track2.flac"),
+                    LibTrackPath::new("test/hoge/db1.flac"),
                 ])
             });
 
         assert_eq!(
-            target.listup_song_path(&db_pool).await?,
+            target.listup_track_path(&db_pool).await?,
             vec![
-                LibSongPath::new("test/hoge/child/dap1.flac"),
-                LibSongPath::new("test/hoge/child/pc1.flac"),
-                LibSongPath::new("test/hoge/child/song1.flac"),
-                LibSongPath::new("test/hoge/db1.flac"),
-                LibSongPath::new("test/hoge/pc2.flac"),
-                LibSongPath::new("test/hoge/song2.flac"),
+                LibTrackPath::new("test/hoge/child/dap1.flac"),
+                LibTrackPath::new("test/hoge/child/pc1.flac"),
+                LibTrackPath::new("test/hoge/child/track1.flac"),
+                LibTrackPath::new("test/hoge/db1.flac"),
+                LibTrackPath::new("test/hoge/pc2.flac"),
+                LibTrackPath::new("test/hoge/track2.flac"),
             ]
         );
 

@@ -5,10 +5,10 @@ use once_cell::sync::Lazy;
 use crate::{
     artwork::{ArtworkCache, DbArtworkRepositoryImpl},
     folder::DbFolderRepositoryImpl,
-    playlist::{DbPlaylistRepositoryImpl, DbPlaylistSongRepositoryImpl},
-    song::{DbSongRepositoryImpl, DbSongSyncRepositoryImpl},
-    song_lister::{SongFinderImpl, SongListerFilterImpl},
-    tag::DbSongTagRepositoryImpl,
+    playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
+    tag::DbTrackTagRepositoryImpl,
+    track::{DbTrackRepositoryImpl, DbTrackSyncRepositoryImpl},
+    track_lister::{TrackFinderImpl, TrackListerFilterImpl},
 };
 
 /// data層DB機能のDIを解決するオブジェクト
@@ -23,8 +23,8 @@ impl DbComponents {
         }
     }
 
-    pub fn song_finder(&self) -> TypeSongFinder {
-        SongFinderImpl::new(SongListerFilterImpl {})
+    pub fn track_finder(&self) -> TypeTrackFinder {
+        TrackFinderImpl::new(TrackListerFilterImpl {})
     }
 
     pub fn db_artwork_repository(&self) -> TypeDbArtworkRepository {
@@ -39,20 +39,20 @@ impl DbComponents {
         DbPlaylistRepositoryImpl::new()
     }
 
-    pub fn db_playlist_song_repository(&self) -> TypeDbPlaylistSongRepository {
-        DbPlaylistSongRepositoryImpl::new()
+    pub fn db_playlist_track_repository(&self) -> TypeDbPlaylistTrackRepository {
+        DbPlaylistTrackRepositoryImpl::new()
     }
 
-    pub fn db_song_repository(&self) -> TypeDbSongRepository {
-        DbSongRepositoryImpl::new()
+    pub fn db_track_repository(&self) -> TypeDbTrackRepository {
+        DbTrackRepositoryImpl::new()
     }
 
-    pub fn db_song_sync_repository(&self) -> TypeDbSongSyncRepository {
-        DbSongSyncRepositoryImpl::new(self.db_artwork_repository())
+    pub fn db_track_sync_repository(&self) -> TypeDbTrackSyncRepository {
+        DbTrackSyncRepositoryImpl::new(self.db_artwork_repository())
     }
 
-    pub fn db_song_tag_repository(&self) -> TypeDbSongTagRepository {
-        DbSongTagRepositoryImpl::new()
+    pub fn db_track_tag_repository(&self) -> TypeDbTrackTagRepository {
+        DbTrackTagRepositoryImpl::new()
     }
 }
 
@@ -62,11 +62,11 @@ impl Default for DbComponents {
     }
 }
 
-pub type TypeSongFinder = SongFinderImpl<SongListerFilterImpl>;
+pub type TypeTrackFinder = TrackFinderImpl<TrackListerFilterImpl>;
 pub type TypeDbArtworkRepository = DbArtworkRepositoryImpl;
 pub type TypeDbFolderRepository = DbFolderRepositoryImpl;
 pub type TypeDbPlaylistRepository = DbPlaylistRepositoryImpl;
-pub type TypeDbPlaylistSongRepository = DbPlaylistSongRepositoryImpl;
-pub type TypeDbSongRepository = DbSongRepositoryImpl;
-pub type TypeDbSongSyncRepository = DbSongSyncRepositoryImpl<TypeDbArtworkRepository>;
-pub type TypeDbSongTagRepository = DbSongTagRepositoryImpl;
+pub type TypeDbPlaylistTrackRepository = DbPlaylistTrackRepositoryImpl;
+pub type TypeDbTrackRepository = DbTrackRepositoryImpl;
+pub type TypeDbTrackSyncRepository = DbTrackSyncRepositoryImpl<TypeDbArtworkRepository>;
+pub type TypeDbTrackTagRepository = DbTrackTagRepositoryImpl;

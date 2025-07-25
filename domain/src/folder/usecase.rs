@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use mockall::mock;
 
 use super::{DbFolderRepository, FolderIdMayRoot};
-use crate::{Error, db::DbTransaction, path::LibDirPath, song::DbSongRepository};
+use crate::{Error, db::DbTransaction, path::LibDirPath, track::DbTrackRepository};
 
 /// ライブラリのフォルダ関係のUsecase
 #[async_trait]
@@ -25,17 +25,17 @@ pub trait FolderUsecase {
 pub struct FolderUsecaseImpl<FR, SR>
 where
     FR: DbFolderRepository + Sync + Send,
-    SR: DbSongRepository + Sync + Send,
+    SR: DbTrackRepository + Sync + Send,
 {
     db_folder_repository: FR,
-    db_song_repository: SR,
+    db_track_repository: SR,
 }
 
 #[async_trait]
 impl<FR, SR> FolderUsecase for FolderUsecaseImpl<FR, SR>
 where
     FR: DbFolderRepository + Sync + Send,
-    SR: DbSongRepository + Sync + Send,
+    SR: DbTrackRepository + Sync + Send,
 {
     /// フォルダに曲が含まれてない場合、削除する
     ///
@@ -65,7 +65,7 @@ where
 impl<FR, SR> FolderUsecaseImpl<FR, SR>
 where
     FR: DbFolderRepository + Sync + Send,
-    SR: DbSongRepository + Sync + Send,
+    SR: DbTrackRepository + Sync + Send,
 {
     /// フォルダに曲が含まれてない場合、削除する(再帰実行用のID指定版)
     ///
@@ -79,7 +79,7 @@ where
     ) -> Result<()> {
         //他の曲が含まれる場合、削除せずに終了
         if self
-            .db_song_repository
+            .db_track_repository
             .is_exist_in_folder(tx, folder_id)
             .await?
         {
@@ -143,33 +143,33 @@ mock! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{folder::MockDbFolderRepository, song::MockDbSongRepository};
+    use crate::{folder::MockDbFolderRepository, track::MockDbTrackRepository};
 
-    fn target() -> FolderUsecaseImpl<MockDbFolderRepository, MockDbSongRepository> {
+    fn target() -> FolderUsecaseImpl<MockDbFolderRepository, MockDbTrackRepository> {
         FolderUsecaseImpl {
             db_folder_repository: MockDbFolderRepository::default(),
-            db_song_repository: MockDbSongRepository::default(),
+            db_track_repository: MockDbTrackRepository::default(),
         }
     }
     fn checkpoint_all(
-        target: &mut FolderUsecaseImpl<MockDbFolderRepository, MockDbSongRepository>,
+        target: &mut FolderUsecaseImpl<MockDbFolderRepository, MockDbTrackRepository>,
     ) {
         target.db_folder_repository.inner.checkpoint();
-        target.db_song_repository.inner.checkpoint();
+        target.db_track_repository.inner.checkpoint();
     }
 
     #[tokio::test]
     async fn test_delete_db_if_empty_trans_once() -> anyhow::Result<()> {
         let mut target = target();
         target
-            .db_song_repository
+            .db_track_repository
             .inner
             .expect_is_exist_in_folder()
             .withf(|a_folder_id| *a_folder_id == 15)
             .times(1)
             .returning(|_| Ok(false));
         target
-            .db_song_repository
+            .db_track_repository
             .inner
             .expect_is_exist_in_folder()
             .withf(|a_folder_id| *a_folder_id == 4)
@@ -215,7 +215,7 @@ mod tests {
     async fn test_delete_db_if_empty_folder_exists() -> anyhow::Result<()> {
         let mut target = target();
         target
-            .db_song_repository
+            .db_track_repository
             .inner
             .expect_is_exist_in_folder()
             .withf(|a_folder_id| *a_folder_id == 15)
@@ -242,7 +242,7 @@ mod tests {
     async fn test_delete_db_if_empty_trans_root_check() -> anyhow::Result<()> {
         let mut target = target();
         target
-            .db_song_repository
+            .db_track_repository
             .inner
             .expect_is_exist_in_folder()
             .times(1)

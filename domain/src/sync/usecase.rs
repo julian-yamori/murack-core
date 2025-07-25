@@ -2,11 +2,11 @@ use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
 
-use super::{DbSongSyncRepository, SongSync};
+use super::{DbTrackSyncRepository, TrackSync};
 use crate::{
     db::DbTransaction,
     folder::{DbFolderRepository, FolderIdMayRoot},
-    path::LibSongPath,
+    path::LibTrackPath,
     playlist::DbPlaylistRepository,
 };
 
@@ -17,14 +17,14 @@ pub trait SyncUsecase {
     ///
     /// # Arguments
     /// - db: DB接続
-    /// - song_path: 登録する曲のライブラリ内パス
-    /// - song_sync: 登録する曲のデータ
+    /// - track_path: 登録する曲のライブラリ内パス
+    /// - track_sync: 登録する曲のデータ
     /// - entry_date: 登録日
     async fn register_db<'c>(
         &self,
         tx: &mut DbTransaction<'c>,
-        song_path: &LibSongPath,
-        song_sync: &mut SongSync,
+        track_path: &LibTrackPath,
+        track_sync: &mut TrackSync,
     ) -> Result<()>;
 }
 
@@ -34,39 +34,39 @@ pub struct SyncUsecaseImpl<FR, PR, SSR>
 where
     FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
-    SSR: DbSongSyncRepository + Sync + Send,
+    SSR: DbTrackSyncRepository + Sync + Send,
 {
     db_folder_repository: FR,
     db_playlist_repository: PR,
-    db_song_sync_repository: SSR,
+    db_track_sync_repository: SSR,
 }
 #[async_trait]
 impl<FR, PR, SSR> SyncUsecase for SyncUsecaseImpl<FR, PR, SSR>
 where
     FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
-    SSR: DbSongSyncRepository + Sync + Send,
+    SSR: DbTrackSyncRepository + Sync + Send,
 {
     /// DBに曲データを新規登録する
     ///
     /// # Arguments
     /// - db: DB接続
-    /// - song_path: 登録する曲のライブラリ内パス
-    /// - song_sync: 登録する曲のデータ
+    /// - track_path: 登録する曲のライブラリ内パス
+    /// - track_sync: 登録する曲のデータ
     /// - entry_date: 登録日
     async fn register_db<'c>(
         &self,
         tx: &mut DbTransaction<'c>,
-        song_path: &LibSongPath,
-        song_sync: &mut SongSync,
+        track_path: &LibTrackPath,
+        track_sync: &mut TrackSync,
     ) -> Result<()> {
         //曲名が空なら、ファイル名から取得
-        if song_sync.title.is_none() {
-            song_sync.title = Some(song_path.file_stem().to_owned());
+        if track_sync.title.is_none() {
+            track_sync.title = Some(track_path.file_stem().to_owned());
         };
 
         //親ディレクトリを登録してIDを取得
-        let parent_path = song_path.parent();
+        let parent_path = track_path.parent();
         let folder_id = if parent_path.is_root() {
             FolderIdMayRoot::Root
         } else {
@@ -76,8 +76,8 @@ where
         };
 
         //DBに書き込み
-        self.db_song_sync_repository
-            .register(tx, song_path, song_sync, folder_id)
+        self.db_track_sync_repository
+            .register(tx, track_path, track_sync, folder_id)
             .await?;
 
         //プレイリストのリストアップ済みフラグを解除
@@ -96,18 +96,18 @@ impl SyncUsecase for MockSyncUsecase {
     async fn register_db<'c>(
         &self,
         _db: &mut DbTransaction<'c>,
-        song_path: &LibSongPath,
-        song_sync: &mut SongSync,
+        track_path: &LibTrackPath,
+        track_sync: &mut TrackSync,
     ) -> Result<()> {
-        self.inner.register_db(song_path, song_sync)
+        self.inner.register_db(track_path, track_sync)
     }
 }
 mock! {
     pub SyncUsecaseInner {
         pub fn register_db(
             &self,
-            song_path: &LibSongPath,
-            song_sync: &mut SongSync,
+            track_path: &LibTrackPath,
+            track_sync: &mut TrackSync,
         ) -> Result<()>;
     }
 }
@@ -119,36 +119,36 @@ mod tests {
     use chrono::NaiveDate;
     use murack_core_media::picture::Picture;
 
-    use super::super::MockDbSongSyncRepository;
+    use super::super::MockDbTrackSyncRepository;
     use super::*;
     use crate::{
-        artwork::SongArtwork, folder::MockDbFolderRepository, path::LibDirPath,
+        artwork::TrackArtwork, folder::MockDbFolderRepository, path::LibDirPath,
         playlist::MockDbPlaylistRepository,
     };
 
     fn target()
-    -> SyncUsecaseImpl<MockDbFolderRepository, MockDbPlaylistRepository, MockDbSongSyncRepository>
+    -> SyncUsecaseImpl<MockDbFolderRepository, MockDbPlaylistRepository, MockDbTrackSyncRepository>
     {
         SyncUsecaseImpl {
             db_folder_repository: MockDbFolderRepository::default(),
             db_playlist_repository: MockDbPlaylistRepository::default(),
-            db_song_sync_repository: MockDbSongSyncRepository::default(),
+            db_track_sync_repository: MockDbTrackSyncRepository::default(),
         }
     }
     fn checkpoint_all(
         target: &mut SyncUsecaseImpl<
             MockDbFolderRepository,
             MockDbPlaylistRepository,
-            MockDbSongSyncRepository,
+            MockDbTrackSyncRepository,
         >,
     ) {
         target.db_folder_repository.inner.checkpoint();
         target.db_playlist_repository.inner.checkpoint();
-        target.db_song_sync_repository.inner.checkpoint();
+        target.db_track_sync_repository.inner.checkpoint();
     }
 
-    fn song_sync() -> SongSync {
-        SongSync {
+    fn track_sync() -> TrackSync {
+        TrackSync {
             duration: 120000,
             title: Some("曲名".to_owned()),
             artist: Some("アーティスト".to_owned()),
@@ -163,7 +163,7 @@ mod tests {
             release_date: Some(NaiveDate::from_ymd_opt(2013, 7, 14).unwrap()),
             memo: Some("メモ".to_owned()),
             lyrics: Some("歌詞".to_owned()),
-            artworks: vec![SongArtwork {
+            artworks: vec![TrackArtwork {
                 picture: Arc::new(Picture {
                     bytes: vec![1, 2, 3, 4],
                     mime_type: "image/jpeg".to_owned(),
@@ -176,8 +176,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_db_root_folder() -> anyhow::Result<()> {
-        fn song_path() -> LibSongPath {
-            LibSongPath::new("song.flac")
+        fn track_path() -> LibTrackPath {
+            LibTrackPath::new("track.flac")
         }
 
         let mut target = target();
@@ -188,13 +188,13 @@ mod tests {
             .times(0);
 
         target
-            .db_song_sync_repository
+            .db_track_sync_repository
             .inner
             .expect_register()
             .times(1)
-            .returning(|_, a_song_sync, a_folder_id| {
+            .returning(|_, a_track_sync, a_folder_id| {
                 assert_eq!(a_folder_id, FolderIdMayRoot::Root);
-                assert_eq!(a_song_sync.title.as_deref(), Some("曲名"));
+                assert_eq!(a_track_sync.title.as_deref(), Some("曲名"));
                 Ok(5)
             });
 
@@ -207,8 +207,8 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        let mut s = song_sync();
-        target.register_db(&mut tx, &song_path(), &mut s).await?;
+        let mut s = track_sync();
+        target.register_db(&mut tx, &track_path(), &mut s).await?;
 
         assert_eq!(s.title.as_deref(), Some("曲名"));
 
@@ -218,8 +218,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_db_no_title() -> anyhow::Result<()> {
-        fn song_path() -> LibSongPath {
-            LibSongPath::new("test/hoge/fuga.mp3")
+        fn track_path() -> LibTrackPath {
+            LibTrackPath::new("test/hoge/fuga.mp3")
         }
 
         let mut target = target();
@@ -234,13 +234,13 @@ mod tests {
             });
 
         target
-            .db_song_sync_repository
+            .db_track_sync_repository
             .inner
             .expect_register()
             .times(1)
-            .returning(|_, a_song_sync, a_folder_id| {
+            .returning(|_, a_track_sync, a_folder_id| {
                 assert_eq!(a_folder_id, FolderIdMayRoot::Folder(15));
-                assert_eq!(a_song_sync.title.as_deref(), Some("fuga"));
+                assert_eq!(a_track_sync.title.as_deref(), Some("fuga"));
                 Ok(5)
             });
 
@@ -253,10 +253,10 @@ mod tests {
 
         let mut tx = DbTransaction::Dummy;
 
-        let mut s = song_sync();
+        let mut s = track_sync();
         s.title = None;
 
-        target.register_db(&mut tx, &song_path(), &mut s).await?;
+        target.register_db(&mut tx, &track_path(), &mut s).await?;
 
         assert_eq!(s.title.as_deref(), Some("fuga"));
 

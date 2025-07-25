@@ -3,16 +3,16 @@ use async_trait::async_trait;
 use mockall::automock;
 use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
-    artwork::{DbArtworkRepository, SongArtwork},
+    artwork::{DbArtworkRepository, TrackArtwork},
     check::CheckUsecase,
     db::DbTransaction,
-    path::LibSongPath,
-    song::SongItemKind,
-    sync::{DbSongSync, DbSongSyncRepository, SongSync},
+    path::LibTrackPath,
+    sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
+    track::TrackItemKind,
 };
 use sqlx::PgPool;
 
-use super::{SongItemConflict, messages};
+use super::{TrackItemConflict, messages};
 use crate::{Config, cui::Cui};
 
 /// データ内容同一性についての解決処理
@@ -23,7 +23,7 @@ pub trait ResolveDataMatch {
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    async fn resolve(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<bool>;
+    async fn resolve(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<bool>;
 }
 
 /// ResolveDataMatchの実装
@@ -33,14 +33,14 @@ where
     FR: FileLibraryRepository + Send + Sync,
     CS: CheckUsecase + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
-    SSR: DbSongSyncRepository + Send + Sync,
+    SSR: DbTrackSyncRepository + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
     file_library_repository: FR,
     check_usecase: CS,
     db_artwork_repository: AR,
-    db_song_sync_repository: SSR,
+    db_track_sync_repository: SSR,
 }
 
 #[async_trait]
@@ -51,18 +51,18 @@ where
     FR: FileLibraryRepository + Send + Sync,
     CS: CheckUsecase + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
-    SSR: DbSongSyncRepository + Send + Sync,
+    SSR: DbTrackSyncRepository + Send + Sync,
 {
     /// データ内容同一性についての解決処理
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    async fn resolve(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<bool> {
+    async fn resolve(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<bool> {
         //データ読み込み
         let mut pc_data = self
             .file_library_repository
-            .read_song_sync(&self.config.pc_lib, song_path)?;
-        let mut db_data = self.load_db_song(db_pool, song_path).await?;
+            .read_track_sync(&self.config.pc_lib, track_path)?;
+        let mut db_data = self.load_db_track(db_pool, track_path).await?;
 
         if !self
             .resolve_editable(db_pool, &mut pc_data, &mut db_data)
@@ -95,7 +95,7 @@ where
     FR: FileLibraryRepository + Send + Sync,
     CS: CheckUsecase + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
-    SSR: DbSongSyncRepository + Send + Sync,
+    SSR: DbTrackSyncRepository + Send + Sync,
 {
     pub fn new(
         config: &'config Config,
@@ -103,7 +103,7 @@ where
         file_library_repository: FR,
         check_usecase: CS,
         db_artwork_repository: AR,
-        db_song_sync_repository: SSR,
+        db_track_sync_repository: SSR,
     ) -> Self {
         Self {
             config,
@@ -111,7 +111,7 @@ where
             file_library_repository,
             check_usecase,
             db_artwork_repository,
-            db_song_sync_repository,
+            db_track_sync_repository,
         }
     }
 
@@ -122,13 +122,13 @@ where
     async fn resolve_editable(
         &self,
         db_pool: &PgPool,
-        pc_song: &mut SongSync,
-        db_song: &mut DbSongSync,
+        pc_track: &mut TrackSync,
+        db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //全体を比較して齟齬リストを取得
         let conflict_items = self
             .check_usecase
-            .check_editable(pc_song, &db_song.song_sync);
+            .check_editable(pc_track, &db_track.track_sync);
         //齟齬がなければ次の処理へ
         if conflict_items.is_empty() {
             return Ok(true);
@@ -136,14 +136,14 @@ where
 
         let conflicts: Vec<_> = conflict_items
             .into_iter()
-            .map(|item_kind| SongItemConflict { item_kind })
+            .map(|item_kind| TrackItemConflict { item_kind })
             .collect();
 
         let cui = &self.cui;
 
         //結果表示
         cui_outln!(cui, "----")?;
-        self.display_all_conflicts(&conflicts, pc_song, &db_song.song_sync)?;
+        self.display_all_conflicts(&conflicts, pc_track, &db_track.track_sync)?;
 
         cui_outln!(cui, "1: PCからDBへ上書き")?;
         cui_outln!(cui, "2: DBからPCへ上書きし、DAPも更新")?;
@@ -157,24 +157,24 @@ where
         match input {
             //PCからDBへ上書き
             '1' => {
-                self.overwrite_song_editable(pc_song, &mut db_song.song_sync);
-                self.save_db_exclude_artwork(db_pool, db_song).await?;
+                self.overwrite_track_editable(pc_track, &mut db_track.track_sync);
+                self.save_db_exclude_artwork(db_pool, db_track).await?;
 
                 Ok(true)
             }
             //DBからPCへ上書きし、DAPも更新
             '2' => {
-                let song_path = &db_song.path;
+                let track_path = &db_track.path;
 
                 //PCのデータを上書き
-                self.overwrite_song_editable(&db_song.song_sync, pc_song);
-                self.overwrite_pc_song_file(song_path, pc_song)?;
+                self.overwrite_track_editable(&db_track.track_sync, pc_track);
+                self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                self.file_library_repository.overwrite_song_over_lib(
+                self.file_library_repository.overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
-                    song_path,
+                    track_path,
                 )?;
 
                 Ok(true)
@@ -183,7 +183,7 @@ where
             '3' => {
                 for conflict in conflicts {
                     if !self
-                        .resolve_each_property(db_pool, pc_song, db_song, &conflict)
+                        .resolve_each_property(db_pool, pc_track, db_track, &conflict)
                         .await?
                     {
                         return Ok(false);
@@ -205,11 +205,11 @@ where
     async fn resolve_each_property(
         &self,
         db_pool: &PgPool,
-        pc_song: &mut SongSync,
-        db_song: &mut DbSongSync,
-        conflict: &SongItemConflict,
+        pc_track: &mut TrackSync,
+        db_track: &mut DbTrackSync,
+        conflict: &TrackItemConflict,
     ) -> Result<bool> {
-        let db_sync = &mut db_song.song_sync;
+        let db_sync = &mut db_track.track_sync;
 
         let input = {
             let cui = &self.cui;
@@ -221,7 +221,10 @@ where
             cui_outln!(
                 cui,
                 "{}",
-                conflict.display_value(pc_song).as_deref().unwrap_or("None")
+                conflict
+                    .display_value(pc_track)
+                    .as_deref()
+                    .unwrap_or("None")
             )?;
 
             cui_outln!(cui, "[DB]")?;
@@ -246,24 +249,24 @@ where
             //PCからDBへ上書き
             '1' => {
                 //DBの値を上書きする
-                conflict.copy_each_sync(pc_song, db_sync);
-                self.save_db_exclude_artwork(db_pool, db_song).await?;
+                conflict.copy_each_sync(pc_track, db_sync);
+                self.save_db_exclude_artwork(db_pool, db_track).await?;
 
                 Ok(true)
             }
             //DBからPCへ上書きし、DAPも更新
             '2' => {
                 //PCの値を上書きする
-                conflict.copy_each_sync(db_sync, pc_song);
+                conflict.copy_each_sync(db_sync, pc_track);
 
-                let song_path = &db_song.path;
-                self.overwrite_pc_song_file(song_path, pc_song)?;
+                let track_path = &db_track.path;
+                self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                self.file_library_repository.overwrite_song_over_lib(
+                self.file_library_repository.overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
-                    song_path,
+                    track_path,
                 )?;
 
                 Ok(true)
@@ -281,13 +284,13 @@ where
     async fn resolve_artwork(
         &self,
         db_pool: &PgPool,
-        pc_song: &mut SongSync,
-        db_song: &mut DbSongSync,
+        pc_track: &mut TrackSync,
+        db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //アートワークが一致したらスキップ
         if self
             .check_usecase
-            .check_artwork(pc_song, &db_song.song_sync)
+            .check_artwork(pc_track, &db_track.track_sync)
         {
             return Ok(true);
         }
@@ -297,12 +300,12 @@ where
         cui_outln!(cui, "----")?;
         //PCのアートワーク情報を表示
         cui_outln!(cui, "[PC]")?;
-        self.display_artwork(&pc_song.artworks)?;
+        self.display_artwork(&pc_track.artworks)?;
         cui_outln!(cui)?;
 
         //DBのアートワーク情報を表示
         cui_outln!(cui, "[DB]")?;
-        self.display_artwork(&db_song.song_sync.artworks)?;
+        self.display_artwork(&db_track.track_sync.artworks)?;
         cui_outln!(cui)?;
 
         cui_outln!(cui, "1: PCからDBへ上書き")?;
@@ -321,16 +324,16 @@ where
                 };
 
                 //DBに上書き保存
-                let song_id = db_song.id;
+                let track_id = db_track.id;
 
                 self.db_artwork_repository
-                    .register_song_artworks(&mut tx, song_id, &pc_song.artworks)
+                    .register_track_artworks(&mut tx, track_id, &pc_track.artworks)
                     .await?;
 
                 //念の為、保存した値で変数値を上書きしておく
-                db_song.song_sync.artworks = self
+                db_track.track_sync.artworks = self
                     .db_artwork_repository
-                    .get_song_artworks(&mut tx, song_id)
+                    .get_track_artworks(&mut tx, track_id)
                     .await?;
 
                 tx.commit().await?;
@@ -339,17 +342,17 @@ where
             //DBからPCへ上書きし、DAPも更新
             '2' => {
                 //PCのデータを上書き
-                pc_song.artworks = db_song.song_sync.artworks.clone();
+                pc_track.artworks = db_track.track_sync.artworks.clone();
 
                 //PCに保存
-                let song_path = &db_song.path;
-                self.overwrite_pc_song_file(song_path, pc_song)?;
+                let track_path = &db_track.path;
+                self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                self.file_library_repository.overwrite_song_over_lib(
+                self.file_library_repository.overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
-                    song_path,
+                    track_path,
                 )?;
 
                 Ok(true)
@@ -367,13 +370,13 @@ where
     async fn resolve_duration(
         &self,
         db_pool: &PgPool,
-        pc_song: &mut SongSync,
-        db_song: &mut DbSongSync,
+        pc_track: &mut TrackSync,
+        db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //再生時間が一致したらスキップ
         if self
             .check_usecase
-            .check_duration(pc_song, &db_song.song_sync)
+            .check_duration(pc_track, &db_track.track_sync)
         {
             return Ok(true);
         }
@@ -386,8 +389,8 @@ where
             cui_outln!(
                 cui,
                 "* 再生時間: {}ms | {}ms",
-                pc_song.duration,
-                db_song.song_sync.duration
+                pc_track.duration,
+                db_track.track_sync.duration
             )?;
             cui_outln!(cui, "PC vs DB")?;
             cui_outln!(cui)?;
@@ -404,8 +407,8 @@ where
             //PCからDBへ上書き
             '1' => {
                 //DB側の再生時間を上書きして保存
-                db_song.song_sync.duration = pc_song.duration;
-                self.save_db_exclude_artwork(db_pool, db_song).await?;
+                db_track.track_sync.duration = pc_track.duration;
+                self.save_db_exclude_artwork(db_pool, db_track).await?;
 
                 Ok(true)
             }
@@ -416,25 +419,33 @@ where
     }
 
     /// DBから曲ファイルを読み込み
-    async fn load_db_song(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<DbSongSync> {
+    async fn load_db_track(
+        &self,
+        db_pool: &PgPool,
+        track_path: &LibTrackPath,
+    ) -> Result<DbTrackSync> {
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
         };
 
-        self.db_song_sync_repository
-            .get_by_path(&mut tx, song_path)
+        self.db_track_sync_repository
+            .get_by_path(&mut tx, track_path)
             .await?
-            .ok_or_else(|| DomainError::DbSongNotFound(song_path.clone()).into())
+            .ok_or_else(|| DomainError::DbTrackNotFound(track_path.clone()).into())
     }
 
     /// DBに曲の連携情報(アートワーク以外)を保存
-    async fn save_db_exclude_artwork(&self, db_pool: &PgPool, db_song: &DbSongSync) -> Result<()> {
+    async fn save_db_exclude_artwork(
+        &self,
+        db_pool: &PgPool,
+        db_track: &DbTrackSync,
+    ) -> Result<()> {
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
         };
 
-        self.db_song_sync_repository
-            .save_exclude_artwork(&mut tx, db_song)
+        self.db_track_sync_repository
+            .save_exclude_artwork(&mut tx, db_track)
             .await?;
 
         tx.commit().await?;
@@ -442,11 +453,15 @@ where
     }
 
     /// PCのファイルの曲データを上書き
-    fn overwrite_pc_song_file(&self, song_path: &LibSongPath, pc_song: &SongSync) -> Result<()> {
-        self.file_library_repository.overwrite_song_sync(
+    fn overwrite_pc_track_file(
+        &self,
+        track_path: &LibTrackPath,
+        pc_track: &TrackSync,
+    ) -> Result<()> {
+        self.file_library_repository.overwrite_track_sync(
             &self.config.pc_lib,
-            song_path,
-            pc_song,
+            track_path,
+            pc_track,
         )?;
 
         Ok(())
@@ -456,28 +471,28 @@ where
     ///
     /// # todo
     /// domainに移動
-    fn overwrite_song_editable(&self, src_song: &SongSync, dest_song: &mut SongSync) {
-        dest_song.title = src_song.title.clone();
-        dest_song.artist = src_song.artist.clone();
-        dest_song.album = src_song.album.clone();
-        dest_song.genre = src_song.genre.clone();
-        dest_song.album_artist = src_song.album_artist.clone();
-        dest_song.composer = src_song.composer.clone();
-        dest_song.track_number = src_song.track_number;
-        dest_song.track_max = src_song.track_max;
-        dest_song.disc_number = src_song.disc_number;
-        dest_song.disc_max = src_song.disc_max;
-        dest_song.release_date = src_song.release_date;
-        dest_song.memo = src_song.memo.clone();
-        dest_song.lyrics = src_song.lyrics.clone();
+    fn overwrite_track_editable(&self, src_track: &TrackSync, dest_track: &mut TrackSync) {
+        dest_track.title = src_track.title.clone();
+        dest_track.artist = src_track.artist.clone();
+        dest_track.album = src_track.album.clone();
+        dest_track.genre = src_track.genre.clone();
+        dest_track.album_artist = src_track.album_artist.clone();
+        dest_track.composer = src_track.composer.clone();
+        dest_track.track_number = src_track.track_number;
+        dest_track.track_max = src_track.track_max;
+        dest_track.disc_number = src_track.disc_number;
+        dest_track.disc_max = src_track.disc_max;
+        dest_track.release_date = src_track.release_date;
+        dest_track.memo = src_track.memo.clone();
+        dest_track.lyrics = src_track.lyrics.clone();
     }
 
     /// PCとDBの編集可能データの、全競合情報を出力
     fn display_all_conflicts(
         &self,
-        conflicts: &[SongItemConflict],
-        pc_song: &SongSync,
-        db_song: &SongSync,
+        conflicts: &[TrackItemConflict],
+        pc_track: &TrackSync,
+        db_track: &TrackSync,
     ) -> anyhow::Result<()> {
         let cui = &self.cui;
 
@@ -486,12 +501,12 @@ where
 
             match conflict.item_kind {
                 //メモと歌詞は省略
-                SongItemKind::Lyrics => {
+                TrackItemKind::Lyrics => {
                     cui_outln!(cui, "* {}が異なります", item_name)?;
                 }
                 _ => {
-                    let pc_value = conflict.display_value(pc_song);
-                    let db_value = conflict.display_value(db_song);
+                    let pc_value = conflict.display_value(pc_track);
+                    let db_value = conflict.display_value(db_track);
                     cui_outln!(
                         cui,
                         "* {}: {} | {}",
@@ -510,7 +525,7 @@ where
     }
 
     /// アートワークの情報をコンソールに出力
-    fn display_artwork(&self, artworks: &[SongArtwork]) -> anyhow::Result<()> {
+    fn display_artwork(&self, artworks: &[TrackArtwork]) -> anyhow::Result<()> {
         let cui = &self.cui;
 
         if artworks.is_empty() {

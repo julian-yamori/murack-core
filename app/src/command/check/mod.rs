@@ -24,5 +24,5 @@ mod resolve_existance;
 use resolve_existance::MockResolveExistance;
 pub use resolve_existance::{ResolveExistance, ResolveExistanceImpl};
 
-mod song_item_conflict;
-use song_item_conflict::SongItemConflict;
+mod track_item_conflict;
+use track_item_conflict::TrackItemConflict;

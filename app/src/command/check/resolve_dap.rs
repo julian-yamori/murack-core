@@ -3,7 +3,7 @@ use mockall::automock;
 use murack_core_domain::{
     FileLibraryRepository,
     check::{CheckIssueSummary, CheckUsecase},
-    path::LibSongPath,
+    path::LibTrackPath,
 };
 
 use super::messages;
@@ -16,7 +16,7 @@ pub trait ResolveDap {
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    fn resolve_pc_dap_conflict(&self, song_path: &LibSongPath) -> Result<bool>;
+    fn resolve_pc_dap_conflict(&self, track_path: &LibTrackPath) -> Result<bool>;
 }
 
 ///ResolveDapの実装
@@ -63,12 +63,12 @@ where
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    fn resolve_pc_dap_conflict(&self, song_path: &LibSongPath) -> Result<bool> {
+    fn resolve_pc_dap_conflict(&self, track_path: &LibTrackPath) -> Result<bool> {
         //内容が一致する場合はスキップ
         if self.check_usecase.check_pc_dap_content(
             &self.config.pc_lib,
             &self.config.dap_lib,
-            song_path,
+            track_path,
         )? {
             return Ok(true);
         }
@@ -88,10 +88,10 @@ where
         match input {
             //PCからDBへ上書き
             '1' => {
-                self.file_library_repository.overwrite_song_over_lib(
+                self.file_library_repository.overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
-                    song_path,
+                    track_path,
                 )?;
 
                 Ok(true)

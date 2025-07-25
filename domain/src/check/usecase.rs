@@ -9,9 +9,9 @@ use super::CheckIssueSummary;
 use crate::db::DbTransaction;
 use crate::{
     Error, FileLibraryRepository,
-    path::LibSongPath,
-    song::SongItemKind,
-    sync::{DbSongSyncRepository, SongSync},
+    path::LibTrackPath,
+    sync::{DbTrackSyncRepository, TrackSync},
+    track::TrackItemKind,
 };
 
 /// PC・DB・DAP間の曲の整合性チェックのUsecase
@@ -31,7 +31,7 @@ pub trait CheckUsecase {
         db_pool: &PgPool,
         pc_lib: &Path,
         dap_lib: &Path,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
         ignore_dap_content: bool,
     ) -> Result<Vec<CheckIssueSummary>>;
 
@@ -39,17 +39,17 @@ pub trait CheckUsecase {
     /// # Returns
     /// 不一致の項目のリスト
     /// 全て一致したら空Vec。
-    fn check_editable(&self, pc_data: &SongSync, db_data: &SongSync) -> Vec<SongItemKind>;
+    fn check_editable(&self, pc_data: &TrackSync, db_data: &TrackSync) -> Vec<TrackItemKind>;
 
     /// PCとDBの再生時間を比較
     /// #Returns
     /// 一致したらtrue
-    fn check_duration(&self, pc_data: &SongSync, db_data: &SongSync) -> bool;
+    fn check_duration(&self, pc_data: &TrackSync, db_data: &TrackSync) -> bool;
 
     /// PCとDBのアートワークを比較
     /// #Returns
     /// 一致したらtrue
-    fn check_artwork(&self, pc_data: &SongSync, db_data: &SongSync) -> bool;
+    fn check_artwork(&self, pc_data: &TrackSync, db_data: &TrackSync) -> bool;
 
     /// PCとDAPのファイル内容を比較
     /// # Returns
@@ -58,7 +58,7 @@ pub trait CheckUsecase {
         &self,
         pc_lib: &Path,
         dap_lib: &Path,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> Result<bool>;
 }
 
@@ -66,17 +66,17 @@ pub trait CheckUsecase {
 #[derive(new)]
 pub struct CheckUsecaseImpl<SSR, FLR>
 where
-    SSR: DbSongSyncRepository + Sync + Send,
+    SSR: DbTrackSyncRepository + Sync + Send,
     FLR: FileLibraryRepository + Sync + Send,
 {
-    db_song_sync_repository: SSR,
+    db_track_sync_repository: SSR,
     file_library_repository: FLR,
 }
 
 #[async_trait]
 impl<SSR, FLR> CheckUsecase for CheckUsecaseImpl<SSR, FLR>
 where
-    SSR: DbSongSyncRepository + Sync + Send,
+    SSR: DbTrackSyncRepository + Sync + Send,
     FLR: FileLibraryRepository + Sync + Send,
 {
     /// 曲のチェックを行い、問題の簡易情報リストを取得
@@ -92,7 +92,7 @@ where
         db_pool: &PgPool,
         pc_lib: &Path,
         dap_lib: &Path,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
         ignore_dap_content: bool,
     ) -> Result<Vec<CheckIssueSummary>> {
         let mut issue_list = Vec::new();
@@ -100,11 +100,11 @@ where
         //PCデータ読み込み
         let pc_data_opt = match self
             .file_library_repository
-            .read_song_sync(pc_lib, song_path)
+            .read_track_sync(pc_lib, track_path)
         {
             Ok(d) => Some(d),
             Err(e) => match e.downcast_ref() {
-                Some(Error::FileSongNotFound { .. }) => {
+                Some(Error::FileTrackNotFound { .. }) => {
                     issue_list.push(CheckIssueSummary::PcNotExists);
                     None
                 }
@@ -120,8 +120,8 @@ where
             tx: db_pool.begin().await?,
         };
         let db_data_opt = self
-            .db_song_sync_repository
-            .get_by_path(&mut tx, song_path)
+            .db_track_sync_repository
+            .get_by_path(&mut tx, track_path)
             .await?;
         tx.commit().await?;
 
@@ -130,7 +130,7 @@ where
         }
 
         //DAP存在確認
-        let dap_exists = song_path.abs(dap_lib).exists();
+        let dap_exists = track_path.abs(dap_lib).exists();
         if !dap_exists {
             issue_list.push(CheckIssueSummary::DapNotExists);
 
@@ -145,18 +145,21 @@ where
         };
 
         //PCとDBのデータ比較比較
-        if !self.check_editable(&pc_data, &db_data.song_sync).is_empty() {
+        if !self
+            .check_editable(&pc_data, &db_data.track_sync)
+            .is_empty()
+        {
             issue_list.push(CheckIssueSummary::PcDbNotEqualsEditable);
         }
-        if !self.check_duration(&pc_data, &db_data.song_sync) {
+        if !self.check_duration(&pc_data, &db_data.track_sync) {
             issue_list.push(CheckIssueSummary::PcDbNotEqualsDuration);
         }
-        if !self.check_artwork(&pc_data, &db_data.song_sync) {
+        if !self.check_artwork(&pc_data, &db_data.track_sync) {
             issue_list.push(CheckIssueSummary::PcDbNotEqualsArtwork);
         }
 
         //PCとDAPの比較(無視指定されていない場合のみ)
-        if !ignore_dap_content && !self.check_pc_dap_content(pc_lib, dap_lib, song_path)? {
+        if !ignore_dap_content && !self.check_pc_dap_content(pc_lib, dap_lib, track_path)? {
             issue_list.push(CheckIssueSummary::PcDapNotEquals);
         }
 
@@ -167,47 +170,47 @@ where
     /// # Returns
     /// 不一致の項目のリスト
     /// 全て一致したら空Vec。
-    fn check_editable(&self, pc_data: &SongSync, db_data: &SongSync) -> Vec<SongItemKind> {
+    fn check_editable(&self, pc_data: &TrackSync, db_data: &TrackSync) -> Vec<TrackItemKind> {
         let mut conflicts = Vec::new();
 
         if pc_data.title != db_data.title {
-            conflicts.push(SongItemKind::Title);
+            conflicts.push(TrackItemKind::Title);
         }
         if pc_data.artist != db_data.artist {
-            conflicts.push(SongItemKind::Artist);
+            conflicts.push(TrackItemKind::Artist);
         }
         if pc_data.album != db_data.album {
-            conflicts.push(SongItemKind::Album);
+            conflicts.push(TrackItemKind::Album);
         }
         if pc_data.genre != db_data.genre {
-            conflicts.push(SongItemKind::Genre);
+            conflicts.push(TrackItemKind::Genre);
         }
         if pc_data.album_artist != db_data.album_artist {
-            conflicts.push(SongItemKind::AlbumArtist);
+            conflicts.push(TrackItemKind::AlbumArtist);
         }
         if pc_data.composer != db_data.composer {
-            conflicts.push(SongItemKind::Composer);
+            conflicts.push(TrackItemKind::Composer);
         }
         if pc_data.track_number != db_data.track_number {
-            conflicts.push(SongItemKind::TrackNumber);
+            conflicts.push(TrackItemKind::TrackNumber);
         }
         if pc_data.track_max != db_data.track_max {
-            conflicts.push(SongItemKind::TrackMax);
+            conflicts.push(TrackItemKind::TrackMax);
         }
         if pc_data.disc_number != db_data.disc_number {
-            conflicts.push(SongItemKind::DiscNumber);
+            conflicts.push(TrackItemKind::DiscNumber);
         }
         if pc_data.disc_max != db_data.disc_max {
-            conflicts.push(SongItemKind::DiscMax);
+            conflicts.push(TrackItemKind::DiscMax);
         }
         if pc_data.release_date != db_data.release_date {
-            conflicts.push(SongItemKind::ReleaseDate);
+            conflicts.push(TrackItemKind::ReleaseDate);
         }
         if pc_data.memo != db_data.memo {
-            conflicts.push(SongItemKind::Memo);
+            conflicts.push(TrackItemKind::Memo);
         }
         if pc_data.lyrics != db_data.lyrics {
-            conflicts.push(SongItemKind::Lyrics);
+            conflicts.push(TrackItemKind::Lyrics);
         }
 
         conflicts
@@ -216,14 +219,14 @@ where
     /// PCとDBの再生時間を比較
     /// #Returns
     /// 一致したらtrue
-    fn check_duration(&self, pc_data: &SongSync, db_data: &SongSync) -> bool {
+    fn check_duration(&self, pc_data: &TrackSync, db_data: &TrackSync) -> bool {
         pc_data.duration == db_data.duration
     }
 
     /// PCとDBのアートワークを比較
     /// #Returns
     /// 一致したらtrue
-    fn check_artwork(&self, pc_data: &SongSync, db_data: &SongSync) -> bool {
+    fn check_artwork(&self, pc_data: &TrackSync, db_data: &TrackSync) -> bool {
         pc_data.artworks == db_data.artworks
     }
 
@@ -234,10 +237,10 @@ where
         &self,
         pc_lib: &Path,
         dap_lib: &Path,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> Result<bool> {
         //PCデータ読み込み
-        let pc_path = song_path.abs(pc_lib);
+        let pc_path = track_path.abs(pc_lib);
         let mut pc_file =
             File::open(&pc_path).map_err(|e| Error::FileIoError(pc_path.to_owned(), e))?;
         let mut pc_content = Vec::new();
@@ -246,7 +249,7 @@ where
             .map_err(|e| Error::FileIoError(pc_path, e))?;
 
         //DAPデータ読み込み
-        let dap_path = song_path.abs(dap_lib);
+        let dap_path = track_path.abs(dap_lib);
         let mut dap_file =
             File::open(&dap_path).map_err(|e| Error::FileIoError(dap_path.to_owned(), e))?;
         let mut dap_content = Vec::new();

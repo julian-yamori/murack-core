@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use murack_core_domain::{
-    artwork::{DbArtworkRepository, SongArtwork},
+    artwork::{DbArtworkRepository, TrackArtwork},
     db::DbTransaction,
 };
 use murack_core_media::picture::Picture;
@@ -94,14 +94,14 @@ impl DbArtworkRepositoryImpl {
 impl DbArtworkRepository for DbArtworkRepositoryImpl {
     /// 曲に紐づくアートワークの情報を取得する
     /// # Arguments
-    /// - song_id: アートワーク情報を取得する曲のID
+    /// - track_id: アートワーク情報を取得する曲のID
     /// # Returns
     /// 指定された曲に紐づく全アートワークの情報
-    async fn get_song_artworks<'c>(
+    async fn get_track_artworks<'c>(
         &self,
         tx: &mut DbTransaction<'c>,
         track_id: i32,
-    ) -> Result<Vec<SongArtwork>> {
+    ) -> Result<Vec<TrackArtwork>> {
         let artworks = sqlx::query!(
             "SELECT a.image, a.mime_type, sa.picture_type, sa.description, sa.order_index
                 FROM track_artworks as sa
@@ -111,8 +111,8 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
                 ORDER BY order_index ASC",
             track_id,
         )
-        .map(|row| -> anyhow::Result<SongArtwork> {
-            Ok(SongArtwork {
+        .map(|row| -> anyhow::Result<TrackArtwork> {
+            Ok(TrackArtwork {
                 picture: Arc::new(Picture {
                     bytes: row.image,
                     mime_type: row.mime_type,
@@ -132,25 +132,25 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
     /// orderは無視し、関数内で上書きする。
     ///
     /// # Arguments
-    /// - song_id: 紐付けを登録する曲のID
-    /// - song_artworks: 曲に紐づく全てのアートワークの情報
-    async fn register_song_artworks<'c>(
+    /// - track_id: 紐付けを登録する曲のID
+    /// - track_artworks: 曲に紐づく全てのアートワークの情報
+    async fn register_track_artworks<'c>(
         &self,
         tx: &mut DbTransaction<'c>,
-        song_id: i32,
-        song_artworks: &[SongArtwork],
+        track_id: i32,
+        track_artworks: &[TrackArtwork],
     ) -> Result<()> {
         //一旦、現在の紐付きを全て解除
-        self.unregister_song_artworks(tx, song_id).await?;
+        self.unregister_track_artworks(tx, track_id).await?;
 
-        for (artwork_idx, artwork) in song_artworks.iter().enumerate() {
+        for (artwork_idx, artwork) in track_artworks.iter().enumerate() {
             //アートワーク画像情報を新規登録し、ID情報を取得
             let artwork_id = self.register_artwork(tx, &artwork.picture).await?;
 
             //紐付き情報を登録
             sqlx::query!(
                 "INSERT INTO track_artworks (track_id, order_index, artwork_id, picture_type, description) VALUES($1, $2, $3, $4, $5)",
-                song_id, artwork_idx as i32, artwork_id, artwork.picture_type as i32, artwork.description,
+                track_id, artwork_idx as i32, artwork_id, artwork.picture_type as i32, artwork.description,
             ).execute(&mut **tx.get()).await?;
         }
 
@@ -162,22 +162,22 @@ impl DbArtworkRepository for DbArtworkRepositoryImpl {
     /// どの曲にも紐付かないアートワークは、DBから削除する
     ///
     /// # Arguments
-    /// - song_id 紐付けを削除する曲のID
-    async fn unregister_song_artworks<'c>(
+    /// - track_id 紐付けを削除する曲のID
+    async fn unregister_track_artworks<'c>(
         &self,
         tx: &mut DbTransaction<'c>,
-        song_id: i32,
+        track_id: i32,
     ) -> Result<()> {
         //今紐付いているアートワークのIDを取得
         let artwork_ids = sqlx::query_scalar!(
             "SELECT artwork_id FROM track_artworks WHERE track_id = $1 ORDER BY order_index ASC",
-            song_id,
+            track_id,
         )
         .fetch_all(&mut **tx.get())
         .await?;
 
         //紐付きを解除
-        sqlx::query!("DELETE FROM track_artworks WHERE track_id = $1", song_id,)
+        sqlx::query!("DELETE FROM track_artworks WHERE track_id = $1", track_id,)
             .execute(&mut **tx.get())
             .await?;
 

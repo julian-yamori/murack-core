@@ -8,10 +8,10 @@ use walk_base_2_domain::{
     FileLibraryRepository,
     db_wrapper::{ConnectionFactory, ConnectionWrapper},
     folder::{DbFolderRepository, FolderUsecase},
-    path::{LibPathStr, LibSongPath},
+    path::{LibPathStr, LibTrackPath},
     playlist::DbPlaylistRepository,
-    song::DbSongRepository,
-    sync::DbSongSyncRepository,
+    track::DbTrackRepository,
+    sync::DbTrackSyncRepository,
 };
 
 /// replaceコマンド
@@ -26,8 +26,8 @@ pub struct CommandReplace {
     file_library_repository: Rc<dyn FileLibraryRepository>,
     db_folder_repository: Rc<dyn DbFolderRepository>,
     db_playlist_repository: Rc<dyn DbPlaylistRepository>,
-    db_song_repository: Rc<dyn DbSongRepository>,
-    db_song_sync_repository: Rc<dyn DbSongSyncRepository>,
+    db_track_repository: Rc<dyn DbTrackRepository>,
+    db_track_sync_repository: Rc<dyn DbTrackSyncRepository>,
     folder_usecase: Rc<dyn FolderUsecase>,
 }
 
@@ -41,8 +41,8 @@ impl CommandReplace {
             file_library_repository: app_components.file_library_repository().clone(),
             db_folder_repository: app_components.db_folder_repository().clone(),
             db_playlist_repository: app_components.db_playlist_repository().clone(),
-            db_song_repository: app_components.db_song_repository().clone(),
-            db_song_sync_repository: app_components.db_song_sync_repository().clone(),
+            db_track_repository: app_components.db_track_repository().clone(),
+            db_track_sync_repository: app_components.db_track_sync_repository().clone(),
             folder_usecase: app_components.folder_usecase().clone(),
         }
     }
@@ -79,8 +79,8 @@ impl CommandReplace {
         }
 
         //差し替えられなかったライブラリ内の曲があれば列挙
-        if !listup_result.remain_lib_songs.is_empty() {
-            for path in listup_result.remain_lib_songs {
+        if !listup_result.remain_lib_tracks.is_empty() {
+            for path in listup_result.remain_lib_tracks {
                 self.cui
                     .err(format_args!("{} dosn't exist in source.\n", path))
             }
@@ -96,11 +96,11 @@ impl CommandReplace {
         //指定されたパスから、新規ファイルのパスを列挙
         let src_file_list = self
             .file_library_repository
-            .search_song_outside_lib(&self.args.new_file_path)?;
+            .search_track_outside_lib(&self.args.new_file_path)?;
 
         //引数で指定された差し替え先の曲パスリストをDBから取得
-        result.remain_lib_songs = db.run_in_transaction(|tx| {
-            self.db_song_repository
+        result.remain_lib_tracks = db.run_in_transaction(|tx| {
+            self.db_track_repository
                 .get_path_by_path_str(tx, &self.args.dest_path)
         })?;
 
@@ -110,10 +110,10 @@ impl CommandReplace {
         result.unit_list.reserve(src_file_list.len());
         for new_file_path in src_file_list {
             //DBから見つかった曲パスリストから検索
-            match self.find_lib_song_from_name(&mut result.remain_lib_songs, &new_file_path)? {
+            match self.find_lib_track_from_name(&mut result.remain_lib_tracks, &new_file_path)? {
                 Some(old_lib_path) => {
                     result.unit_list.push(OpeUnit {
-                        new_lib_path: song_ext_from_others(&old_lib_path, &new_file_path)?,
+                        new_lib_path: track_ext_from_others(&old_lib_path, &new_file_path)?,
                         new_file_path,
                         old_lib_path,
                     });
@@ -130,19 +130,19 @@ impl CommandReplace {
 
     /// ライブラリの曲リストから、ファイル名が一致する曲データを探す
     ///
-    /// 見つかった場合はlibSongListから削除する。
+    /// 見つかった場合はlibTrackListから削除する。
     ///
     /// # Arguments
-    /// - libSongList: 検索元の曲データリスト
+    /// - libTrackList: 検索元の曲データリスト
     /// - srcFileName: 差し替える新規ファイルのパス
     ///
     /// # Returns
     /// 該当する曲の情報(見つからなければNone)
-    fn find_lib_song_from_name(
+    fn find_lib_track_from_name(
         &self,
-        lib_song_list: &mut Vec<LibSongPath>,
+        lib_track_list: &mut Vec<LibTrackPath>,
         src_file_path: &Path,
-    ) -> Result<Option<LibSongPath>> {
+    ) -> Result<Option<LibTrackPath>> {
         //todo ファイル名だけで判断してるので、引数より下のディレクトリ構造が無視される。
         // 一旦このままでいいかな…
 
@@ -155,12 +155,12 @@ impl CommandReplace {
         })?;
 
         //リスト内から、拡張子なしファイル名が一致するインデックスを検索
-        match lib_song_list
+        match lib_track_list
             .iter()
             .position(|path| path.file_stem() == src_no_ext)
         {
             //リストから削除して取得
-            Some(find_idx) => Ok(Some(lib_song_list.remove(find_idx))),
+            Some(find_idx) => Ok(Some(lib_track_list.remove(find_idx))),
             //見つからなければNoneを返す
             None => Ok(None),
         }
@@ -186,7 +186,7 @@ impl CommandReplace {
     fn replace_pc_file(&self, unit: &OpeUnit) -> Result<()> {
         //既存の曲ファイルをゴミ箱に移動
         self.file_library_repository
-            .trash_song(&self.config.pc_lib, &unit.old_lib_path)?;
+            .trash_track(&self.config.pc_lib, &unit.old_lib_path)?;
 
         self.file_library_repository.copy_from_outside_lib(
             &self.config.pc_lib,
@@ -200,11 +200,11 @@ impl CommandReplace {
     /// DBのメタデータを新規ファイルに反映
     fn apply_metadata(&self, db: &mut ConnectionWrapper, unit: &OpeUnit) -> Result<()> {
         //ファイルからメタデータを読み込み
-        let file_song = self
+        let file_track = self
             .file_library_repository
-            .read_song_sync(&self.config.pc_lib, &unit.new_lib_path)?;
+            .read_track_sync(&self.config.pc_lib, &unit.new_lib_path)?;
 
-        let db_song = db.run_in_transaction(|tx| {
+        let db_track = db.run_in_transaction(|tx| {
             //新規パスの親ディレクトリを登録してIDを取得
             let new_parent = unit.new_lib_path.parent();
             let new_folder_id = self
@@ -213,7 +213,7 @@ impl CommandReplace {
 
             //DBにパスの変更を反映
             //todo usecase層でフォルダ登録の処理もした方が良さそう。
-            self.db_song_repository.update_path(
+            self.db_track_repository.update_path(
                 tx,
                 &unit.old_lib_path,
                 &unit.new_lib_path,
@@ -224,30 +224,30 @@ impl CommandReplace {
             self.folder_usecase
                 .delete_db_if_empty(tx, &unit.old_lib_path.parent())?;
 
-            let db_song = self
-                .db_song_sync_repository
+            let db_track = self
+                .db_track_sync_repository
                 .get_by_path(tx, &unit.new_lib_path)?
                 .ok_or_else(|| {
-                    walk_base_2_domain::Error::DbSongNotFound(unit.new_lib_path.to_owned())
+                    walk_base_2_domain::Error::DbTrackNotFound(unit.new_lib_path.to_owned())
                 })?;
 
             //再生時間を反映
-            self.db_song_repository
-                .update_duration(tx, db_song.id, file_song.duration)?;
+            self.db_track_repository
+                .update_duration(tx, db_track.id, file_track.duration)?;
 
             //プレイリストのリストアップ済みフラグを解除し、DAP変更フラグを立てる
             self.db_playlist_repository.reset_listuped_flag(tx)?;
             self.db_playlist_repository
                 .set_dap_change_flag_all(tx, true)?;
 
-            Ok(db_song)
+            Ok(db_track)
         })?;
 
         //ファイルにDBの内容を反映
-        self.file_library_repository.overwrite_song_sync(
+        self.file_library_repository.overwrite_track_sync(
             &self.config.pc_lib,
             &unit.new_lib_path,
-            &db_song.song_sync,
+            &db_track.track_sync,
         )?;
 
         Ok(())
@@ -258,8 +258,8 @@ impl CommandReplace {
     /// - unit: 作業対象の曲ファイルの情報
     fn replace_dap_file(&self, unit: &OpeUnit) -> Result<()> {
         self.file_library_repository
-            .delete_song(&self.config.dap_lib, &unit.old_lib_path)?;
-        self.file_library_repository.copy_song_over_lib(
+            .delete_track(&self.config.dap_lib, &unit.old_lib_path)?;
+        self.file_library_repository.copy_track_over_lib(
             &self.config.pc_lib,
             &self.config.dap_lib,
             &unit.new_lib_path,
@@ -294,17 +294,17 @@ impl CommandReplace {
     }
 }
 
-/// LibSongPathの拡張子を他のパスのものに変更
-fn song_ext_from_others(song_path: &LibSongPath, others: &Path) -> Result<LibSongPath> {
+/// LibTrackPathの拡張子を他のパスのものに変更
+fn track_ext_from_others(track_path: &LibTrackPath, others: &Path) -> Result<LibTrackPath> {
     match others.extension() {
         Some(ext) => {
             let ext_utf8 = ext
                 .to_str()
                 .with_context(|| format!("拡張子のUTF-8への変換に失敗: {}", others.display()))?;
-            Ok(song_path.with_extension(ext_utf8))
+            Ok(track_path.with_extension(ext_utf8))
         }
         //差し替え元に拡張子がなければ、とりあえず変更なし
-        None => Ok(song_path.clone()),
+        None => Ok(track_path.clone()),
     }
 }
 
@@ -314,7 +314,7 @@ struct ListupResult {
     /// 作業対象のファイル情報のリスト
     unit_list: Vec<OpeUnit>,
     /// 上書きされないライブラリ内の曲リスト
-    remain_lib_songs: Vec<LibSongPath>,
+    remain_lib_tracks: Vec<LibTrackPath>,
     /// DBに見つからなかった、ライブラリ外のファイルパス
     lib_not_founds: Vec<PathBuf>,
 }
@@ -328,14 +328,14 @@ struct OpeUnit {
     /// 差し替え前のライブラリ内パス
     ///
     /// 該当するデータが見つからない場合はNone
-    old_lib_path: LibSongPath,
+    old_lib_path: LibTrackPath,
 
     /// 差し替え後の拡張子を変更したライブラリ内パス
     ///
     /// 該当するデータが見つからない場合はNone
     /// # todo
     /// Optionにする必要ないかも
-    new_lib_path: LibSongPath,
+    new_lib_path: LibTrackPath,
 }
 
 /// コマンドの引数
@@ -382,13 +382,13 @@ mod tests {
         folder::{MockDbFolderRepository, MockFolderUsecase},
         mocks,
         playlist::MockDbPlaylistRepository,
-        song::MockDbSongRepository,
-        sync::MockDbSongSyncRepository,
+        track::MockDbTrackRepository,
+        sync::MockDbTrackSyncRepository,
     };
 
     mocks! {
         CommandReplace,
-        [FileLibraryRepository, DbFolderRepository, DbPlaylistRepository, DbSongRepository, DbSongSyncRepository, FolderUsecase],
+        [FileLibraryRepository, DbFolderRepository, DbPlaylistRepository, DbTrackRepository, DbTrackSyncRepository, FolderUsecase],
         [args: Args, config: Rc<Config>, cui: Rc<BufferCui>, connection_factory: Rc<ConnectionFactory>]
     }
 
@@ -406,16 +406,16 @@ mod tests {
 
     /// listup_files: ファイル直接
     #[test]
-    fn test_listup_files_song() {
+    fn test_listup_files_track() {
         let mut mocks = new_mocks("/home/taro/test.flac", "folder/test.mp3");
 
         mocks.file_library_repository(|m| {
-            m.expect_search_song_outside_lib()
+            m.expect_search_track_outside_lib()
                 .returning(|_| Ok(vec![PathBuf::from("/home/taro/test.flac")]));
         });
-        mocks.db_song_repository(|m| {
+        mocks.db_track_repository(|m| {
             m.expect_get_path_by_path_str()
-                .returning(|_, _| Ok(vec![LibSongPath::new("folder/test.mp3")]));
+                .returning(|_, _| Ok(vec![LibTrackPath::new("folder/test.mp3")]));
         });
 
         let mut db = mocks.connection_factory.open().unwrap();
@@ -426,11 +426,11 @@ mod tests {
                 ListupResult {
                     unit_list: vec![OpeUnit {
                         new_file_path: PathBuf::from("/home/taro/test.flac"),
-                        old_lib_path: LibSongPath::new("folder/test.mp3"),
-                        new_lib_path: LibSongPath::new("folder/test.flac"),
+                        old_lib_path: LibTrackPath::new("folder/test.mp3"),
+                        new_lib_path: LibTrackPath::new("folder/test.flac"),
                     }],
                     lib_not_founds: vec![],
-                    remain_lib_songs: vec![],
+                    remain_lib_tracks: vec![],
                 }
             )
         });
@@ -442,12 +442,12 @@ mod tests {
         let mut mocks = new_mocks("/home/taro/test.flac", "test.mp3");
 
         mocks.file_library_repository(|m| {
-            m.expect_search_song_outside_lib()
+            m.expect_search_track_outside_lib()
                 .returning(|_| Ok(vec![PathBuf::from("/home/taro/test.flac")]));
         });
-        mocks.db_song_repository(|m| {
+        mocks.db_track_repository(|m| {
             m.expect_get_path_by_path_str()
-                .returning(|_, _| Ok(vec![LibSongPath::new("test.mp3")]));
+                .returning(|_, _| Ok(vec![LibTrackPath::new("test.mp3")]));
         });
 
         let mut db = mocks.connection_factory.open().unwrap();
@@ -458,11 +458,11 @@ mod tests {
                 ListupResult {
                     unit_list: vec![OpeUnit {
                         new_file_path: PathBuf::from("/home/taro/test.flac"),
-                        old_lib_path: LibSongPath::new("test.mp3"),
-                        new_lib_path: LibSongPath::new("test.flac"),
+                        old_lib_path: LibTrackPath::new("test.mp3"),
+                        new_lib_path: LibTrackPath::new("test.flac"),
                     }],
                     lib_not_founds: vec![],
-                    remain_lib_songs: vec![],
+                    remain_lib_tracks: vec![],
                 }
             )
         });
@@ -474,20 +474,20 @@ mod tests {
         let mut mocks = new_mocks("/home/taro/musics", "folder/under");
 
         mocks.file_library_repository(|m| {
-            m.expect_search_song_outside_lib().returning(|_| {
+            m.expect_search_track_outside_lib().returning(|_| {
                 Ok(vec![
-                    PathBuf::from("/home/taro/song1.flac"),
-                    PathBuf::from("/home/taro/song2.flac"),
-                    PathBuf::from("/home/taro/song3.flac"),
+                    PathBuf::from("/home/taro/track1.flac"),
+                    PathBuf::from("/home/taro/track2.flac"),
+                    PathBuf::from("/home/taro/track3.flac"),
                 ])
             });
         });
-        mocks.db_song_repository(|m| {
+        mocks.db_track_repository(|m| {
             m.expect_get_path_by_path_str().returning(|_, _| {
                 Ok(vec![
-                    LibSongPath::new("folder/under/song1.mp3"),
-                    LibSongPath::new("folder/under/song3.mp3"),
-                    LibSongPath::new("folder/under/song2.flac"),
+                    LibTrackPath::new("folder/under/track1.mp3"),
+                    LibTrackPath::new("folder/under/track3.mp3"),
+                    LibTrackPath::new("folder/under/track2.flac"),
                 ])
             });
         });
@@ -500,23 +500,23 @@ mod tests {
                 ListupResult {
                     unit_list: vec![
                         OpeUnit {
-                            new_file_path: PathBuf::from("/home/taro/song1.flac"),
-                            old_lib_path: LibSongPath::new("folder/under/song1.mp3"),
-                            new_lib_path: LibSongPath::new("folder/under/song1.flac"),
+                            new_file_path: PathBuf::from("/home/taro/track1.flac"),
+                            old_lib_path: LibTrackPath::new("folder/under/track1.mp3"),
+                            new_lib_path: LibTrackPath::new("folder/under/track1.flac"),
                         },
                         OpeUnit {
-                            new_file_path: PathBuf::from("/home/taro/song2.flac"),
-                            old_lib_path: LibSongPath::new("folder/under/song2.flac"),
-                            new_lib_path: LibSongPath::new("folder/under/song2.flac"),
+                            new_file_path: PathBuf::from("/home/taro/track2.flac"),
+                            old_lib_path: LibTrackPath::new("folder/under/track2.flac"),
+                            new_lib_path: LibTrackPath::new("folder/under/track2.flac"),
                         },
                         OpeUnit {
-                            new_file_path: PathBuf::from("/home/taro/song3.flac"),
-                            old_lib_path: LibSongPath::new("folder/under/song3.mp3"),
-                            new_lib_path: LibSongPath::new("folder/under/song3.flac"),
+                            new_file_path: PathBuf::from("/home/taro/track3.flac"),
+                            old_lib_path: LibTrackPath::new("folder/under/track3.mp3"),
+                            new_lib_path: LibTrackPath::new("folder/under/track3.flac"),
                         },
                     ],
                     lib_not_founds: vec![],
-                    remain_lib_songs: vec![],
+                    remain_lib_tracks: vec![],
                 }
             )
         });
@@ -528,24 +528,24 @@ mod tests {
         let mut mocks = new_mocks("/home/taro/musics", "folder/under");
 
         mocks.file_library_repository(|m| {
-            m.expect_search_song_outside_lib().returning(|_| {
+            m.expect_search_track_outside_lib().returning(|_| {
                 Ok(vec![
                     PathBuf::from("/home/taro/f_rem1.flac"),
-                    PathBuf::from("/home/taro/song1.flac"),
-                    PathBuf::from("/home/taro/song2.flac"),
-                    PathBuf::from("/home/taro/song3.flac"),
+                    PathBuf::from("/home/taro/track1.flac"),
+                    PathBuf::from("/home/taro/track2.flac"),
+                    PathBuf::from("/home/taro/track3.flac"),
                     PathBuf::from("/home/taro/f_rem2.flac"),
                 ])
             });
         });
-        mocks.db_song_repository(|m| {
+        mocks.db_track_repository(|m| {
             m.expect_get_path_by_path_str().returning(|_, _| {
                 Ok(vec![
-                    LibSongPath::new("folder/under/d_rem1.mp3"),
-                    LibSongPath::new("folder/under/song1.mp3"),
-                    LibSongPath::new("folder/under/song3.mp3"),
-                    LibSongPath::new("folder/under/song2.flac"),
-                    LibSongPath::new("folder/under/d_rem2.mp3"),
+                    LibTrackPath::new("folder/under/d_rem1.mp3"),
+                    LibTrackPath::new("folder/under/track1.mp3"),
+                    LibTrackPath::new("folder/under/track3.mp3"),
+                    LibTrackPath::new("folder/under/track2.flac"),
+                    LibTrackPath::new("folder/under/d_rem2.mp3"),
                 ])
             });
         });
@@ -558,28 +558,28 @@ mod tests {
                 ListupResult {
                     unit_list: vec![
                         OpeUnit {
-                            new_file_path: PathBuf::from("/home/taro/song1.flac"),
-                            old_lib_path: LibSongPath::new("folder/under/song1.mp3"),
-                            new_lib_path: LibSongPath::new("folder/under/song1.flac"),
+                            new_file_path: PathBuf::from("/home/taro/track1.flac"),
+                            old_lib_path: LibTrackPath::new("folder/under/track1.mp3"),
+                            new_lib_path: LibTrackPath::new("folder/under/track1.flac"),
                         },
                         OpeUnit {
-                            new_file_path: PathBuf::from("/home/taro/song2.flac"),
-                            old_lib_path: LibSongPath::new("folder/under/song2.flac"),
-                            new_lib_path: LibSongPath::new("folder/under/song2.flac"),
+                            new_file_path: PathBuf::from("/home/taro/track2.flac"),
+                            old_lib_path: LibTrackPath::new("folder/under/track2.flac"),
+                            new_lib_path: LibTrackPath::new("folder/under/track2.flac"),
                         },
                         OpeUnit {
-                            new_file_path: PathBuf::from("/home/taro/song3.flac"),
-                            old_lib_path: LibSongPath::new("folder/under/song3.mp3"),
-                            new_lib_path: LibSongPath::new("folder/under/song3.flac"),
+                            new_file_path: PathBuf::from("/home/taro/track3.flac"),
+                            old_lib_path: LibTrackPath::new("folder/under/track3.mp3"),
+                            new_lib_path: LibTrackPath::new("folder/under/track3.flac"),
                         },
                     ],
                     lib_not_founds: vec![
                         PathBuf::from("/home/taro/rem1.flac"),
                         PathBuf::from("/home/taro/rem2.flac"),
                     ],
-                    remain_lib_songs: vec![
-                        LibSongPath::new("folder/under/rem1.mp3"),
-                        LibSongPath::new("folder/under/rem2.mp3"),
+                    remain_lib_tracks: vec![
+                        LibTrackPath::new("folder/under/rem1.mp3"),
+                        LibTrackPath::new("folder/under/rem2.mp3"),
                     ],
                 }
             )

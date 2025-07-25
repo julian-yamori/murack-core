@@ -4,7 +4,7 @@ use murack_core_domain::{
     db::DbTransaction,
     folder::DbFolderRepository,
     path::LibPathStr,
-    song::{DbSongRepository, SongUsecase},
+    track::{DbTrackRepository, TrackUsecase},
 };
 use sqlx::PgPool;
 
@@ -16,41 +16,41 @@ use crate::{Config, Error};
 pub struct CommandMove<'config, FR, DSR, DFR, SS>
 where
     FR: FileLibraryRepository,
-    DSR: DbSongRepository,
+    DSR: DbTrackRepository,
     DFR: DbFolderRepository,
-    SS: SongUsecase,
+    SS: TrackUsecase,
 {
     args: CommandMoveArgs,
 
     config: &'config Config,
     file_library_repository: FR,
-    db_song_repository: DSR,
+    db_track_repository: DSR,
     db_folder_repository: DFR,
-    song_usecase: SS,
+    track_usecase: SS,
 }
 
 impl<'config, FR, DSR, DFR, SS> CommandMove<'config, FR, DSR, DFR, SS>
 where
     FR: FileLibraryRepository,
-    DSR: DbSongRepository,
+    DSR: DbTrackRepository,
     DFR: DbFolderRepository,
-    SS: SongUsecase,
+    SS: TrackUsecase,
 {
     pub fn new(
         args: CommandMoveArgs,
         config: &'config Config,
         file_library_repository: FR,
-        db_song_repository: DSR,
+        db_track_repository: DSR,
         db_folder_repository: DFR,
-        song_usecase: SS,
+        track_usecase: SS,
     ) -> Self {
         Self {
             args,
             config,
             file_library_repository,
             db_folder_repository,
-            db_song_repository,
-            song_usecase,
+            db_track_repository,
+            track_usecase,
         }
     }
 
@@ -81,7 +81,7 @@ where
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
         };
-        self.song_usecase
+        self.track_usecase
             .move_path_str_db(&mut tx, src_path_str, dest_path_str)
             .await?;
         tx.commit().await?;
@@ -135,13 +135,13 @@ where
         };
 
         //曲のチェック
-        let dest_song_path = dest_path_str.to_song_path();
+        let dest_track_path = dest_path_str.to_track_path();
         if self
-            .db_song_repository
-            .is_exist_path(&mut tx, &dest_song_path)
+            .db_track_repository
+            .is_exist_path(&mut tx, &dest_track_path)
             .await?
         {
-            return Err(DomainError::DbSongAlreadyExists(dest_song_path).into());
+            return Err(DomainError::DbTrackAlreadyExists(dest_track_path).into());
         }
 
         //フォルダのチェック

@@ -10,5 +10,5 @@ pub use dap_playlist_observer::DapPlaylistObserver;
 
 mod dap_repository;
 pub use dap_repository::{DapRepository, MockDapRepository};
-mod song_finder;
-pub use song_finder::{MockSongFinder, SongFinder};
+mod track_finder;
+pub use track_finder::{MockTrackFinder, TrackFinder};

@@ -8,9 +8,9 @@ pub mod db_components;
 pub mod artwork;
 pub mod folder;
 pub mod playlist;
-pub mod song;
-pub mod song_lister;
 pub mod tag;
+pub mod track;
+pub mod track_lister;
 
 pub mod converts;
 mod like_esc;

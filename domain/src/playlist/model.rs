@@ -40,7 +40,7 @@ pub struct Playlist {
     /// DAPにこのプレイリストを保存するか
     pub save_dap: bool,
 
-    /// リスト内容がPlaylistSongテーブルにリストアップ済みか
+    /// リスト内容がPlaylistTrackテーブルにリストアップ済みか
     ///
     /// 更新されうる処理が行われるごとに、
     /// FilterとFolderのフラグが解除される。

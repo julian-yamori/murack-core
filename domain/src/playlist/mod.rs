@@ -9,5 +9,5 @@ pub use model::Playlist;
 
 mod db_playlist_repos;
 pub use db_playlist_repos::{DbPlaylistRepository, MockDbPlaylistRepository};
-mod db_playlist_song_repos;
-pub use db_playlist_song_repos::{DbPlaylistSongRepository, MockDbPlaylistSongRepository};
+mod db_playlist_track_repos;
+pub use db_playlist_track_repos::{DbPlaylistTrackRepository, MockDbPlaylistTrackRepository};

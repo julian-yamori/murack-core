@@ -39,39 +39,39 @@ pub fn read(path: &Path) -> Result<AudioMetaData> {
 ///
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
-/// - song: 書き込む曲の情報
+/// - track: 書き込む曲の情報
 pub fn overwrite(
     path: &Path,
-    song: &AudioMetaDataEntry,
+    track: &AudioMetaDataEntry,
     artworks: &[AudioPictureEntry],
 ) -> Result<()> {
     let mut tag = Tag::read_from_path(path)?;
 
-    match song.title {
+    match track.title {
         Some(v) => tag.set_title(v),
         None => tag.remove_title(),
     }
-    match song.artist {
+    match track.artist {
         Some(v) => tag.set_artist(v),
         None => tag.remove_artists(),
     }
-    match song.album {
+    match track.album {
         Some(v) => tag.set_album(v),
         None => tag.remove_album(),
     }
-    match song.genre {
+    match track.genre {
         Some(v) => tag.set_genre(v),
         None => tag.remove_genres(),
     }
-    match song.album_artist {
+    match track.album_artist {
         Some(v) => tag.set_album_artist(v),
         None => tag.remove_album_artists(),
     }
-    match song.composer {
+    match track.composer {
         Some(v) => tag.set_composer(v),
         None => tag.remove_composers(),
     }
-    match song.track_number {
+    match track.track_number {
         Some(v) => {
             if v == 0 {
                 return Err(Error::M4ANumberZero {
@@ -83,7 +83,7 @@ pub fn overwrite(
         }
         None => tag.remove_track_number(),
     }
-    match song.track_max {
+    match track.track_max {
         Some(v) => {
             if v == 0 {
                 return Err(Error::M4ANumberZero {
@@ -95,7 +95,7 @@ pub fn overwrite(
         }
         None => tag.remove_total_tracks(),
     }
-    match song.disc_number {
+    match track.disc_number {
         Some(v) => {
             if v == 0 {
                 return Err(Error::M4ANumberZero {
@@ -107,7 +107,7 @@ pub fn overwrite(
         }
         None => tag.remove_disc_number(),
     }
-    match song.disc_max {
+    match track.disc_max {
         Some(v) => {
             if v == 0 {
                 return Err(Error::M4ANumberZero {
@@ -120,7 +120,7 @@ pub fn overwrite(
         None => tag.remove_total_discs(),
     }
 
-    match song.release_date {
+    match track.release_date {
         Some(d) => {
             tag.set_year(d.format("%Y-%m-%d").to_string());
         }
@@ -129,13 +129,13 @@ pub fn overwrite(
         }
     }
 
-    match song.memo {
+    match track.memo {
         Some(v) => tag.set_comment(v),
         None => tag.remove_comments(),
     }
 
     /*
-    match &song.lyrics {
+    match &track.lyrics {
         Some(v) => tag.set_lyrics(v),
         None => tag.remove_lyrics(),
     }

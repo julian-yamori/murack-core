@@ -2,7 +2,7 @@ use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
     db::DbTransaction,
-    path::{LibPathStr, LibSongPath},
+    path::{LibPathStr, LibTrackPath},
     sync::SyncUsecase,
 };
 use sqlx::PgPool;
@@ -65,10 +65,10 @@ where
         }
 
         //取得した全ファイルについて処理
-        for (song_idx, song_lib_path) in path_list.iter().enumerate() {
-            self.write_console_progress(song_idx, file_count, song_lib_path)?;
+        for (track_idx, track_lib_path) in path_list.iter().enumerate() {
+            self.write_console_progress(track_idx, file_count, track_lib_path)?;
 
-            if let Err(e) = self.unit_add(db_pool, song_lib_path).await {
+            if let Err(e) = self.unit_add(db_pool, track_lib_path).await {
                 self.cui.err(format_args!("{e}\n"))?;
             }
         }
@@ -79,28 +79,28 @@ where
     /// 曲1個単位の追加処理
     ///
     /// # Arguments
-    /// - song_path: 作業対象の曲のパス
+    /// - track_path: 作業対象の曲のパス
     /// - entry_date: 登録日
-    async fn unit_add(&self, db_pool: &PgPool, song_path: &LibSongPath) -> Result<()> {
+    async fn unit_add(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<()> {
         //PCファイル情報読み込み
-        let mut pc_song = self
+        let mut pc_track = self
             .file_library_repository
-            .read_song_sync(&self.config.pc_lib, song_path)?;
+            .read_track_sync(&self.config.pc_lib, track_path)?;
 
         //DBに登録
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
         };
         self.sync_usecase
-            .register_db(&mut tx, song_path, &mut pc_song)
+            .register_db(&mut tx, track_path, &mut pc_track)
             .await?;
         tx.commit().await?;
 
         //PCからDAPにコピー
-        self.file_library_repository.copy_song_over_lib(
+        self.file_library_repository.copy_track_over_lib(
             &self.config.pc_lib,
             &self.config.dap_lib,
-            song_path,
+            track_path,
         )?;
 
         Ok(())
@@ -111,19 +111,19 @@ where
     /// # Arguments
     /// - current_idx: 何番目の曲の処理中か(0始点)
     /// - all_count: 全部で何曲あるか
-    /// - song_path: 作業中の曲のパス
+    /// - track_path: 作業中の曲のパス
     fn write_console_progress(
         &self,
         current_idx: usize,
         all_count: usize,
-        song_path: &LibSongPath,
+        track_path: &LibTrackPath,
     ) -> anyhow::Result<()> {
         cui_outln!(
             self.cui,
             "({}/{}) {}",
             current_idx + 1,
             all_count,
-            song_path
+            track_path
         )
     }
 }

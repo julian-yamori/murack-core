@@ -6,10 +6,10 @@ use async_trait::async_trait;
 use mockall::mock;
 use sqlx::PgPool;
 
-use super::{DapPlaylistObserver, DapRepository, SongFinder};
+use super::{DapPlaylistObserver, DapRepository, TrackFinder};
 use crate::{
     db::DbTransaction,
-    path::LibSongPath,
+    path::LibTrackPath,
     playlist::{DbPlaylistRepository, Playlist},
 };
 
@@ -38,11 +38,11 @@ pub struct DapPlaylistUsecaseImpl<DR, PR, SF>
 where
     DR: DapRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
-    SF: SongFinder + Sync + Send,
+    SF: TrackFinder + Sync + Send,
 {
     dap_repository: DR,
     db_playlist_repository: PR,
-    song_finder: SF,
+    track_finder: SF,
 }
 
 #[async_trait]
@@ -50,7 +50,7 @@ impl<DR, PR, SF> DapPlaylistUsecase for DapPlaylistUsecaseImpl<DR, PR, SF>
 where
     DR: DapRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
-    SF: SongFinder + Sync + Send,
+    SF: TrackFinder + Sync + Send,
 {
     /// プレイリスト同期処理を実行
     /// # Arguments
@@ -130,7 +130,7 @@ impl<DR, PR, SF> DapPlaylistUsecaseImpl<DR, PR, SF>
 where
     DR: DapRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
-    SF: SongFinder + Sync + Send,
+    SF: TrackFinder + Sync + Send,
 {
     /// プレイリスト数をDAPに再帰的に保存
     ///
@@ -167,7 +167,7 @@ where
                     playlist_to_file_name(plist, now_save_offset, save_count_digit);
 
                 //プレイリスト内の曲パスを取得
-                let song_paths = self.song_finder.get_song_path_list(tx, plist).await?;
+                let track_paths = self.track_finder.get_track_path_list(tx, plist).await?;
 
                 //プレイリストの曲データ取得後に、リストに変更があったか確認
                 let new_plist_data = self
@@ -186,14 +186,14 @@ where
                             .delete_playlist_file(root_path, &plist_file_name)?;
                     }
 
-                    self.write_playlist_file(root_path, &plist_file_name, &song_paths)?;
+                    self.write_playlist_file(root_path, &plist_file_name, &track_paths)?;
                 } else {
                     //変更がないなら、上書きする必要なし
 
                     //既存ファイルSetから削除
                     if !existing_file_set.remove(&plist_file_name) {
                         //もしSetになければ不慮の何かで消えてるので、保存しなおす
-                        self.write_playlist_file(root_path, &plist_file_name, &song_paths)?;
+                        self.write_playlist_file(root_path, &plist_file_name, &track_paths)?;
                     }
                 }
             }
@@ -216,21 +216,21 @@ where
     /// プレイリストに曲パスリストを書き込み
     /// # Arguments
     /// - path: プレイリストファイルの保存先パス
-    /// - song_path_list: プレイリストファイルに書き込む、曲ファイルパスの一覧
+    /// - track_path_list: プレイリストファイルに書き込む、曲ファイルパスの一覧
     fn write_playlist_file(
         &self,
         root_path: &Path,
         plist_file_name: &str,
-        song_path_list: &[LibSongPath],
+        track_path_list: &[LibTrackPath],
     ) -> Result<()> {
         //プレイリストファイルに書き込むデータを作成
 
         let mut file_data = String::from("#EXTM3U\n");
 
-        for song_path in song_path_list {
+        for track_path in track_path_list {
             file_data.push_str("#EXTINF:,\n");
-            file_data.push_str(SONG_PATH);
-            file_data.push_str(song_path.as_str());
+            file_data.push_str(TRACK_PATH);
+            file_data.push_str(track_path.as_str());
             file_data.push('\n')
         }
 
@@ -243,7 +243,7 @@ where
 /// 曲ファイルの配置先(プレイリストに記載するルートパス)
 /// # todo
 /// 外部から設定できるようにする
-const SONG_PATH: &str = "lib/";
+const TRACK_PATH: &str = "lib/";
 
 /// プレイリストファイルの拡張子(ピリオドなし)
 /// # todo
@@ -341,37 +341,37 @@ mod tests {
 
     use test_case::test_case;
 
-    use super::super::{MockDapRepository, MockSongFinder};
+    use super::super::{MockDapRepository, MockTrackFinder};
     use super::*;
     use crate::playlist::{MockDbPlaylistRepository, PlaylistType, SortType};
 
     fn target()
-    -> DapPlaylistUsecaseImpl<MockDapRepository, MockDbPlaylistRepository, MockSongFinder> {
+    -> DapPlaylistUsecaseImpl<MockDapRepository, MockDbPlaylistRepository, MockTrackFinder> {
         DapPlaylistUsecaseImpl {
             dap_repository: MockDapRepository::default(),
             db_playlist_repository: MockDbPlaylistRepository::default(),
-            song_finder: MockSongFinder::default(),
+            track_finder: MockTrackFinder::default(),
         }
     }
     fn checkpoint_all(
         target: &mut DapPlaylistUsecaseImpl<
             MockDapRepository,
             MockDbPlaylistRepository,
-            MockSongFinder,
+            MockTrackFinder,
         >,
     ) {
         target.dap_repository.checkpoint();
         target.db_playlist_repository.inner.checkpoint();
-        target.song_finder.inner.checkpoint();
+        target.track_finder.inner.checkpoint();
     }
 
     #[test]
     fn test_write_playlist_file() -> anyhow::Result<()> {
-        let song_path_list = vec![
-            LibSongPath::new("test/hoge/song1.flac"),
-            LibSongPath::new("test/song3.m4a"),
-            LibSongPath::new("song4.m4a"),
-            LibSongPath::new("test/hoge/song2.mp3"),
+        let track_path_list = vec![
+            LibTrackPath::new("test/hoge/track1.flac"),
+            LibTrackPath::new("test/track3.m4a"),
+            LibTrackPath::new("track4.m4a"),
+            LibTrackPath::new("test/hoge/track2.mp3"),
         ];
         fn root() -> PathBuf {
             "dap_root/test".into()
@@ -385,12 +385,12 @@ mod tests {
                 .returning(|a_root, a_file_name, a_data| {
                     assert_eq!(a_root, &root());
                     assert_eq!(a_file_name, FILE_NAME);
-                    assert_eq!(a_data, "#EXTM3U\n#EXTINF:,\nlib/test/hoge/song1.flac\n#EXTINF:,\nlib/test/song3.m4a\n#EXTINF:,\nlib/song4.m4a\n#EXTINF:,\nlib/test/hoge/song2.mp3\n");
+                    assert_eq!(a_data, "#EXTM3U\n#EXTINF:,\nlib/test/hoge/track1.flac\n#EXTINF:,\nlib/test/track3.m4a\n#EXTINF:,\nlib/track4.m4a\n#EXTINF:,\nlib/test/hoge/track2.mp3\n");
 
                     Ok(())
                 });
 
-        target.write_playlist_file(&root(), FILE_NAME, &song_path_list)?;
+        target.write_playlist_file(&root(), FILE_NAME, &track_path_list)?;
 
         checkpoint_all(&mut target);
         Ok(())

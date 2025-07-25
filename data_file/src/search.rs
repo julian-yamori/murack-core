@@ -8,7 +8,7 @@ use std::{
 use anyhow::{Context, Result};
 use murack_core_domain::{
     Error as DomainError,
-    path::{LibPathStr, LibSongPath},
+    path::{LibPathStr, LibTrackPath},
 };
 
 use crate::utils;
@@ -25,15 +25,15 @@ use crate::utils;
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - target: 検索対象のライブラリ内パス
-pub fn search_by_lib_path(lib_root: &Path, target: &LibPathStr) -> Result<Vec<LibSongPath>> {
+pub fn search_by_lib_path(lib_root: &Path, target: &LibPathStr) -> Result<Vec<LibTrackPath>> {
     let target_abs = lib_root.join(target.as_str());
 
-    search_song_abs_path(&target_abs)?
+    search_track_abs_path(&target_abs)?
         .into_iter()
         .map(|abs_path| {
             //絶対パス->ライブラリパスに変換
             let rel_path = abs_path.strip_prefix(lib_root).unwrap();
-            LibSongPath::from_path(rel_path)
+            LibTrackPath::from_path(rel_path)
                 .with_context(|| format!("UTF-8への変換に失敗しました: {}", abs_path.display()))
         })
         .collect()
@@ -50,12 +50,12 @@ pub fn search_by_lib_path(lib_root: &Path, target: &LibPathStr) -> Result<Vec<Li
 ///
 /// # Arguments
 /// - target: 検索する絶対パス
-pub fn search_song_outside_lib(target: &Path) -> Result<Vec<PathBuf>> {
-    search_song_abs_path(target)
+pub fn search_track_outside_lib(target: &Path) -> Result<Vec<PathBuf>> {
+    search_track_abs_path(target)
 }
 
 /// 絶対パスを指定し、該当する曲の絶対パスを列挙
-fn search_song_abs_path(target: &Path) -> Result<Vec<PathBuf>> {
+fn search_track_abs_path(target: &Path) -> Result<Vec<PathBuf>> {
     //ファイルが存在しない
     if !target.exists() {
         Ok(vec![])

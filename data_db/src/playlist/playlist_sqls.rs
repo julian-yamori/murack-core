@@ -2,7 +2,7 @@ use anyhow::Result;
 use murack_core_domain::db::DbTransaction;
 
 /// プレイリストIDを指定して曲IDを取得
-pub async fn select_song_id_by_playlist_id<'c>(
+pub async fn select_track_id_by_playlist_id<'c>(
     tx: &mut DbTransaction<'c>,
     plist_id: i32,
 ) -> Result<Vec<i32>> {
@@ -17,17 +17,17 @@ pub async fn select_song_id_by_playlist_id<'c>(
 }
 
 /// プレイリストに曲を新規登録
-pub async fn insert_playlist_song<'c>(
+pub async fn insert_playlist_track<'c>(
     tx: &mut DbTransaction<'c>,
     plist_id: i32,
-    song_id: i32,
+    track_id: i32,
     order: i32,
 ) -> Result<()> {
     sqlx::query!(
         "INSERT INTO playlist_tracks (playlist_id, order_index, track_id) VALUES($1, $2, $3)",
         plist_id,
         order,
-        song_id,
+        track_id,
     )
     .execute(&mut **tx.get())
     .await?;

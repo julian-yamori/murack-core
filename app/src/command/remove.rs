@@ -1,6 +1,6 @@
 use anyhow::Result;
 use murack_core_domain::{
-    Error as DomainError, db::DbTransaction, path::LibPathStr, song::SongUsecase,
+    Error as DomainError, db::DbTransaction, path::LibPathStr, track::TrackUsecase,
 };
 use sqlx::PgPool;
 
@@ -12,30 +12,30 @@ use crate::{Config, Error, cui::Cui};
 pub struct CommandRemove<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
-    SS: SongUsecase,
+    SS: TrackUsecase,
 {
     args: CommandRemoveArgs,
     config: &'config Config,
     cui: &'cui CUI,
-    song_usecase: SS,
+    track_usecase: SS,
 }
 
 impl<'config, 'cui, CUI, SS> CommandRemove<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
-    SS: SongUsecase,
+    SS: TrackUsecase,
 {
     pub fn new(
         args: CommandRemoveArgs,
         config: &'config Config,
         cui: &'cui CUI,
-        song_usecase: SS,
+        track_usecase: SS,
     ) -> Self {
         Self {
             args,
             config,
             cui,
-            song_usecase,
+            track_usecase,
         }
     }
 
@@ -53,13 +53,13 @@ where
         let mut tx = DbTransaction::PgTransaction {
             tx: db_pool.begin().await?,
         };
-        let song_path_list = self
-            .song_usecase
+        let track_path_list = self
+            .track_usecase
             .delete_path_str_db(&mut tx, &self.args.path)
             .await?;
         tx.commit().await?;
 
-        if song_path_list.is_empty() {
+        if track_path_list.is_empty() {
             self.cui.err(format_args!(
                 "{}\n",
                 DomainError::DbPathStrNotFound(self.args.path.clone()),
@@ -68,7 +68,7 @@ where
         }
 
         cui_outln!(self.cui, "以下の曲をDBから削除しました。")?;
-        for path in song_path_list {
+        for path in track_path_list {
             cui_outln!(self.cui, "{}", path)?;
         }
         cui_outln!(self.cui)?;
@@ -81,7 +81,7 @@ where
         cui_outln!(self.cui, "DAPからの削除中...")?;
 
         match self
-            .song_usecase
+            .track_usecase
             .delete_path_str_dap(&self.config.dap_lib, &self.args.path)
         {
             Ok(_) => Ok(()),
@@ -101,7 +101,7 @@ where
         cui_outln!(self.cui, "PCからの削除中...")?;
 
         match self
-            .song_usecase
+            .track_usecase
             .delete_path_str_pc(&self.config.pc_lib, &self.args.path)
         {
             Ok(_) => Ok(()),

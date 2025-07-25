@@ -6,7 +6,7 @@ use std::path::Path;
 use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError,
-    path::{LibPathStr, LibSongPath},
+    path::{LibPathStr, LibTrackPath},
 };
 
 use crate::utils;
@@ -16,18 +16,18 @@ use crate::utils;
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - target: 削除対象の曲のライブラリ内パス
-pub fn delete_song(lib_root: &Path, target: &LibSongPath) -> Result<()> {
+pub fn delete_track(lib_root: &Path, target: &LibTrackPath) -> Result<()> {
     //ファイルが存在するか確認
     let abs_path = target.abs(lib_root);
     if !abs_path.exists() {
-        return Err(DomainError::FileSongNotFound {
+        return Err(DomainError::FileTrackNotFound {
             lib_root: lib_root.to_owned(),
-            song_path: target.to_owned(),
+            track_path: target.to_owned(),
         }
         .into());
     }
 
-    delete_song_checked(&abs_path)
+    delete_track_checked(&abs_path)
 }
 
 /// パス文字列を指定してライブラリから削除
@@ -56,7 +56,7 @@ pub fn delete_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
     }
     // ファイル
     else {
-        delete_song_checked(&target_abs)
+        delete_track_checked(&target_abs)
     }
 }
 
@@ -64,7 +64,7 @@ pub fn delete_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
 ///
 /// # Arguments
 /// - abs_path: 削除対象曲ファイルの絶対パス
-fn delete_song_checked(abs_path: &Path) -> Result<()> {
+fn delete_track_checked(abs_path: &Path) -> Result<()> {
     fs::remove_file(abs_path).map_err(|e| DomainError::FileIoError(abs_path.to_owned(), e))?;
 
     let lrc_path = utils::get_lrc_path(abs_path);
@@ -82,18 +82,18 @@ fn delete_song_checked(abs_path: &Path) -> Result<()> {
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - target: 削除対象の曲のライブラリ内パス
-pub fn trash_song(lib_root: &Path, target: &LibSongPath) -> Result<()> {
+pub fn trash_track(lib_root: &Path, target: &LibTrackPath) -> Result<()> {
     //ファイルが存在するか確認
     let abs_path = target.abs(lib_root);
     if !abs_path.exists() {
-        return Err(DomainError::FileSongNotFound {
+        return Err(DomainError::FileTrackNotFound {
             lib_root: lib_root.to_owned(),
-            song_path: target.to_owned(),
+            track_path: target.to_owned(),
         }
         .into());
     }
 
-    trash_song_checked(&abs_path)
+    trash_track_checked(&abs_path)
 }
 
 /// パス文字列を指定してライブラリからゴミ箱に移動
@@ -122,7 +122,7 @@ pub fn trash_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
     }
     // ファイル
     else {
-        trash_song_checked(&target_abs)
+        trash_track_checked(&target_abs)
     }
 }
 
@@ -130,7 +130,7 @@ pub fn trash_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
 ///
 /// # Arguments
 /// - abs_path: 削除対象曲ファイルの絶対パス
-fn trash_song_checked(abs_path: &Path) -> Result<()> {
+fn trash_track_checked(abs_path: &Path) -> Result<()> {
     trash::delete(abs_path)?;
 
     let lrc_path = utils::get_lrc_path(abs_path);

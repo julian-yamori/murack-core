@@ -6,7 +6,7 @@ use sqlx::prelude::Type;
 #[sqlx(type_name = "playlist_type", rename_all = "lowercase")]
 pub enum SortType {
     /// 曲名
-    SongName,
+    TrackName,
     /// アーティスト
     Artist,
     /// アルバム
