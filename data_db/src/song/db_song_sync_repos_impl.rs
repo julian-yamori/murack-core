@@ -11,7 +11,7 @@ use murack_core_domain::{
 
 use crate::converts::enums::db_from_folder_id_may_root;
 
-use super::{SongEntry, SongSyncRow, song_sqls};
+use super::{SongSyncRow, song_sqls};
 
 /// DbSongSyncRepositoryの本実装
 #[derive(new)]
@@ -93,41 +93,43 @@ where
             return Err(DomainError::DbSongAlreadyExists(song_path.clone()).into());
         }
 
-        let song_id = song_sqls::insert(
-            tx,
-            &SongEntry {
-                duration: song_sync.duration.try_into()?,
-                path: song_path.as_str(),
-                folder_id: db_from_folder_id_may_root(folder_id),
-                title: song_sync.title.as_deref().unwrap_or_default(),
-                artist: song_sync.artist.as_deref().unwrap_or_default(),
-                album: song_sync.album.as_deref().unwrap_or_default(),
-                genre: song_sync.genre.as_deref().unwrap_or_default(),
-                album_artist: song_sync.album_artist.as_deref().unwrap_or_default(),
-                composer: song_sync.composer.as_deref().unwrap_or_default(),
-                track_number: song_sync.track_number,
-                track_max: song_sync.track_max,
-                disc_number: song_sync.disc_number,
-                disc_max: song_sync.disc_max,
-                release_date: song_sync.release_date,
-                rating: 0,
-                original_song: "",
-                suggest_target: true,
-                memo: song_sync.memo.as_deref().unwrap_or_default(),
-                memo_manage: "",
-                lyrics: song_sync.lyrics.as_deref().unwrap_or_default(),
-                title_order: song_sync.title_order().as_deref().unwrap_or_default(),
-                artist_order: song_sync.artist_order().as_deref().unwrap_or_default(),
-                album_order: song_sync.album_order().as_deref().unwrap_or_default(),
-                album_artist_order: song_sync
-                    .album_artist_order()
-                    .as_deref()
-                    .unwrap_or_default(),
-                composer_order: song_sync.composer_order().as_deref().unwrap_or_default(),
-                genre_order: song_sync.genre_order().as_deref().unwrap_or_default(),
-            },
-        )
-        .await?;
+        // order系の値を事前に計算しておく
+        let title_order = song_sync.title_order().unwrap_or_default();
+        let artist_order = song_sync.artist_order().unwrap_or_default();
+        let album_order = song_sync.album_order().unwrap_or_default();
+        let album_artist_order = song_sync.album_artist_order().unwrap_or_default();
+        let composer_order = song_sync.composer_order().unwrap_or_default();
+        let genre_order = song_sync.genre_order().unwrap_or_default();
+
+        let song_id = sqlx::query_scalar!(
+            "INSERT INTO tracks (duration, path, folder_id, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, rating, original_track, suggest_target, memo, memo_manage, lyrics, title_order, artist_order, album_order, album_artist_order, composer_order, genre_order) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id",
+            i32::try_from(song_sync.duration)?,
+            song_path.as_str(),
+            db_from_folder_id_may_root(folder_id),
+            song_sync.title.as_deref().unwrap_or_default(),
+            song_sync.artist.as_deref().unwrap_or_default(),
+            song_sync.album.as_deref().unwrap_or_default(),
+            song_sync.genre.as_deref().unwrap_or_default(),
+            song_sync.album_artist.as_deref().unwrap_or_default(),
+            song_sync.composer.as_deref().unwrap_or_default(),
+            song_sync.track_number,
+            song_sync.track_max,
+            song_sync.disc_number,
+            song_sync.disc_max,
+            song_sync.release_date,
+            0, // rating
+            "", // original_song
+            true, // suggest_target
+            song_sync.memo.as_deref().unwrap_or_default(),
+            "", // memo_manage,
+            song_sync.lyrics.as_deref().unwrap_or_default(),
+            title_order,
+            artist_order,
+            album_order,
+            album_artist_order,
+            composer_order,
+            genre_order,
+        ).fetch_one(&mut **tx.get()).await?;
 
         //アートワークを登録
         self.db_artwork_repository

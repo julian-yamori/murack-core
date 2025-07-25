@@ -36,9 +36,6 @@ pub trait DbSongRepository {
         path: &LibDirPath,
     ) -> Result<Vec<LibSongPath>>;
 
-    /// ライブラリ内の全ての曲のパスを取得
-    async fn get_path_all<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<LibSongPath>>;
-
     /// 指定したパスの曲が存在するか確認
     async fn is_exist_path<'c>(
         &self,
@@ -110,10 +107,6 @@ impl DbSongRepository for MockDbSongRepository {
         path: &LibDirPath,
     ) -> Result<Vec<LibSongPath>> {
         self.inner.get_path_by_directory(path)
-    }
-
-    async fn get_path_all<'c>(&self, _db: &mut DbTransaction<'c>) -> Result<Vec<LibSongPath>> {
-        self.inner.get_path_all()
     }
 
     async fn is_exist_path<'c>(

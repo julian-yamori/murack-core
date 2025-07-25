@@ -6,6 +6,9 @@ use murack_core_domain::{
     path::{LibDirPath, LibPathStr, LibSongPath},
     song::DbSongRepository,
 };
+use sqlx::{Row, postgres::PgRow};
+
+use crate::{converts::enums::db_from_folder_id_may_root, like_esc};
 
 use super::song_sqls;
 
@@ -21,7 +24,11 @@ impl DbSongRepository for DbSongRepositoryImpl {
         tx: &mut DbTransaction<'c>,
         path: &LibSongPath,
     ) -> Result<Option<i32>> {
-        song_sqls::select_id_by_path(tx, path).await
+        let id = sqlx::query_scalar!("SELECT id FROM tracks WHERE path = $1", path.as_str(),)
+            .fetch_optional(&mut **tx.get())
+            .await?;
+
+        Ok(id)
     }
 
     /// 文字列でパスを指定して、該当曲のパスリストを取得
@@ -53,17 +60,34 @@ impl DbSongRepository for DbSongRepositoryImpl {
         tx: &mut DbTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Vec<LibSongPath>> {
-        //ルートフォルダ指定なら、全曲
         if path.is_root() {
-            song_sqls::select_path_all(tx).await
+            //ルートフォルダ指定なら、全曲
+            let paths = sqlx::query!("SELECT path FROM tracks")
+                .map(|row| LibSongPath::new(row.path))
+                .fetch_all(&mut **tx.get())
+                .await?;
+            Ok(paths)
         } else {
-            song_sqls::select_path_begins_directory(tx, path).await
-        }
-    }
+            let path_str = path.as_str();
 
-    /// ライブラリ内の全ての曲のパスを取得
-    async fn get_path_all<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<LibSongPath>> {
-        song_sqls::select_path_all(tx).await
+            //LIKE文エスケープ
+            let cmp_value_buff;
+            let (like_query, cmp_value) = if like_esc::is_need(path_str) {
+                cmp_value_buff = like_esc::escape(path_str);
+                ("LIKE $1 || '%' ESCAPE '$'", cmp_value_buff.as_str())
+            } else {
+                ("LIKE $1 || '%'", path_str)
+            };
+
+            let sql = format!("SELECT path FROM tracks WHERE path {like_query}");
+            let paths = sqlx::query(&sql)
+                .bind(cmp_value)
+                .map(|row: PgRow| LibSongPath::new(row.get::<&str, _>(0)))
+                .fetch_all(&mut **tx.get())
+                .await?;
+
+            Ok(paths)
+        }
     }
 
     /// 指定したパスの曲が存在するか確認
@@ -81,8 +105,14 @@ impl DbSongRepository for DbSongRepositoryImpl {
         tx: &mut DbTransaction<'c>,
         folder_id: i32,
     ) -> Result<bool> {
-        let song_count =
-            song_sqls::count_by_folder_id(tx, FolderIdMayRoot::Folder(folder_id)).await?;
+        let folder_id_value = db_from_folder_id_may_root(FolderIdMayRoot::Folder(folder_id));
+        let song_count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id IS NOT DISTINCT FROM $1"#,
+            folder_id_value,
+        )
+        .fetch_one(&mut **tx.get())
+        .await?;
+
         Ok(song_count > 0)
     }
 
@@ -99,7 +129,18 @@ impl DbSongRepository for DbSongRepositoryImpl {
         new_path: &LibSongPath,
         new_folder_id: FolderIdMayRoot,
     ) -> Result<()> {
-        song_sqls::update_path_by_path(tx, old_path, new_path, new_folder_id).await
+        let folder_id_value = db_from_folder_id_may_root(new_folder_id);
+
+        sqlx::query!(
+            "UPDATE tracks SET path = $1, folder_id = $2 WHERE path = $3",
+            new_path.as_str(),
+            folder_id_value,
+            old_path.as_str(),
+        )
+        .execute(&mut **tx.get())
+        .await?;
+
+        Ok(())
     }
 
     /// 曲の再生時間を書き換え
@@ -109,7 +150,17 @@ impl DbSongRepository for DbSongRepositoryImpl {
         song_id: i32,
         duration: u32,
     ) -> Result<()> {
-        song_sqls::update_duration_by_id(tx, song_id, duration).await
+        let duration_i32: i32 = duration.try_into()?;
+
+        sqlx::query!(
+            "UPDATE tracks SET duration = $1 WHERE id = $2",
+            duration_i32,
+            song_id,
+        )
+        .execute(&mut **tx.get())
+        .await?;
+
+        Ok(())
     }
 
     /// 曲を削除
@@ -117,7 +168,11 @@ impl DbSongRepository for DbSongRepositoryImpl {
     /// # Arguments
     /// - song_id: 削除する曲のID
     async fn delete<'c>(&self, tx: &mut DbTransaction<'c>, song_id: i32) -> Result<()> {
-        song_sqls::delete(tx, song_id).await
+        sqlx::query!("DELETE FROM tracks WHERE id = $1", song_id,)
+            .execute(&mut **tx.get())
+            .await?;
+
+        Ok(())
     }
 }
 

@@ -2,10 +2,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use murack_core_domain::{
     db::DbTransaction,
-    playlist::{DbPlaylistRepository, Playlist, PlaylistType},
+    playlist::{DbPlaylistRepository, Playlist, PlaylistType, SortType},
 };
 
-use super::{PlaylistRow, playlist_sqls};
+use super::PlaylistRow;
 use crate::{Error, error::PlaylistNoParentsDetectedItem};
 
 /// DbPlaylistRepositoryの本実装
@@ -22,7 +22,13 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
         tx: &mut DbTransaction<'c>,
         id: i32,
     ) -> Result<Option<Playlist>> {
-        let opt = playlist_sqls::select_playlist_by_id(tx, id).await?;
+        let opt = sqlx::query_as!(
+            PlaylistRow,
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
+            id
+        )
+        .fetch_optional(&mut **tx.get())
+        .await?;
 
         match opt {
             Some(row) => Ok(Some(row.try_into()?)),
@@ -34,7 +40,12 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     /// # Returns
     /// 最上位プレイリストのリスト
     async fn get_playlist_tree<'c>(&self, tx: &mut DbTransaction<'c>) -> Result<Vec<Playlist>> {
-        let remain_pool = playlist_sqls::select_all_playlists_order_folder(tx).await?;
+        let remain_pool = sqlx::query_as!(
+            PlaylistRow,
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
+        )
+        .fetch_all(&mut **tx.get())
+        .await?;
 
         let (root_list, remain_pool) = build_plist_children_recursive(None, remain_pool)?;
 

@@ -12,7 +12,10 @@ use murack_core_domain::{
 use sqlx::{Row, postgres::PgRow};
 
 use super::{SongListerFilter, esc::esci};
-use crate::{Error, playlist::playlist_sqls};
+use crate::{
+    Error,
+    playlist::{PlaylistRow, playlist_sqls},
+};
 
 /// SongFinderの本実装
 #[derive(new)]
@@ -164,11 +167,14 @@ where
         tx: &mut DbTransaction<'c>,
         plist: &Playlist,
     ) -> Result<Vec<i32>> {
-        //直下の子のプレイリストを取得
-        let children = playlist_sqls::get_child_playlists(tx, Some(plist.rowid))
-            .await?
-            .into_iter()
-            .map(Playlist::try_from);
+        let children = sqlx::query_as!(
+            PlaylistRow,
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE parent_id IS NOT DISTINCT FROM $1 ORDER BY in_folder_order"#,
+            Some(plist.rowid)
+        )
+            .map(Playlist::try_from)
+            .fetch_all(&mut **tx.get())
+            .await?;
 
         //子プレイリストの曲IDを追加していくSet
         let mut add_song_ids = HashSet::<i32>::new();
