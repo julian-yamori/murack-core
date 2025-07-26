@@ -146,14 +146,14 @@ where
                         dap_playlist_repository::delete_playlist_file(root_path, &plist_file_name)?;
                     }
 
-                    self.write_playlist_file(root_path, &plist_file_name, &track_paths)?;
+                    write_playlist_file(root_path, &plist_file_name, &track_paths)?;
                 } else {
                     //変更がないなら、上書きする必要なし
 
                     //既存ファイルSetから削除
                     if !existing_file_set.remove(&plist_file_name) {
                         //もしSetになければ不慮の何かで消えてるので、保存しなおす
-                        self.write_playlist_file(root_path, &plist_file_name, &track_paths)?;
+                        write_playlist_file(root_path, &plist_file_name, &track_paths)?;
                     }
                 }
             }
@@ -171,31 +171,6 @@ where
         }
 
         Ok(now_save_offset - save_offset)
-    }
-
-    /// プレイリストに曲パスリストを書き込み
-    /// # Arguments
-    /// - path: プレイリストファイルの保存先パス
-    /// - track_path_list: プレイリストファイルに書き込む、曲ファイルパスの一覧
-    fn write_playlist_file(
-        &self,
-        root_path: &Path,
-        plist_file_name: &str,
-        track_path_list: &[LibTrackPath],
-    ) -> Result<()> {
-        //プレイリストファイルに書き込むデータを作成
-
-        let mut file_data = String::from("#EXTM3U\n");
-
-        for track_path in track_path_list {
-            file_data.push_str("#EXTINF:,\n");
-            file_data.push_str(TRACK_PATH);
-            file_data.push_str(track_path.as_str());
-            file_data.push('\n')
-        }
-
-        //プレイリストファイルを作成する
-        dap_playlist_repository::make_playlist_file(root_path, plist_file_name, &file_data)
     }
 }
 
@@ -264,43 +239,37 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
     format!("{}-{}.{}", buf, plist.name, PLAYLIST_EXT)
 }
 
+/// プレイリストに曲パスリストを書き込み
+/// # Arguments
+/// - path: プレイリストファイルの保存先パス
+/// - track_path_list: プレイリストファイルに書き込む、曲ファイルパスの一覧
+fn write_playlist_file(
+    root_path: &Path,
+    plist_file_name: &str,
+    track_path_list: &[LibTrackPath],
+) -> Result<()> {
+    //プレイリストファイルに書き込むデータを作成
+
+    let mut file_data = String::from("#EXTM3U\n");
+
+    for track_path in track_path_list {
+        file_data.push_str("#EXTINF:,\n");
+        file_data.push_str(TRACK_PATH);
+        file_data.push_str(track_path.as_str());
+        file_data.push('\n')
+    }
+
+    //プレイリストファイルを作成する
+    dap_playlist_repository::make_playlist_file(root_path, plist_file_name, &file_data)
+}
 #[cfg(test)]
 mod tests {
     use std::fs;
 
-    use murack_core_domain::{
-        dap::MockTrackFinder,
-        playlist::{MockDbPlaylistRepository, PlaylistType, SortType},
-    };
+    use murack_core_domain::playlist::{PlaylistType, SortType};
     use test_case::test_case;
 
-    use crate::cui::BufferCui;
-
     use super::*;
-
-    fn target<'config, 'cui>(
-        config: &'config Config,
-        cui: &'cui BufferCui,
-    ) -> CommandPlaylist<'config, 'cui, BufferCui, MockDbPlaylistRepository, MockTrackFinder> {
-        CommandPlaylist {
-            config,
-            cui,
-            db_playlist_repository: MockDbPlaylistRepository::default(),
-            track_finder: MockTrackFinder::default(),
-        }
-    }
-    fn checkpoint_all<'config, 'cui>(
-        target: &mut CommandPlaylist<
-            'config,
-            'cui,
-            BufferCui,
-            MockDbPlaylistRepository,
-            MockTrackFinder,
-        >,
-    ) {
-        target.db_playlist_repository.inner.checkpoint();
-        target.track_finder.inner.checkpoint();
-    }
 
     #[test]
     fn test_write_playlist_file() -> anyhow::Result<()> {
@@ -314,15 +283,7 @@ mod tests {
 
         let temp_dir = tempfile::tempdir()?;
 
-        // tempdir のパスを config に書いておく
-        // (write_playlist_file() は Config を読みに行かないはずだけど、念の為)
-        let mut config = Config::dummy();
-        config.dap_playlist = temp_dir.path().to_owned();
-
-        let cui = BufferCui::new();
-        let mut target = target(&config, &cui);
-
-        target.write_playlist_file(temp_dir.path(), FILE_NAME, &track_path_list)?;
+        write_playlist_file(temp_dir.path(), FILE_NAME, &track_path_list)?;
 
         // プレイリストファイルの内容が期待通りか確認
         let playlist_file_path = temp_dir.path().join(FILE_NAME);
@@ -331,7 +292,6 @@ mod tests {
             "#EXTM3U\n#EXTINF:,\nlib/test/hoge/track1.flac\n#EXTINF:,\nlib/test/track3.m4a\n#EXTINF:,\nlib/track4.m4a\n#EXTINF:,\nlib/test/hoge/track2.mp3\n"
         );
 
-        checkpoint_all(&mut target);
         Ok(())
     }
 
