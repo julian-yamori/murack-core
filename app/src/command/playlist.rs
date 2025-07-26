@@ -271,10 +271,11 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::fs;
 
+    use murack_core_data_file::DapRepositoryImpl;
     use murack_core_domain::{
-        dap::{MockDapRepository, MockTrackFinder},
+        dap::MockTrackFinder,
         playlist::{MockDbPlaylistRepository, PlaylistType, SortType},
     };
     use test_case::test_case;
@@ -290,14 +291,14 @@ mod tests {
         'config,
         'cui,
         BufferCui,
-        MockDapRepository,
+        DapRepositoryImpl,
         MockDbPlaylistRepository,
         MockTrackFinder,
     > {
         CommandPlaylist {
             config,
             cui,
-            dap_repository: MockDapRepository::default(),
+            dap_repository: DapRepositoryImpl {},
             db_playlist_repository: MockDbPlaylistRepository::default(),
             track_finder: MockTrackFinder::default(),
         }
@@ -307,12 +308,11 @@ mod tests {
             'config,
             'cui,
             BufferCui,
-            MockDapRepository,
+            DapRepositoryImpl,
             MockDbPlaylistRepository,
             MockTrackFinder,
         >,
     ) {
-        target.dap_repository.checkpoint();
         target.db_playlist_repository.inner.checkpoint();
         target.track_finder.inner.checkpoint();
     }
@@ -325,27 +325,26 @@ mod tests {
             LibTrackPath::new("track4.m4a"),
             LibTrackPath::new("test/hoge/track2.mp3"),
         ];
-        fn root() -> PathBuf {
-            "dap_root/test".into()
-        }
         const FILE_NAME: &str = "playlist.m3u";
 
-        let config = Config::dummy();
+        let temp_dir = tempfile::tempdir()?;
+
+        // tempdir のパスを config に書いておく
+        // (write_playlist_file() は Config を読みに行かないはずだけど、念の為)
+        let mut config = Config::dummy();
+        config.dap_playlist = temp_dir.path().to_owned();
+
         let cui = BufferCui::new();
         let mut target = target(&config, &cui);
 
-        target.dap_repository
-            .expect_make_playlist_file()
-                .times(1)
-                .returning(|a_root, a_file_name, a_data| {
-                    assert_eq!(a_root, &root());
-                    assert_eq!(a_file_name, FILE_NAME);
-                    assert_eq!(a_data, "#EXTM3U\n#EXTINF:,\nlib/test/hoge/track1.flac\n#EXTINF:,\nlib/test/track3.m4a\n#EXTINF:,\nlib/track4.m4a\n#EXTINF:,\nlib/test/hoge/track2.mp3\n");
+        target.write_playlist_file(temp_dir.path(), FILE_NAME, &track_path_list)?;
 
-                    Ok(())
-                });
-
-        target.write_playlist_file(&root(), FILE_NAME, &track_path_list)?;
+        // プレイリストファイルの内容が期待通りか確認
+        let playlist_file_path = temp_dir.path().join(FILE_NAME);
+        assert_eq!(
+            fs::read_to_string(playlist_file_path)?,
+            "#EXTM3U\n#EXTINF:,\nlib/test/hoge/track1.flac\n#EXTINF:,\nlib/test/track3.m4a\n#EXTINF:,\nlib/track4.m4a\n#EXTINF:,\nlib/test/hoge/track2.mp3\n"
+        );
 
         checkpoint_all(&mut target);
         Ok(())
