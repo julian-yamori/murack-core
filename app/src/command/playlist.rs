@@ -1,9 +1,11 @@
+mod dap_playlist_repository;
+
 use std::{collections::HashSet, path::Path};
 
 use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
-    dap::{DapRepository, TrackFinder},
+    dap::TrackFinder,
     path::LibTrackPath,
     playlist::{DbPlaylistRepository, Playlist},
 };
@@ -14,24 +16,21 @@ use crate::{Config, cui::Cui};
 /// playlistコマンド
 ///
 /// DAPのプレイリストを更新する
-pub struct CommandPlaylist<'config, 'cui, CUI, DR, PR, SF>
+pub struct CommandPlaylist<'config, 'cui, CUI, PR, SF>
 where
     CUI: Cui + Send + Sync,
-    DR: DapRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     SF: TrackFinder + Sync + Send,
 {
     pub config: &'config Config,
     pub cui: &'cui CUI,
-    pub dap_repository: DR,
     pub db_playlist_repository: PR,
     pub track_finder: SF,
 }
 
-impl<'config, 'cui, CUI, DR, PR, SF> CommandPlaylist<'config, 'cui, CUI, DR, PR, SF>
+impl<'config, 'cui, CUI, PR, SF> CommandPlaylist<'config, 'cui, CUI, PR, SF>
 where
     CUI: Cui + Send + Sync,
-    DR: DapRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     SF: TrackFinder + Sync + Send,
 {
@@ -41,11 +40,10 @@ where
         let all_flag = false;
 
         //現在DAPにあるプレイリストファイルを列挙し、Setに格納
-        let mut existing_file_set: HashSet<String> = self
-            .dap_repository
-            .listup_playlist_files(dap_plist_path)?
-            .into_iter()
-            .collect();
+        let mut existing_file_set: HashSet<String> =
+            dap_playlist_repository::listup_playlist_files(dap_plist_path)?
+                .into_iter()
+                .collect();
 
         let mut tx = db_pool.begin().await?;
 
@@ -82,8 +80,7 @@ where
 
         //DBに存在しなかったプレイリストファイルを削除する
         for name in &existing_file_set {
-            self.dap_repository
-                .delete_playlist_file(dap_plist_path, name)?;
+            dap_playlist_repository::delete_playlist_file(dap_plist_path, name)?;
         }
 
         //DAP未反映フラグを下ろす
@@ -146,8 +143,7 @@ where
                     //既存ファイルSetから削除
                     if existing_file_set.remove(&plist_file_name) {
                         //見つかって削除できたなら、DAPからも削除
-                        self.dap_repository
-                            .delete_playlist_file(root_path, &plist_file_name)?;
+                        dap_playlist_repository::delete_playlist_file(root_path, &plist_file_name)?;
                     }
 
                     self.write_playlist_file(root_path, &plist_file_name, &track_paths)?;
@@ -199,8 +195,7 @@ where
         }
 
         //プレイリストファイルを作成する
-        self.dap_repository
-            .make_playlist_file(root_path, plist_file_name, &file_data)
+        dap_playlist_repository::make_playlist_file(root_path, plist_file_name, &file_data)
     }
 }
 
@@ -273,7 +268,6 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
 mod tests {
     use std::fs;
 
-    use murack_core_data_file::DapRepositoryImpl;
     use murack_core_domain::{
         dap::MockTrackFinder,
         playlist::{MockDbPlaylistRepository, PlaylistType, SortType},
@@ -287,18 +281,10 @@ mod tests {
     fn target<'config, 'cui>(
         config: &'config Config,
         cui: &'cui BufferCui,
-    ) -> CommandPlaylist<
-        'config,
-        'cui,
-        BufferCui,
-        DapRepositoryImpl,
-        MockDbPlaylistRepository,
-        MockTrackFinder,
-    > {
+    ) -> CommandPlaylist<'config, 'cui, BufferCui, MockDbPlaylistRepository, MockTrackFinder> {
         CommandPlaylist {
             config,
             cui,
-            dap_repository: DapRepositoryImpl {},
             db_playlist_repository: MockDbPlaylistRepository::default(),
             track_finder: MockTrackFinder::default(),
         }
@@ -308,7 +294,6 @@ mod tests {
             'config,
             'cui,
             BufferCui,
-            DapRepositoryImpl,
             MockDbPlaylistRepository,
             MockTrackFinder,
         >,
