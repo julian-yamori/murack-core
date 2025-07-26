@@ -2,7 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
 use murack_core_domain::{
-    Error as DomainError, FileLibraryRepository,
+    Error as DomainError,
     artwork::{DbArtworkRepository, TrackArtwork},
     path::LibTrackPath,
     sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
@@ -25,26 +25,23 @@ pub trait ResolveDataMatch {
 }
 
 /// ResolveDataMatchの実装
-pub struct ResolveDataMatchImpl<'config, 'cui, CUI, FR, AR, SSR>
+pub struct ResolveDataMatchImpl<'config, 'cui, CUI, AR, SSR>
 where
     CUI: Cui + Send + Sync,
-    FR: FileLibraryRepository + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
-    file_library_repository: FR,
     db_artwork_repository: AR,
     db_track_sync_repository: SSR,
 }
 
 #[async_trait]
-impl<'config, 'cui, CUI, FR, AR, SSR> ResolveDataMatch
-    for ResolveDataMatchImpl<'config, 'cui, CUI, FR, AR, SSR>
+impl<'config, 'cui, CUI, AR, SSR> ResolveDataMatch
+    for ResolveDataMatchImpl<'config, 'cui, CUI, AR, SSR>
 where
     CUI: Cui + Send + Sync,
-    FR: FileLibraryRepository + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
@@ -54,9 +51,7 @@ where
     /// 次の解決処理へ継続するか
     async fn resolve(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<bool> {
         //データ読み込み
-        let mut pc_data = self
-            .file_library_repository
-            .read_track_sync(&self.config.pc_lib, track_path)?;
+        let mut pc_data = murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path)?;
         let mut db_data = self.load_db_track(db_pool, track_path).await?;
 
         if !self
@@ -84,24 +79,21 @@ where
     }
 }
 
-impl<'config, 'cui, CUI, FR, AR, SSR> ResolveDataMatchImpl<'config, 'cui, CUI, FR, AR, SSR>
+impl<'config, 'cui, CUI, AR, SSR> ResolveDataMatchImpl<'config, 'cui, CUI, AR, SSR>
 where
     CUI: Cui + Send + Sync,
-    FR: FileLibraryRepository + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
     pub fn new(
         config: &'config Config,
         cui: &'cui CUI,
-        file_library_repository: FR,
         db_artwork_repository: AR,
         db_track_sync_repository: SSR,
     ) -> Self {
         Self {
             config,
             cui,
-            file_library_repository,
             db_artwork_repository,
             db_track_sync_repository,
         }
@@ -161,7 +153,7 @@ where
                 self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                self.file_library_repository.overwrite_track_over_lib(
+                murack_core_data_file::overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,
@@ -253,7 +245,7 @@ where
                 self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                self.file_library_repository.overwrite_track_over_lib(
+                murack_core_data_file::overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,
@@ -334,7 +326,7 @@ where
                 self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                self.file_library_repository.overwrite_track_over_lib(
+                murack_core_data_file::overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,
@@ -436,11 +428,7 @@ where
         track_path: &LibTrackPath,
         pc_track: &TrackSync,
     ) -> Result<()> {
-        self.file_library_repository.overwrite_track_sync(
-            &self.config.pc_lib,
-            track_path,
-            pc_track,
-        )?;
+        murack_core_data_file::overwrite_track_sync(&self.config.pc_lib, track_path, pc_track)?;
 
         Ok(())
     }

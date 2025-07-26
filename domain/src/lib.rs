@@ -14,9 +14,6 @@ pub mod sync;
 pub mod tag;
 pub mod track;
 
-mod file_lib_repos;
-pub use file_lib_repos::{FileLibraryRepository, MockFileLibraryRepository};
-
 pub mod test_utils;
 
 #[macro_use]

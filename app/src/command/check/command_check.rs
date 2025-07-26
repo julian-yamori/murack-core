@@ -6,8 +6,7 @@ use std::collections::BTreeSet;
 
 use anyhow::Result;
 use murack_core_domain::{
-    FileLibraryRepository, path::LibTrackPath, sync::DbTrackSyncRepository,
-    track::DbTrackRepository,
+    path::LibTrackPath, sync::DbTrackSyncRepository, track::DbTrackRepository,
 };
 use sqlx::PgPool;
 
@@ -20,13 +19,12 @@ use crate::{
     cui::Cui,
 };
 
-pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, SR, SSR>
+pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, SR, SSR>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
     RDM: ResolveDataMatch,
     RDP: ResolveDap,
-    FR: FileLibraryRepository,
     SR: DbTrackRepository,
     SSR: DbTrackSyncRepository + Sync + Send,
 {
@@ -38,19 +36,17 @@ where
 
     config: &'config Config,
     cui: &'cui CUI,
-    file_library_repository: FR,
     db_track_repository: SR,
     db_track_sync_repository: SSR,
 }
 
-impl<'config, 'cui, CUI, REX, RDM, RDP, FR, SR, SSR>
-    CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, SR, SSR>
+impl<'config, 'cui, CUI, REX, RDM, RDP, SR, SSR>
+    CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, SR, SSR>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
     RDM: ResolveDataMatch,
     RDP: ResolveDap,
-    FR: FileLibraryRepository,
     SR: DbTrackRepository,
     SSR: DbTrackSyncRepository + Sync + Send,
 {
@@ -63,7 +59,6 @@ where
         resolve_data_match: RDM,
         resolve_dap: RDP,
         cui: &'cui CUI,
-        file_library_repository: FR,
         db_track_repository: SR,
         db_track_sync_repository: SSR,
     ) -> Self {
@@ -74,7 +69,6 @@ where
             resolve_dap,
             config,
             cui,
-            file_library_repository,
             db_track_repository,
             db_track_sync_repository,
         }
@@ -112,18 +106,15 @@ where
 
         //PCからリストアップ
         cui_outln!(cui, "PCの検索中...")?;
-        for path in self
-            .file_library_repository
-            .search_by_lib_path(&self.config.pc_lib, &self.args.path)?
+        for path in murack_core_data_file::search_by_lib_path(&self.config.pc_lib, &self.args.path)?
         {
             set.insert(path);
         }
 
         //DAPからリストアップ
         cui_outln!(cui, "DAPの検索中...")?;
-        for path in self
-            .file_library_repository
-            .search_by_lib_path(&self.config.dap_lib, &self.args.path)?
+        for path in
+            murack_core_data_file::search_by_lib_path(&self.config.dap_lib, &self.args.path)?
         {
             set.insert(path);
         }
@@ -172,7 +163,6 @@ where
                 &path,
                 self.args.ignore_dap_content,
                 &self.db_track_sync_repository,
-                &self.file_library_repository,
             )
             .await?;
 
@@ -284,10 +274,10 @@ where
 mod tests {
     use std::fs;
 
-    use murack_core_data_file::FileLibraryRepositoryImpl;
-    use murack_core_domain::sync::MockDbTrackSyncRepository;
-    use murack_core_domain::test_utils::assert_eq_not_orderd;
-    use murack_core_domain::{path::LibPathStr, track::MockDbTrackRepository};
+    use murack_core_domain::{
+        path::LibPathStr, sync::MockDbTrackSyncRepository, test_utils::assert_eq_not_orderd,
+        track::MockDbTrackRepository,
+    };
 
     use super::super::{MockResolveDap, MockResolveDataMatch, MockResolveExistance};
     use super::*;
@@ -305,7 +295,6 @@ mod tests {
         MockResolveExistance,
         MockResolveDataMatch,
         MockResolveDap,
-        FileLibraryRepositoryImpl,
         MockDbTrackRepository,
         MockDbTrackSyncRepository,
     > {
@@ -319,7 +308,6 @@ mod tests {
             resolve_existance: MockResolveExistance::default(),
             resolve_data_match: MockResolveDataMatch::default(),
             resolve_dap: MockResolveDap::default(),
-            file_library_repository: FileLibraryRepositoryImpl {},
             db_track_repository: MockDbTrackRepository::default(),
             db_track_sync_repository: MockDbTrackSyncRepository::default(),
         }
@@ -331,7 +319,6 @@ mod tests {
             MockResolveExistance,
             MockResolveDataMatch,
             MockResolveDap,
-            FileLibraryRepositoryImpl,
             MockDbTrackRepository,
             MockDbTrackSyncRepository,
         >,
@@ -339,7 +326,6 @@ mod tests {
         target.resolve_existance.checkpoint();
         target.resolve_data_match.checkpoint();
         target.resolve_dap.checkpoint();
-        target.db_track_repository.inner.checkpoint();
         target.db_track_sync_repository.inner.checkpoint();
     }
 

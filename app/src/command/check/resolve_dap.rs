@@ -1,6 +1,6 @@
 use anyhow::Result;
 use mockall::automock;
-use murack_core_domain::{FileLibraryRepository, path::LibTrackPath};
+use murack_core_domain::path::LibTrackPath;
 
 use super::messages;
 use crate::{
@@ -20,34 +20,26 @@ pub trait ResolveDap {
 }
 
 ///ResolveDapの実装
-pub struct ResolveDapImpl<'config, 'cui, CUI, FR>
+pub struct ResolveDapImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    FR: FileLibraryRepository,
 {
     config: &'config Config,
     cui: &'cui CUI,
-    file_library_repository: FR,
 }
 
-impl<'config, 'cui, CUI, FR> ResolveDapImpl<'config, 'cui, CUI, FR>
+impl<'config, 'cui, CUI> ResolveDapImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    FR: FileLibraryRepository,
 {
-    pub fn new(config: &'config Config, cui: &'cui CUI, file_library_repository: FR) -> Self {
-        Self {
-            config,
-            cui,
-            file_library_repository,
-        }
+    pub fn new(config: &'config Config, cui: &'cui CUI) -> Self {
+        Self { config, cui }
     }
 }
 
-impl<'config, 'cui, CUI, FR> ResolveDap for ResolveDapImpl<'config, 'cui, CUI, FR>
+impl<'config, 'cui, CUI> ResolveDap for ResolveDapImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    FR: FileLibraryRepository,
 {
     /// PC・DAP間のファイル内容齟齬の解決処理
     ///
@@ -76,9 +68,9 @@ where
         let input = cui.input_case(&['1', '0', '-'], messages::MSG_SELECT_OPERATION)?;
 
         match input {
-            //PCからDBへ上書き
+            //PCからDAPへ上書き
             '1' => {
-                self.file_library_repository.overwrite_track_over_lib(
+                murack_core_data_file::overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,

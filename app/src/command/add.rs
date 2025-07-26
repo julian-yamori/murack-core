@@ -1,6 +1,6 @@
 use anyhow::Result;
 use murack_core_domain::{
-    Error as DomainError, FileLibraryRepository,
+    Error as DomainError,
     path::{LibPathStr, LibTrackPath},
     sync::SyncUsecase,
 };
@@ -11,38 +11,33 @@ use crate::{Config, Error, cui::Cui};
 /// addコマンド
 ///
 /// 曲をライブラリに追加する
-pub struct CommandAdd<'config, 'cui, CUI, FR, SS>
+pub struct CommandAdd<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
-    FR: FileLibraryRepository,
     SS: SyncUsecase,
 {
     args: CommandAddArgs,
 
     config: &'config Config,
     cui: &'cui CUI,
-    file_library_repository: FR,
     sync_usecase: SS,
 }
 
-impl<'config, 'cui, CUI, FR, SS> CommandAdd<'config, 'cui, CUI, FR, SS>
+impl<'config, 'cui, CUI, SS> CommandAdd<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
-    FR: FileLibraryRepository,
     SS: SyncUsecase,
 {
     pub fn new(
         args: CommandAddArgs,
         config: &'config Config,
         cui: &'cui CUI,
-        file_library_repository: FR,
         sync_usecase: SS,
     ) -> Self {
         Self {
             args,
             config,
             cui,
-            file_library_repository,
             sync_usecase,
         }
     }
@@ -50,9 +45,8 @@ where
     /// このコマンドを実行
     pub async fn run(&self, db_pool: &PgPool) -> Result<()> {
         //指定されたパスから音声ファイルを検索
-        let path_list = self
-            .file_library_repository
-            .search_by_lib_path(&self.config.pc_lib, &self.args.path)?;
+        let path_list =
+            murack_core_data_file::search_by_lib_path(&self.config.pc_lib, &self.args.path)?;
 
         let file_count = path_list.len();
         if file_count == 0 {
@@ -82,9 +76,7 @@ where
     /// - entry_date: 登録日
     async fn unit_add(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<()> {
         //PCファイル情報読み込み
-        let mut pc_track = self
-            .file_library_repository
-            .read_track_sync(&self.config.pc_lib, track_path)?;
+        let mut pc_track = murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path)?;
 
         //DBに登録
         let mut tx = db_pool.begin().await?;
@@ -94,7 +86,7 @@ where
         tx.commit().await?;
 
         //PCからDAPにコピー
-        self.file_library_repository.copy_track_over_lib(
+        murack_core_data_file::copy_track_over_lib(
             &self.config.pc_lib,
             &self.config.dap_lib,
             track_path,

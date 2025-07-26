@@ -43,7 +43,7 @@ pub fn read_metadata(lib_root: &Path, track_path: &LibTrackPath) -> Result<Audio
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - track_path: 取得対象の曲のライブラリ内パス
-pub fn read(lib_root: &Path, track_path: &LibTrackPath) -> Result<TrackSync> {
+pub fn read_track_sync(lib_root: &Path, track_path: &LibTrackPath) -> Result<TrackSync> {
     let meta = read_metadata(lib_root, track_path)?;
 
     let track_abs = track_path.abs(lib_root);
@@ -73,7 +73,11 @@ pub fn read(lib_root: &Path, track_path: &LibTrackPath) -> Result<TrackSync> {
 /// - lib_root: ライブラリルートの絶対パス
 /// - track_path: 保存対象の曲のライブラリ内パス
 /// - track_sync: 保存する曲データ
-pub fn overwrite(lib_root: &Path, track_path: &LibTrackPath, track_sync: &TrackSync) -> Result<()> {
+pub fn overwrite_track_sync(
+    lib_root: &Path,
+    track_path: &LibTrackPath,
+    track_sync: &TrackSync,
+) -> Result<()> {
     let track_abs = track_path.abs(lib_root);
 
     let (audio, artworks) = track_sync.get_audio_metadata_entry();

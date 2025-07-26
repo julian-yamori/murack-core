@@ -6,7 +6,7 @@ use std::{fs::File, io::prelude::*, path::Path};
 
 use anyhow::Result;
 use murack_core_domain::{
-    Error, FileLibraryRepository,
+    Error,
     path::LibTrackPath,
     sync::{DbTrackSyncRepository, TrackSync},
     track::TrackItemKind,
@@ -23,23 +23,21 @@ use super::CheckIssueSummary;
 /// DAPのファイル内容を無視するか。
 /// trueなら、PC間とDAP間でファイル内容を比較しない。
 /// (一致として扱う)
-pub async fn listup_issue_summary<SSR, FLR>(
+pub async fn listup_issue_summary<SSR>(
     db_pool: &PgPool,
     pc_lib: &Path,
     dap_lib: &Path,
     track_path: &LibTrackPath,
     ignore_dap_content: bool,
     db_track_sync_repository: &SSR,
-    file_library_repository: &FLR,
 ) -> Result<Vec<CheckIssueSummary>>
 where
     SSR: DbTrackSyncRepository + Sync + Send,
-    FLR: FileLibraryRepository,
 {
     let mut issue_list = Vec::new();
 
     //PCデータ読み込み
-    let pc_data_opt = match file_library_repository.read_track_sync(pc_lib, track_path) {
+    let pc_data_opt = match murack_core_data_file::read_track_sync(pc_lib, track_path) {
         Ok(d) => Some(d),
         Err(e) => match e.downcast_ref() {
             Some(Error::FileTrackNotFound { .. }) => {

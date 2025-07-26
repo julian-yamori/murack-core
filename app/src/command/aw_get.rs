@@ -1,7 +1,7 @@
 use crate::{Config, Error, cui::Cui};
 
 use anyhow::{Context, Result, anyhow};
-use murack_core_domain::{FileLibraryRepository, path::LibTrackPath};
+use murack_core_domain::path::LibTrackPath;
 
 use std::{
     fs,
@@ -11,34 +11,21 @@ use std::{
 /// aw-getコマンド
 ///
 /// 曲ファイルからアートワークを取得する
-pub struct CommandArtworkGet<'config, 'cui, CUI, FR>
+pub struct CommandArtworkGet<'config, 'cui, CUI>
 where
     CUI: Cui,
-    FR: FileLibraryRepository,
 {
     args: CommandArtworkGetArgs,
     config: &'config Config,
     cui: &'cui CUI,
-    file_library_repository: FR,
 }
 
-impl<'config, 'cui, CUI, FR> CommandArtworkGet<'config, 'cui, CUI, FR>
+impl<'config, 'cui, CUI> CommandArtworkGet<'config, 'cui, CUI>
 where
     CUI: Cui,
-    FR: FileLibraryRepository,
 {
-    pub fn new(
-        args: CommandArtworkGetArgs,
-        config: &'config Config,
-        cui: &'cui CUI,
-        file_library_repository: FR,
-    ) -> Self {
-        Self {
-            args,
-            config,
-            cui,
-            file_library_repository,
-        }
+    pub fn new(args: CommandArtworkGetArgs, config: &'config Config, cui: &'cui CUI) -> Self {
+        Self { args, config, cui }
     }
 
     /// このコマンドを実行
@@ -53,9 +40,8 @@ where
         };
 
         //指定された曲ファイルを解析
-        let audio_meta = self
-            .file_library_repository
-            .read_audio_meta(&self.config.pc_lib, &self.args.track_path)?;
+        let audio_meta =
+            murack_core_data_file::read_metadata(&self.config.pc_lib, &self.args.track_path)?;
 
         //各アートワークを出力
         let artworks_len = audio_meta.artworks.len();

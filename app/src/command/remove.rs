@@ -1,7 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{
-    Error as DomainError, FileLibraryRepository, path::LibPathStr, track::TrackUsecase,
-};
+use murack_core_domain::{Error as DomainError, path::LibPathStr, track::TrackUsecase};
 use sqlx::PgPool;
 
 use crate::{Config, Error, cui::Cui};
@@ -9,38 +7,33 @@ use crate::{Config, Error, cui::Cui};
 /// removeコマンド
 ///
 /// ライブラリから曲を削除
-pub struct CommandRemove<'config, 'cui, CUI, SS, FR>
+pub struct CommandRemove<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
     SS: TrackUsecase,
-    FR: FileLibraryRepository,
 {
     args: CommandRemoveArgs,
     config: &'config Config,
     cui: &'cui CUI,
     track_usecase: SS,
-    file_library_repository: FR,
 }
 
-impl<'config, 'cui, CUI, SS, FR> CommandRemove<'config, 'cui, CUI, SS, FR>
+impl<'config, 'cui, CUI, SS> CommandRemove<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
     SS: TrackUsecase,
-    FR: FileLibraryRepository,
 {
     pub fn new(
         args: CommandRemoveArgs,
         config: &'config Config,
         cui: &'cui CUI,
         track_usecase: SS,
-        file_library_repository: FR,
     ) -> Self {
         Self {
             args,
             config,
             cui,
             track_usecase,
-            file_library_repository,
         }
     }
 
@@ -83,10 +76,7 @@ where
     pub fn remove_dap(&self) -> Result<()> {
         cui_outln!(self.cui, "DAPからの削除中...")?;
 
-        match self
-            .file_library_repository
-            .delete_path_str(&self.config.dap_lib, &self.args.path)
-        {
+        match murack_core_data_file::delete_path_str(&self.config.dap_lib, &self.args.path) {
             Ok(_) => Ok(()),
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
@@ -103,10 +93,7 @@ where
     pub fn remove_pc(&self) -> Result<()> {
         cui_outln!(self.cui, "PCからの削除中...")?;
 
-        match self
-            .file_library_repository
-            .trash_path_str(&self.config.pc_lib, &self.args.path)
-        {
+        match murack_core_data_file::trash_path_str(&self.config.pc_lib, &self.args.path) {
             Ok(_) => Ok(()),
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK

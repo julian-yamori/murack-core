@@ -1,6 +1,6 @@
 use anyhow::Result;
 use murack_core_domain::{
-    Error as DomainError, FileLibraryRepository,
+    Error as DomainError,
     folder::DbFolderRepository,
     path::LibPathStr,
     track::{DbTrackRepository, TrackUsecase},
@@ -12,9 +12,8 @@ use crate::{Config, Error};
 /// moveコマンド
 ///
 /// ライブラリ内で曲パスを移動
-pub struct CommandMove<'config, FR, DSR, DFR, SS>
+pub struct CommandMove<'config, DSR, DFR, SS>
 where
-    FR: FileLibraryRepository,
     DSR: DbTrackRepository,
     DFR: DbFolderRepository,
     SS: TrackUsecase,
@@ -22,15 +21,13 @@ where
     args: CommandMoveArgs,
 
     config: &'config Config,
-    file_library_repository: FR,
     db_track_repository: DSR,
     db_folder_repository: DFR,
     track_usecase: SS,
 }
 
-impl<'config, FR, DSR, DFR, SS> CommandMove<'config, FR, DSR, DFR, SS>
+impl<'config, DSR, DFR, SS> CommandMove<'config, DSR, DFR, SS>
 where
-    FR: FileLibraryRepository,
     DSR: DbTrackRepository,
     DFR: DbFolderRepository,
     SS: TrackUsecase,
@@ -38,7 +35,6 @@ where
     pub fn new(
         args: CommandMoveArgs,
         config: &'config Config,
-        file_library_repository: FR,
         db_track_repository: DSR,
         db_folder_repository: DFR,
         track_usecase: SS,
@@ -46,7 +42,6 @@ where
         Self {
             args,
             config,
-            file_library_repository,
             db_folder_repository,
             db_track_repository,
             track_usecase,
@@ -63,18 +58,10 @@ where
         let dest_path_str = &self.args.dest_path;
 
         //PC内で移動
-        self.file_library_repository.move_path_str(
-            &self.config.pc_lib,
-            src_path_str,
-            dest_path_str,
-        )?;
+        murack_core_data_file::move_path_str(&self.config.pc_lib, src_path_str, dest_path_str)?;
 
         //DAP内で移動
-        self.file_library_repository.move_path_str(
-            &self.config.dap_lib,
-            src_path_str,
-            dest_path_str,
-        )?;
+        murack_core_data_file::move_path_str(&self.config.dap_lib, src_path_str, dest_path_str)?;
 
         //DB内で移動
         let mut tx = db_pool.begin().await?;
@@ -91,10 +78,7 @@ where
         let pc_lib = &self.config.pc_lib;
         let dest_path_str = &self.args.dest_path;
 
-        if self
-            .file_library_repository
-            .is_exist_path_str(pc_lib, dest_path_str)?
-        {
+        if murack_core_data_file::is_exist_path_str(pc_lib, dest_path_str)? {
             return Err(DomainError::FilePathStrAlreadyExists {
                 lib_root: pc_lib.clone(),
                 path_str: dest_path_str.clone(),
@@ -109,10 +93,7 @@ where
         let dap_lib = &self.config.dap_lib;
         let dest_path_str = &self.args.dest_path;
 
-        if self
-            .file_library_repository
-            .is_exist_path_str(dap_lib, dest_path_str)?
-        {
+        if murack_core_data_file::is_exist_path_str(dap_lib, dest_path_str)? {
             return Err(DomainError::FilePathStrAlreadyExists {
                 lib_root: dap_lib.clone(),
                 path_str: dest_path_str.clone(),
