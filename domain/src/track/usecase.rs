@@ -6,7 +6,7 @@ use mockall::mock;
 
 use super::DbTrackRepository;
 use crate::{
-    Error, FileLibraryRepository,
+    Error,
     artwork::DbArtworkRepository,
     folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
     path::{LibPathStr, LibTrackPath, RelativeTrackPath},
@@ -26,20 +26,6 @@ pub trait TrackUsecase {
         dest: &LibPathStr,
     ) -> Result<()>;
 
-    /// PCから曲を削除
-    ///
-    /// # Arguments
-    /// - pc_lib: PCのライブラリルートパス
-    /// - track_path: 削除する曲のライブラリ内パス
-    fn delete_track_pc(&self, pc_lib: &Path, track_path: &LibTrackPath) -> Result<()>;
-
-    /// DAPから曲を削除
-    ///
-    /// # Arguments
-    /// - dap_lib: DAPのライブラリルートパス
-    /// - track_path: 削除する曲のライブラリ内パス
-    fn delete_track_dap(&self, dap_lib: &Path, track_path: &LibTrackPath) -> Result<()>;
-
     /// DBから曲を削除
     ///
     /// # Arguments
@@ -49,20 +35,6 @@ pub trait TrackUsecase {
         tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<()>;
-
-    /// パス文字列を指定してPCから削除
-    ///
-    /// # Arguments
-    /// - pc_lib: PCのライブラリルートパス
-    /// - path_str: 削除するライブラリ内パス
-    fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &LibPathStr) -> Result<()>;
-
-    /// パス文字列を指定してDAPから削除
-    ///
-    /// # Arguments
-    /// - dap_lib: DAPのライブラリルートパス
-    /// - path_str: 削除するライブラリ内パス
-    fn delete_path_str_dap(&self, dap_lib: &Path, path_str: &LibPathStr) -> Result<()>;
 
     /// パス文字列を指定してDBから削除
     ///
@@ -79,11 +51,9 @@ pub trait TrackUsecase {
 }
 
 /// TrackUsecaseの本実装
-#[allow(clippy::too_many_arguments)] // todo とりあえず後で整理
 #[derive(new)]
-pub struct TrackUsecaseImpl<FLR, AR, FR, PR, PSR, SR, STR, FU>
+pub struct TrackUsecaseImpl<AR, FR, PR, PSR, SR, STR, FU>
 where
-    FLR: FileLibraryRepository + Sync + Send,
     AR: DbArtworkRepository + Sync + Send,
     FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
@@ -92,7 +62,6 @@ where
     STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
-    file_library_repository: FLR,
     db_artwork_repository: AR,
     db_folder_repository: FR,
     db_playlist_repository: PR,
@@ -103,10 +72,8 @@ where
 }
 
 #[async_trait]
-impl<FLR, AR, FR, PR, PSR, SR, STR, FU> TrackUsecase
-    for TrackUsecaseImpl<FLR, AR, FR, PR, PSR, SR, STR, FU>
+impl<AR, FR, PR, PSR, SR, STR, FU> TrackUsecase for TrackUsecaseImpl<AR, FR, PR, PSR, SR, STR, FU>
 where
-    FLR: FileLibraryRepository + Sync + Send,
     AR: DbArtworkRepository + Sync + Send,
     FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
@@ -151,26 +118,6 @@ where
         };
 
         Ok(())
-    }
-
-    /// PCから曲を削除
-    ///
-    /// # Arguments
-    /// - pc_lib: PCのライブラリルートパス
-    /// - track_path: 削除する曲のライブラリ内パス
-    fn delete_track_pc(&self, pc_lib: &Path, track_path: &LibTrackPath) -> Result<()> {
-        //ゴミ箱へ
-        self.file_library_repository.trash_track(pc_lib, track_path)
-    }
-
-    /// DAPから曲を削除
-    ///
-    /// # Arguments
-    /// - dap_lib: DAPのライブラリルートパス
-    /// - track_path: 削除する曲のライブラリ内パス
-    fn delete_track_dap(&self, dap_lib: &Path, track_path: &LibTrackPath) -> Result<()> {
-        self.file_library_repository
-            .delete_track(dap_lib, track_path)
     }
 
     /// DBから曲を削除
@@ -218,32 +165,6 @@ where
         Ok(())
     }
 
-    /// パス文字列を指定してPCから削除
-    ///
-    /// # Arguments
-    /// - pc_lib: PCのライブラリルートパス
-    /// - path_str: 削除するライブラリ内パス
-    ///
-    /// # Errors
-    /// - alk_base_2_domain::Error::PathStrNotFoundPc: 指定されたパスが見つからなかった場合
-    fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &LibPathStr) -> Result<()> {
-        self.file_library_repository
-            .trash_path_str(pc_lib, path_str)
-    }
-
-    /// パス文字列を指定してDAPから削除
-    ///
-    /// # Arguments
-    /// - dap_lib: DAPのライブラリルートパス
-    /// - path_str: 削除するライブラリ内パス
-    ///
-    /// # Errors
-    /// - alk_base_2_domain::Error::PathStrNotFoundDap: 指定されたパスが見つからなかった場合
-    fn delete_path_str_dap(&self, dap_lib: &Path, path_str: &LibPathStr) -> Result<()> {
-        self.file_library_repository
-            .delete_path_str(dap_lib, path_str)
-    }
-
     /// パス文字列を指定してDBから削除
     ///
     /// # Arguments
@@ -269,9 +190,8 @@ where
     }
 }
 
-impl<FLR, AR, FR, PR, PSR, SR, STR, FU> TrackUsecaseImpl<FLR, AR, FR, PR, PSR, SR, STR, FU>
+impl<AR, FR, PR, PSR, SR, STR, FU> TrackUsecaseImpl<AR, FR, PR, PSR, SR, STR, FU>
 where
-    FLR: FileLibraryRepository + Sync + Send,
     AR: DbArtworkRepository + Sync + Send,
     FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
@@ -339,28 +259,12 @@ impl TrackUsecase for MockTrackUsecase {
         self.inner.move_path_str_db(src, dest)
     }
 
-    fn delete_track_pc(&self, pc_lib: &Path, track_path: &LibTrackPath) -> Result<()> {
-        self.inner.delete_track_pc(pc_lib, track_path)
-    }
-
-    fn delete_track_dap(&self, dap_lib: &Path, track_path: &LibTrackPath) -> Result<()> {
-        self.inner.delete_track_dap(dap_lib, track_path)
-    }
-
     async fn delete_track_db<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<()> {
         self.inner.delete_track_db(path)
-    }
-
-    fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &LibPathStr) -> Result<()> {
-        self.inner.delete_path_str_pc(pc_lib, path_str)
-    }
-
-    fn delete_path_str_dap(&self, dap_lib: &Path, path_str: &LibPathStr) -> Result<()> {
-        self.inner.delete_path_str_dap(dap_lib, path_str)
     }
 
     async fn delete_path_str_db<'c>(
@@ -402,7 +306,6 @@ mod tests {
 
     use super::*;
     use crate::{
-        MockFileLibraryRepository,
         artwork::MockDbArtworkRepository,
         folder::{MockDbFolderRepository, MockFolderUsecase},
         path::LibDirPath,
@@ -412,7 +315,6 @@ mod tests {
     };
 
     fn target() -> TrackUsecaseImpl<
-        MockFileLibraryRepository,
         MockDbArtworkRepository,
         MockDbFolderRepository,
         MockDbPlaylistRepository,
@@ -422,7 +324,6 @@ mod tests {
         MockFolderUsecase,
     > {
         TrackUsecaseImpl {
-            file_library_repository: MockFileLibraryRepository::default(),
             db_artwork_repository: MockDbArtworkRepository::default(),
             db_folder_repository: MockDbFolderRepository::default(),
             db_playlist_repository: MockDbPlaylistRepository::default(),
@@ -435,7 +336,6 @@ mod tests {
 
     fn checkpoint_all(
         target: &mut TrackUsecaseImpl<
-            MockFileLibraryRepository,
             MockDbArtworkRepository,
             MockDbFolderRepository,
             MockDbPlaylistRepository,
@@ -445,7 +345,6 @@ mod tests {
             MockFolderUsecase,
         >,
     ) {
-        target.file_library_repository.checkpoint();
         target.db_artwork_repository.inner.checkpoint();
         target.db_folder_repository.inner.checkpoint();
         target.db_playlist_repository.inner.checkpoint();

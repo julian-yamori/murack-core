@@ -248,10 +248,10 @@ where
             }
             //PCとDAPからファイルを削除
             '2' => {
-                self.track_usecase
-                    .delete_track_pc(&self.config.pc_lib, track_path)?;
-                self.track_usecase
-                    .delete_track_dap(&self.config.dap_lib, track_path)?;
+                self.file_library_repository
+                    .trash_track(&self.config.pc_lib, track_path)?;
+                self.file_library_repository
+                    .delete_track(&self.config.dap_lib, track_path)?;
                 Ok(ResolveFileExistanceResult::Deleted)
             }
             '0' => Ok(ResolveFileExistanceResult::UnResolved),
@@ -300,8 +300,8 @@ where
             }
             //PCからファイルを削除
             '2' => {
-                self.track_usecase
-                    .delete_track_pc(&self.config.pc_lib, track_path)?;
+                self.file_library_repository
+                    .trash_track(&self.config.pc_lib, track_path)?;
 
                 Ok(ResolveFileExistanceResult::Deleted)
             }
@@ -348,8 +348,8 @@ where
             '2' => {
                 self.delete_track_db(db_pool, track_path).await?;
 
-                self.track_usecase
-                    .delete_track_dap(&self.config.dap_lib, track_path)?;
+                self.file_library_repository
+                    .delete_track(&self.config.dap_lib, track_path)?;
 
                 Ok(ResolveFileExistanceResult::Deleted)
             }
@@ -443,8 +443,8 @@ where
             }
             //DAPからファイルを削除
             '2' => {
-                self.track_usecase
-                    .delete_track_dap(&self.config.dap_lib, track_path)?;
+                self.file_library_repository
+                    .delete_track(&self.config.dap_lib, track_path)?;
                 Ok(ResolveFileExistanceResult::Deleted)
             }
             '0' => Ok(ResolveFileExistanceResult::UnResolved),
