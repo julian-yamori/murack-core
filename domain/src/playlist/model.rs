@@ -1,4 +1,4 @@
-use crate::filter::RootFilter;
+use crate::{NonEmptyString, filter::RootFilter};
 
 use super::{PlaylistType, SortType};
 
@@ -14,7 +14,7 @@ pub struct Playlist {
     pub playlist_type: PlaylistType,
 
     /// プレイリスト名
-    pub name: String,
+    pub name: NonEmptyString,
 
     /// 親プレイリストID
     ///
@@ -59,5 +59,5 @@ pub struct Playlist {
     /// 親プレイリストの名前リスト
     ///
     /// ツリー構築時のみ有効
-    pub parent_names: Vec<String>,
+    pub parent_names: Vec<NonEmptyString>,
 }

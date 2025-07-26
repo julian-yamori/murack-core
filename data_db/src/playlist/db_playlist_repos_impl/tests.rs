@@ -77,7 +77,7 @@ mod test_get_playlist_tree {
         // root1 (id=5) の確認
         let root1 = &result[0];
         assert_eq!(root1.rowid, 5);
-        assert_eq!(root1.name, "root1");
+        assert_eq!(root1.name, "root1".to_string().try_into()?);
         assert_eq!(root1.parent_id, None);
         assert_eq!(root1.parent_names.len(), 0);
         assert_eq!(root1.children.len(), 3); // 1-1, 1-2, 1-3
@@ -85,44 +85,65 @@ mod test_get_playlist_tree {
         // root1 の子プレイリスト確認
         let child_1_1 = &root1.children[0];
         assert_eq!(child_1_1.rowid, 3);
-        assert_eq!(child_1_1.name, "1-1");
+        assert_eq!(child_1_1.name, "1-1".to_string().try_into()?);
         assert_eq!(child_1_1.parent_id, Some(5));
-        assert_eq!(child_1_1.parent_names, vec!["root1"]);
+        assert_eq!(
+            child_1_1.parent_names,
+            vec!["root1".to_string().try_into()?]
+        );
         assert_eq!(child_1_1.children.len(), 0);
 
         let child_1_2 = &root1.children[1];
         assert_eq!(child_1_2.rowid, 2);
-        assert_eq!(child_1_2.name, "1-2");
+        assert_eq!(child_1_2.name, "1-2".to_string().try_into()?);
         assert_eq!(child_1_2.parent_id, Some(5));
-        assert_eq!(child_1_2.parent_names, vec!["root1"]);
+        assert_eq!(
+            child_1_2.parent_names,
+            vec!["root1".to_string().try_into()?]
+        );
         assert_eq!(child_1_2.children.len(), 2); // 1-2-1, 1-2-2
 
         // 1-2 の子プレイリスト確認
         let child_1_2_1 = &child_1_2.children[0];
         assert_eq!(child_1_2_1.rowid, 9);
-        assert_eq!(child_1_2_1.name, "1-2-1");
+        assert_eq!(child_1_2_1.name, "1-2-1".to_string().try_into()?);
         assert_eq!(child_1_2_1.parent_id, Some(2));
-        assert_eq!(child_1_2_1.parent_names, vec!["root1", "1-2"]);
+        assert_eq!(
+            child_1_2_1.parent_names,
+            vec![
+                "root1".to_string().try_into()?,
+                "1-2".to_string().try_into()?
+            ]
+        );
 
         let child_1_2_2 = &child_1_2.children[1];
         assert_eq!(child_1_2_2.rowid, 98);
-        assert_eq!(child_1_2_2.name, "1-2-2");
+        assert_eq!(child_1_2_2.name, "1-2-2".to_string().try_into()?);
         assert_eq!(child_1_2_2.parent_id, Some(2));
-        assert_eq!(child_1_2_2.parent_names, vec!["root1", "1-2"]);
+        assert_eq!(
+            child_1_2_2.parent_names,
+            vec![
+                "root1".to_string().try_into()?,
+                "1-2".to_string().try_into()?
+            ]
+        );
 
         // root2 (id=35) の確認
         let root2 = &result[1];
         assert_eq!(root2.rowid, 35);
-        assert_eq!(root2.name, "root2");
+        assert_eq!(root2.name, "root2".to_string().try_into()?);
         assert_eq!(root2.parent_id, None);
         assert_eq!(root2.parent_names.len(), 0);
         assert_eq!(root2.children.len(), 1); // 2-1
 
         let child_2_1 = &root2.children[0];
         assert_eq!(child_2_1.rowid, 75);
-        assert_eq!(child_2_1.name, "2-1");
+        assert_eq!(child_2_1.name, "2-1".to_string().try_into()?);
         assert_eq!(child_2_1.parent_id, Some(35));
-        assert_eq!(child_2_1.parent_names, vec!["root2"]);
+        assert_eq!(
+            child_2_1.parent_names,
+            vec!["root2".to_string().try_into()?]
+        );
         assert_eq!(child_2_1.children.len(), 0);
 
         Ok(())

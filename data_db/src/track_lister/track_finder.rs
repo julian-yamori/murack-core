@@ -4,6 +4,7 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use murack_core_domain::{
+    NonEmptyString,
     dap::TrackFinder,
     path::LibTrackPath,
     playlist::{Playlist, PlaylistType, SortType},
@@ -170,7 +171,7 @@ where
     ) -> Result<Vec<i32>> {
         let children = sqlx::query_as!(
             PlaylistRow,
-            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE parent_id IS NOT DISTINCT FROM $1 ORDER BY in_folder_order"#,
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE parent_id IS NOT DISTINCT FROM $1 ORDER BY in_folder_order"#,
             Some(plist.rowid)
         )
             .map(Playlist::try_from)

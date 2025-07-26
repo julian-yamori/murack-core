@@ -1,4 +1,7 @@
-use murack_core_domain::playlist::{Playlist, PlaylistType, SortType};
+use murack_core_domain::{
+    NonEmptyString,
+    playlist::{Playlist, PlaylistType, SortType},
+};
 
 /// playlistテーブルのレコード
 pub struct PlaylistRow {
@@ -9,7 +12,7 @@ pub struct PlaylistRow {
     pub playlist_type: PlaylistType,
 
     /// プレイリスト名
-    pub name: String,
+    pub name: NonEmptyString,
 
     /// 親プレイリストID
     ///

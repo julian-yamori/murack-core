@@ -1,6 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use murack_core_domain::playlist::{DbPlaylistTrackRepository, PlaylistType, SortType};
+use murack_core_domain::{
+    NonEmptyString,
+    playlist::{DbPlaylistTrackRepository, PlaylistType, SortType},
+};
 use sqlx::PgTransaction;
 
 use crate::playlist::playlist_row::PlaylistRow;
@@ -19,7 +22,7 @@ impl DbPlaylistTrackRepository for DbPlaylistTrackRepositoryImpl {
         tx: &mut PgTransaction<'c>,
         track_id: i32,
     ) -> Result<()> {
-        let playlist_rows = sqlx::query_as!(PlaylistRow, r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists"#)
+        let playlist_rows = sqlx::query_as!(PlaylistRow, r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists"#)
             .fetch_all(&mut **tx)
             .await?;
 

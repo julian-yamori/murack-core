@@ -1,10 +1,11 @@
 mod dap_playlist_repository;
 
-use std::{collections::HashSet, path::Path};
+use std::{collections::HashSet, ops::Deref, path::Path};
 
 use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
+    NonEmptyString,
     dap::TrackFinder,
     path::LibTrackPath,
     playlist::{DbPlaylistRepository, Playlist},
@@ -233,7 +234,14 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
 
     //親がいるなら追加
     if !plist.parent_names.is_empty() {
-        buf = format!("{}-{}", buf, plist.parent_names.join("-"));
+        let joined_names = plist
+            .parent_names
+            .iter()
+            .map(NonEmptyString::deref)
+            .collect::<Vec<_>>()
+            .join("-");
+
+        buf = format!("{buf}-{joined_names}");
     }
 
     format!("{}-{}.{}", buf, plist.name, PLAYLIST_EXT)
@@ -328,8 +336,11 @@ mod tests {
             dap_changed: true,
             children: Vec::new(),
 
-            name: name.to_owned(),
-            parent_names: parents.iter().map(|s| (*s).to_owned()).collect(),
+            name: name.to_string().try_into().unwrap(),
+            parent_names: parents
+                .iter()
+                .map(|s| (*s).to_string().try_into().unwrap())
+                .collect(),
         };
         assert_eq!(&playlist_to_file_name(&plist, offset, digit), expect);
     }

@@ -1,6 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use murack_core_domain::playlist::{DbPlaylistRepository, Playlist, PlaylistType, SortType};
+use murack_core_domain::{
+    NonEmptyString,
+    playlist::{DbPlaylistRepository, Playlist, PlaylistType, SortType},
+};
 use sqlx::PgTransaction;
 
 use super::PlaylistRow;
@@ -22,7 +25,7 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     ) -> Result<Option<Playlist>> {
         let opt = sqlx::query_as!(
             PlaylistRow,
-            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
             id
         )
         .fetch_optional(&mut **tx)
@@ -40,7 +43,7 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     async fn get_playlist_tree<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<Playlist>> {
         let remain_pool = sqlx::query_as!(
             PlaylistRow,
-            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name, parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
         )
         .fetch_all(&mut **tx)
         .await?;
