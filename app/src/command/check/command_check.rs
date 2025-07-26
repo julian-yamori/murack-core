@@ -280,14 +280,17 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
+    use murack_core_data_file::FileLibraryRepositoryImpl;
+    use murack_core_domain::test_utils::assert_eq_not_orderd;
+    use murack_core_domain::{
+        check::MockCheckUsecase, path::LibPathStr, track::MockDbTrackRepository,
+    };
+
     use super::super::{MockResolveDap, MockResolveDataMatch, MockResolveExistance};
     use super::*;
     use crate::cui::BufferCui;
-    use murack_core_domain::{
-        MockFileLibraryRepository, check::MockCheckUsecase, path::LibPathStr,
-        track::MockDbTrackRepository,
-    };
-    use std::path::PathBuf;
 
     fn target<'config, 'cui>(
         arg_path: LibPathStr,
@@ -301,7 +304,7 @@ mod tests {
         MockResolveExistance,
         MockResolveDataMatch,
         MockResolveDap,
-        MockFileLibraryRepository,
+        FileLibraryRepositoryImpl,
         MockCheckUsecase,
         MockDbTrackRepository,
     > {
@@ -315,7 +318,7 @@ mod tests {
             resolve_existance: MockResolveExistance::default(),
             resolve_data_match: MockResolveDataMatch::default(),
             resolve_dap: MockResolveDap::default(),
-            file_library_repository: MockFileLibraryRepository::default(),
+            file_library_repository: FileLibraryRepositoryImpl {},
             check_usecase: MockCheckUsecase::default(),
             db_track_repository: MockDbTrackRepository::default(),
         }
@@ -327,7 +330,7 @@ mod tests {
             MockResolveExistance,
             MockResolveDataMatch,
             MockResolveDap,
-            MockFileLibraryRepository,
+            FileLibraryRepositoryImpl,
             MockCheckUsecase,
             MockDbTrackRepository,
         >,
@@ -335,16 +338,8 @@ mod tests {
         target.resolve_existance.checkpoint();
         target.resolve_data_match.checkpoint();
         target.resolve_dap.checkpoint();
-        target.file_library_repository.checkpoint();
         target.check_usecase.checkpoint();
         target.db_track_repository.inner.checkpoint();
-    }
-
-    fn pc_lib() -> PathBuf {
-        "pc_lib".into()
-    }
-    fn dap_lib() -> PathBuf {
-        "dap_lib".into()
     }
 
     #[sqlx::test]
@@ -352,37 +347,35 @@ mod tests {
         fn search_path() -> LibPathStr {
             "test/hoge".to_owned().into()
         }
-        fn track_paths() -> Vec<LibTrackPath> {
-            vec![
-                LibTrackPath::new("test/hoge/child/track3.flac"),
-                LibTrackPath::new("test/hoge/child/track4.flac"),
-                LibTrackPath::new("test/hoge/track1.flac"),
-                LibTrackPath::new("test/hoge/track2.flac"),
-            ]
-        }
 
-        let config = Config::dummy();
+        // temp ディレクトリを作成
+        let temp_dir = tempfile::tempdir()?;
+
+        // PC ライブラリ側に空ファイルを用意
+        let pc_lib = temp_dir.path().join("pc_lib");
+        fs::create_dir_all(pc_lib.join("test/hoge/child"))?;
+        fs::write(pc_lib.join("test/hoge/child/track3.flac"), "")?;
+        fs::write(pc_lib.join("test/hoge/child/track4.flac"), "")?;
+        fs::write(pc_lib.join("test/hoge/track1.flac"), "")?;
+        fs::write(pc_lib.join("test/hoge/track2.flac"), "")?;
+
+        // DAP ライブラリ側に空ファイルを用意
+        let dap_lib = temp_dir.path().join("dap_lib");
+        fs::create_dir_all(dap_lib.join("test/hoge/child"))?;
+        fs::write(dap_lib.join("test/hoge/child/track3.flac"), "")?;
+        fs::write(dap_lib.join("test/hoge/child/track4.flac"), "")?;
+        fs::write(dap_lib.join("test/hoge/track1.flac"), "")?;
+        fs::write(dap_lib.join("test/hoge/track2.flac"), "")?;
+
+        // tempdir のパスを config に書いておく
+        let mut config = Config::dummy();
+        config.pc_lib = pc_lib;
+        config.dap_lib = dap_lib;
+
         let cui = BufferCui::new();
         let mut target = target(search_path(), false, &config, &cui);
 
-        target
-            .file_library_repository
-            .expect_search_by_lib_path()
-            .withf(|lib, _| lib == pc_lib())
-            .times(1)
-            .returning(|_, search| {
-                assert_eq!(search, &search_path());
-                Ok(track_paths())
-            });
-        target
-            .file_library_repository
-            .expect_search_by_lib_path()
-            .withf(|lib, _| lib == dap_lib())
-            .times(1)
-            .returning(|_, search| {
-                assert_eq!(search, &search_path());
-                Ok(track_paths())
-            });
+        // DB 側から返すパスリストを指定
         target
             .db_track_repository
             .inner
@@ -391,10 +384,23 @@ mod tests {
             .returning(|search| {
                 assert_eq!(search, &search_path());
                 //なんとなく逆順
-                Ok(track_paths().into_iter().rev().collect())
+                Ok(vec![
+                    LibTrackPath::new("test/hoge/track2.flac"),
+                    LibTrackPath::new("test/hoge/track1.flac"),
+                    LibTrackPath::new("test/hoge/child/track4.flac"),
+                    LibTrackPath::new("test/hoge/child/track3.flac"),
+                ])
             });
 
-        assert_eq!(target.listup_track_path(&db_pool).await?, track_paths());
+        assert_eq_not_orderd(
+            &target.listup_track_path(&db_pool).await?,
+            &[
+                LibTrackPath::new("test/hoge/child/track3.flac"),
+                LibTrackPath::new("test/hoge/child/track4.flac"),
+                LibTrackPath::new("test/hoge/track1.flac"),
+                LibTrackPath::new("test/hoge/track2.flac"),
+            ],
+        );
 
         checkpoint_all(&mut target);
         Ok(())
@@ -402,33 +408,33 @@ mod tests {
 
     #[sqlx::test]
     fn test_listup_track_path_conflict(db_pool: PgPool) -> anyhow::Result<()> {
-        let config = Config::dummy();
+        // temp ディレクトリを作成
+        let temp_dir = tempfile::tempdir()?;
+
+        // PC ライブラリ側に空ファイルを用意
+        let pc_lib = temp_dir.path().join("pc_lib");
+        fs::create_dir_all(pc_lib.join("test/hoge/child"))?;
+        fs::write(pc_lib.join("test/hoge/child/track1.flac"), "")?;
+        fs::write(pc_lib.join("test/hoge/child/pc1.flac"), "")?;
+        fs::write(pc_lib.join("test/hoge/track2.flac"), "")?;
+        fs::write(pc_lib.join("test/hoge/pc2.flac"), "")?;
+
+        // DAP ライブラリ側に空ファイルを用意
+        let dap_lib = temp_dir.path().join("dap_lib");
+        fs::create_dir_all(dap_lib.join("test/hoge/child"))?;
+        fs::write(dap_lib.join("test/hoge/child/track1.flac"), "")?;
+        fs::write(dap_lib.join("test/hoge/child/dap1.flac"), "")?;
+        fs::write(dap_lib.join("test/hoge/track2.flac"), "")?;
+
+        // tempdir のパスを config に書いておく
+        let mut config = Config::dummy();
+        config.pc_lib = pc_lib;
+        config.dap_lib = dap_lib;
+
         let cui = BufferCui::new();
         let mut target = target("test/hoge".to_owned().into(), false, &config, &cui);
 
-        target
-            .file_library_repository
-            .expect_search_by_lib_path()
-            .withf(|lib, _| lib == pc_lib())
-            .returning(|_, _| {
-                Ok(vec![
-                    LibTrackPath::new("test/hoge/child/track1.flac"),
-                    LibTrackPath::new("test/hoge/child/pc1.flac"),
-                    LibTrackPath::new("test/hoge/track2.flac"),
-                    LibTrackPath::new("test/hoge/pc2.flac"),
-                ])
-            });
-        target
-            .file_library_repository
-            .expect_search_by_lib_path()
-            .withf(|lib, _| lib == dap_lib())
-            .returning(|_, _| {
-                Ok(vec![
-                    LibTrackPath::new("test/hoge/child/track1.flac"),
-                    LibTrackPath::new("test/hoge/child/dap1.flac"),
-                    LibTrackPath::new("test/hoge/track2.flac"),
-                ])
-            });
+        // DB 側から返すパスリストを指定
         target
             .db_track_repository
             .inner
