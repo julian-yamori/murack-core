@@ -9,6 +9,7 @@ pub use args::CommandCheckArgs;
 mod resolve_existance_result;
 use resolve_existance_result::ResolveFileExistanceResult;
 
+mod domain;
 mod messages;
 
 mod resolve_dap;

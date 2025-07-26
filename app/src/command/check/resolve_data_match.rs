@@ -4,7 +4,6 @@ use mockall::automock;
 use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
     artwork::{DbArtworkRepository, TrackArtwork},
-    check::CheckUsecase,
     path::LibTrackPath,
     sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
     track::TrackItemKind,
@@ -12,7 +11,7 @@ use murack_core_domain::{
 use sqlx::PgPool;
 
 use super::{TrackItemConflict, messages};
-use crate::{Config, cui::Cui};
+use crate::{Config, command::check::domain::check_usecase, cui::Cui};
 
 /// データ内容同一性についての解決処理
 #[automock]
@@ -26,29 +25,26 @@ pub trait ResolveDataMatch {
 }
 
 /// ResolveDataMatchの実装
-pub struct ResolveDataMatchImpl<'config, 'cui, CUI, FR, CS, AR, SSR>
+pub struct ResolveDataMatchImpl<'config, 'cui, CUI, FR, AR, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
-    CS: CheckUsecase + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
     file_library_repository: FR,
-    check_usecase: CS,
     db_artwork_repository: AR,
     db_track_sync_repository: SSR,
 }
 
 #[async_trait]
-impl<'config, 'cui, CUI, FR, CS, AR, SSR> ResolveDataMatch
-    for ResolveDataMatchImpl<'config, 'cui, CUI, FR, CS, AR, SSR>
+impl<'config, 'cui, CUI, FR, AR, SSR> ResolveDataMatch
+    for ResolveDataMatchImpl<'config, 'cui, CUI, FR, AR, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
-    CS: CheckUsecase + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
@@ -88,11 +84,10 @@ where
     }
 }
 
-impl<'config, 'cui, CUI, FR, CS, AR, SSR> ResolveDataMatchImpl<'config, 'cui, CUI, FR, CS, AR, SSR>
+impl<'config, 'cui, CUI, FR, AR, SSR> ResolveDataMatchImpl<'config, 'cui, CUI, FR, AR, SSR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository + Send + Sync,
-    CS: CheckUsecase + Send + Sync,
     AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
@@ -100,7 +95,6 @@ where
         config: &'config Config,
         cui: &'cui CUI,
         file_library_repository: FR,
-        check_usecase: CS,
         db_artwork_repository: AR,
         db_track_sync_repository: SSR,
     ) -> Self {
@@ -108,7 +102,6 @@ where
             config,
             cui,
             file_library_repository,
-            check_usecase,
             db_artwork_repository,
             db_track_sync_repository,
         }
@@ -125,9 +118,7 @@ where
         db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //全体を比較して齟齬リストを取得
-        let conflict_items = self
-            .check_usecase
-            .check_editable(pc_track, &db_track.track_sync);
+        let conflict_items = check_usecase::check_editable(pc_track, &db_track.track_sync);
         //齟齬がなければ次の処理へ
         if conflict_items.is_empty() {
             return Ok(true);
@@ -287,10 +278,7 @@ where
         db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //アートワークが一致したらスキップ
-        if self
-            .check_usecase
-            .check_artwork(pc_track, &db_track.track_sync)
-        {
+        if check_usecase::check_artwork(pc_track, &db_track.track_sync) {
             return Ok(true);
         }
 
@@ -371,10 +359,7 @@ where
         db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //再生時間が一致したらスキップ
-        if self
-            .check_usecase
-            .check_duration(pc_track, &db_track.track_sync)
-        {
+        if check_usecase::check_duration(pc_track, &db_track.track_sync) {
             return Ok(true);
         }
 

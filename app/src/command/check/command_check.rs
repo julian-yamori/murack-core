@@ -6,9 +6,7 @@ use std::collections::BTreeSet;
 
 use anyhow::Result;
 use murack_core_domain::{
-    FileLibraryRepository,
-    check::{CheckIssueSummary, CheckUsecase},
-    path::LibTrackPath,
+    FileLibraryRepository, path::LibTrackPath, sync::DbTrackSyncRepository,
     track::DbTrackRepository,
 };
 use sqlx::PgPool;
@@ -16,17 +14,21 @@ use sqlx::PgPool;
 use super::{
     CommandCheckArgs, ResolveDap, ResolveDataMatch, ResolveExistance, ResolveFileExistanceResult,
 };
-use crate::{Config, cui::Cui};
+use crate::{
+    Config,
+    command::check::domain::{CheckIssueSummary, check_usecase},
+    cui::Cui,
+};
 
-pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, CS, SR>
+pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, SR, SSR>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
     RDM: ResolveDataMatch,
     RDP: ResolveDap,
     FR: FileLibraryRepository,
-    CS: CheckUsecase,
     SR: DbTrackRepository,
+    SSR: DbTrackSyncRepository + Sync + Send,
 {
     args: CommandCheckArgs,
 
@@ -37,20 +39,20 @@ where
     config: &'config Config,
     cui: &'cui CUI,
     file_library_repository: FR,
-    check_usecase: CS,
     db_track_repository: SR,
+    db_track_sync_repository: SSR,
 }
 
-impl<'config, 'cui, CUI, REX, RDM, RDP, FR, CS, SR>
-    CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, CS, SR>
+impl<'config, 'cui, CUI, REX, RDM, RDP, FR, SR, SSR>
+    CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, FR, SR, SSR>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
     RDM: ResolveDataMatch,
     RDP: ResolveDap,
     FR: FileLibraryRepository,
-    CS: CheckUsecase,
     SR: DbTrackRepository,
+    SSR: DbTrackSyncRepository + Sync + Send,
 {
     #[allow(clippy::too_many_arguments)] // todo
     pub fn new(
@@ -62,8 +64,8 @@ where
         resolve_dap: RDP,
         cui: &'cui CUI,
         file_library_repository: FR,
-        check_usecase: CS,
         db_track_repository: SR,
+        db_track_sync_repository: SSR,
     ) -> Self {
         Self {
             args,
@@ -73,8 +75,8 @@ where
             config,
             cui,
             file_library_repository,
-            check_usecase,
             db_track_repository,
+            db_track_sync_repository,
         }
     }
 
@@ -163,16 +165,16 @@ where
                 cui_outln!(cui, "チェック中...({}/{})", current_index, all_count)?;
             }
 
-            let issues = self
-                .check_usecase
-                .listup_issue_summary(
-                    db_pool,
-                    &self.config.pc_lib,
-                    &self.config.dap_lib,
-                    &path,
-                    self.args.ignore_dap_content,
-                )
-                .await?;
+            let issues = check_usecase::listup_issue_summary(
+                db_pool,
+                &self.config.pc_lib,
+                &self.config.dap_lib,
+                &path,
+                self.args.ignore_dap_content,
+                &self.db_track_sync_repository,
+                &self.file_library_repository,
+            )
+            .await?;
 
             if !issues.is_empty() {
                 conflict_list.push((path, issues));
@@ -283,10 +285,9 @@ mod tests {
     use std::fs;
 
     use murack_core_data_file::FileLibraryRepositoryImpl;
+    use murack_core_domain::sync::MockDbTrackSyncRepository;
     use murack_core_domain::test_utils::assert_eq_not_orderd;
-    use murack_core_domain::{
-        check::MockCheckUsecase, path::LibPathStr, track::MockDbTrackRepository,
-    };
+    use murack_core_domain::{path::LibPathStr, track::MockDbTrackRepository};
 
     use super::super::{MockResolveDap, MockResolveDataMatch, MockResolveExistance};
     use super::*;
@@ -305,8 +306,8 @@ mod tests {
         MockResolveDataMatch,
         MockResolveDap,
         FileLibraryRepositoryImpl,
-        MockCheckUsecase,
         MockDbTrackRepository,
+        MockDbTrackSyncRepository,
     > {
         CommandCheck {
             args: CommandCheckArgs {
@@ -319,8 +320,8 @@ mod tests {
             resolve_data_match: MockResolveDataMatch::default(),
             resolve_dap: MockResolveDap::default(),
             file_library_repository: FileLibraryRepositoryImpl {},
-            check_usecase: MockCheckUsecase::default(),
             db_track_repository: MockDbTrackRepository::default(),
+            db_track_sync_repository: MockDbTrackSyncRepository::default(),
         }
     }
 
@@ -331,15 +332,15 @@ mod tests {
             MockResolveDataMatch,
             MockResolveDap,
             FileLibraryRepositoryImpl,
-            MockCheckUsecase,
             MockDbTrackRepository,
+            MockDbTrackSyncRepository,
         >,
     ) {
         target.resolve_existance.checkpoint();
         target.resolve_data_match.checkpoint();
         target.resolve_dap.checkpoint();
-        target.check_usecase.checkpoint();
         target.db_track_repository.inner.checkpoint();
+        target.db_track_sync_repository.inner.checkpoint();
     }
 
     #[sqlx::test]

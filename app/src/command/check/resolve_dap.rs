@@ -1,13 +1,13 @@
 use anyhow::Result;
 use mockall::automock;
-use murack_core_domain::{
-    FileLibraryRepository,
-    check::{CheckIssueSummary, CheckUsecase},
-    path::LibTrackPath,
-};
+use murack_core_domain::{FileLibraryRepository, path::LibTrackPath};
 
 use super::messages;
-use crate::{Config, cui::Cui};
+use crate::{
+    Config,
+    command::check::domain::{CheckIssueSummary, check_usecase},
+    cui::Cui,
+};
 
 /// PC・DAP間の齟齬の解決処理
 #[automock]
@@ -20,44 +20,34 @@ pub trait ResolveDap {
 }
 
 ///ResolveDapの実装
-pub struct ResolveDapImpl<'config, 'cui, CUI, FR, CS>
+pub struct ResolveDapImpl<'config, 'cui, CUI, FR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository,
-    CS: CheckUsecase,
 {
     config: &'config Config,
     cui: &'cui CUI,
     file_library_repository: FR,
-    check_usecase: CS,
 }
 
-impl<'config, 'cui, CUI, FR, CS> ResolveDapImpl<'config, 'cui, CUI, FR, CS>
+impl<'config, 'cui, CUI, FR> ResolveDapImpl<'config, 'cui, CUI, FR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository,
-    CS: CheckUsecase,
 {
-    pub fn new(
-        config: &'config Config,
-        cui: &'cui CUI,
-        file_library_repository: FR,
-        check_usecase: CS,
-    ) -> Self {
+    pub fn new(config: &'config Config, cui: &'cui CUI, file_library_repository: FR) -> Self {
         Self {
             config,
             cui,
             file_library_repository,
-            check_usecase,
         }
     }
 }
 
-impl<'config, 'cui, CUI, FR, CS> ResolveDap for ResolveDapImpl<'config, 'cui, CUI, FR, CS>
+impl<'config, 'cui, CUI, FR> ResolveDap for ResolveDapImpl<'config, 'cui, CUI, FR>
 where
     CUI: Cui + Send + Sync,
     FR: FileLibraryRepository,
-    CS: CheckUsecase,
 {
     /// PC・DAP間のファイル内容齟齬の解決処理
     ///
@@ -65,7 +55,7 @@ where
     /// 次の解決処理へ継続するか
     fn resolve_pc_dap_conflict(&self, track_path: &LibTrackPath) -> Result<bool> {
         //内容が一致する場合はスキップ
-        if self.check_usecase.check_pc_dap_content(
+        if check_usecase::check_pc_dap_content(
             &self.config.pc_lib,
             &self.config.dap_lib,
             track_path,

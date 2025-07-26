@@ -4,7 +4,6 @@ mod error;
 pub use error::Error;
 
 pub mod artwork;
-pub mod check;
 pub mod dap;
 pub mod filter;
 pub mod folder;

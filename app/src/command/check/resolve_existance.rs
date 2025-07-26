@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use mockall::automock;
 use murack_core_domain::{
     Error as DomainError, FileLibraryRepository,
-    check::CheckIssueSummary,
     path::LibTrackPath,
     sync::{DbTrackSyncRepository, SyncUsecase, TrackSync},
     track::TrackUsecase,
@@ -11,7 +10,7 @@ use murack_core_domain::{
 use sqlx::PgPool;
 
 use super::{ResolveFileExistanceResult, messages};
-use crate::{Config, cui::Cui};
+use crate::{Config, command::check::domain::CheckIssueSummary, cui::Cui};
 
 /// データ存在系の解決処理
 #[automock]
