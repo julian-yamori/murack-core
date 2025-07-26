@@ -12,7 +12,6 @@ pub mod tag;
 pub mod track;
 pub mod track_lister;
 
-pub mod converts;
 mod like_esc;
 
 #[macro_use]

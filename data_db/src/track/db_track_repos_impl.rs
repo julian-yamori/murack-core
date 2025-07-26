@@ -7,7 +7,7 @@ use murack_core_domain::{
 };
 use sqlx::{PgTransaction, Row, postgres::PgRow};
 
-use crate::{converts::enums::db_from_folder_id_may_root, like_esc};
+use crate::like_esc;
 
 use super::track_sqls;
 
@@ -104,10 +104,9 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         tx: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<bool> {
-        let folder_id_value = db_from_folder_id_may_root(FolderIdMayRoot::Folder(folder_id));
         let track_count = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id IS NOT DISTINCT FROM $1"#,
-            folder_id_value,
+            r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id = $1"#,
+            folder_id,
         )
         .fetch_one(&mut **tx)
         .await?;
@@ -128,12 +127,10 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         new_path: &LibTrackPath,
         new_folder_id: FolderIdMayRoot,
     ) -> Result<()> {
-        let folder_id_value = db_from_folder_id_may_root(new_folder_id);
-
         sqlx::query!(
             "UPDATE tracks SET path = $1, folder_id = $2 WHERE path = $3",
             new_path.as_str(),
-            folder_id_value,
+            new_folder_id.into_db(),
             old_path.as_str(),
         )
         .execute(&mut **tx)

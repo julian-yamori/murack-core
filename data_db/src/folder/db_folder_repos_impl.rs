@@ -9,10 +9,6 @@ use murack_core_domain::{
 };
 use sqlx::PgTransaction;
 
-use crate::converts::enums::db_into_folder_id_may_root;
-
-use crate::converts::enums::db_from_folder_id_may_root;
-
 /// DbFolderRepositoryの本実装
 #[derive(new)]
 pub struct DbFolderRepositoryImpl {}
@@ -37,13 +33,14 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
         tx: &mut PgTransaction<'c>,
         folder_id: i32,
     ) -> Result<Option<FolderIdMayRoot>> {
-        let row = sqlx::query!(
+        let opt_opt_i = sqlx::query_scalar!(
             "SELECT parent_id FROM folder_paths WHERE id = $1",
             folder_id
         )
         .fetch_optional(&mut **tx)
         .await?;
-        Ok(row.map(|r| db_into_folder_id_may_root(r.parent_id)))
+
+        Ok(opt_opt_i.map(FolderIdMayRoot::from))
     }
 
     /// 指定されたパスのフォルダが存在するか確認
@@ -72,7 +69,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     ) -> Result<bool> {
         let folder_count = sqlx::query_scalar!(
             r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE parent_id IS NOT DISTINCT FROM $1"#,
-            db_from_folder_id_may_root(folder_id)
+            folder_id.into_db()
         )
         .fetch_one(&mut **tx)
         .await?;
@@ -119,7 +116,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
             "INSERT INTO folder_paths (path, name, parent_id) VALUES ($1, $2, $3) RETURNING id",
             path.as_str(),
             my_name,
-            db_from_folder_id_may_root(parent_id)
+            parent_id.into_db()
         )
         .fetch_one(&mut **tx)
         .await?;
