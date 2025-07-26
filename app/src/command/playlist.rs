@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::Path};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
-    dap::{DapPlaylistObserver, DapRepository, TrackFinder},
+    dap::{DapRepository, TrackFinder},
     path::LibTrackPath,
     playlist::{DbPlaylistRepository, Playlist},
 };
@@ -37,8 +37,6 @@ where
 {
     /// このコマンドを実行
     pub async fn run(self, db_pool: &PgPool) -> Result<()> {
-        let mut observer = Observer { cui: self.cui };
-
         let dap_plist_path = &self.config.dap_playlist;
         let all_flag = false;
 
@@ -58,7 +56,7 @@ where
                 .await?;
         }
 
-        observer.on_start_load_playlist();
+        cui_outln!(self.cui, "プレイリスト情報の取得中...").unwrap();
 
         //プレイリストを全て取得
         let plist_trees = self
@@ -69,7 +67,7 @@ where
         //DAPに保存する数を数える
         let save_count = count_save_plists_recursive(&plist_trees);
 
-        observer.on_start_save_file();
+        cui_outln!(self.cui, "プレイリストファイルの保存中...").unwrap();
 
         //再帰的に保存を実行
         self.save_plists_recursive(
@@ -269,27 +267,6 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
     }
 
     format!("{}-{}.{}", buf, plist.name, PLAYLIST_EXT)
-}
-
-struct Observer<'cui, CUI>
-where
-    CUI: Cui + Send + Sync,
-{
-    cui: &'cui CUI,
-}
-
-impl<'cui, CUI> DapPlaylistObserver for Observer<'cui, CUI>
-where
-    CUI: Cui + Send + Sync,
-{
-    /// プレイリスト情報の読み込み開始時
-    fn on_start_load_playlist(&mut self) {
-        cui_outln!(self.cui, "プレイリスト情報の取得中...").unwrap()
-    }
-    /// ファイルの保存開始時
-    fn on_start_save_file(&mut self) {
-        cui_outln!(self.cui, "プレイリストファイルの保存中...").unwrap()
-    }
 }
 
 #[cfg(test)]
