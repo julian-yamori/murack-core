@@ -31,19 +31,19 @@ impl TrackItemConflict {
     /// とりあえずString cloneする
     pub fn display_value(&self, track_sync: &TrackSync) -> Option<String> {
         match self.item_kind {
-            TrackItemKind::Title => track_sync.title.clone(),
-            TrackItemKind::Artist => track_sync.artist.clone(),
-            TrackItemKind::Album => track_sync.album.clone(),
-            TrackItemKind::Genre => track_sync.genre.clone(),
-            TrackItemKind::AlbumArtist => track_sync.album_artist.clone(),
-            TrackItemKind::Composer => track_sync.composer.clone(),
+            TrackItemKind::Title => Some(track_sync.title.clone()),
+            TrackItemKind::Artist => Some(track_sync.artist.clone()),
+            TrackItemKind::Album => Some(track_sync.album.clone()),
+            TrackItemKind::Genre => Some(track_sync.genre.clone()),
+            TrackItemKind::AlbumArtist => Some(track_sync.album_artist.clone()),
+            TrackItemKind::Composer => Some(track_sync.composer.clone()),
             TrackItemKind::TrackNumber => track_sync.track_number.map(|n| n.to_string()),
             TrackItemKind::TrackMax => track_sync.track_max.map(|n| n.to_string()),
             TrackItemKind::DiscNumber => track_sync.disc_number.map(|n| n.to_string()),
             TrackItemKind::DiscMax => track_sync.disc_max.map(|n| n.to_string()),
             TrackItemKind::ReleaseDate => track_sync.release_date.map(|n| n.to_string()),
-            TrackItemKind::Memo => track_sync.memo.clone(),
-            TrackItemKind::Lyrics => track_sync.lyrics.clone(),
+            TrackItemKind::Memo => Some(track_sync.memo.clone()),
+            TrackItemKind::Lyrics => Some(track_sync.lyrics.clone()),
         }
     }
 

@@ -10,18 +10,18 @@ pub struct TrackSync {
     pub duration: u32,
 
     /// 曲名
-    pub title: Option<String>,
+    pub title: String,
 
     /// アーティスト
-    pub artist: Option<String>,
+    pub artist: String,
     /// アルバム
-    pub album: Option<String>,
+    pub album: String,
     /// ジャンル
-    pub genre: Option<String>,
+    pub genre: String,
     /// アルバムアーティスト
-    pub album_artist: Option<String>,
+    pub album_artist: String,
     /// 作曲者
-    pub composer: Option<String>,
+    pub composer: String,
 
     /// トラック番号
     pub track_number: Option<i32>,
@@ -37,10 +37,10 @@ pub struct TrackSync {
     pub release_date: Option<NaiveDate>,
 
     /// メモ
-    pub memo: Option<String>,
+    pub memo: String,
 
     /// 歌詞
-    pub lyrics: Option<String>,
+    pub lyrics: String,
 
     /// アートワーク
     pub artworks: Vec<TrackArtwork>,
@@ -48,33 +48,33 @@ pub struct TrackSync {
 
 impl TrackSync {
     /// ソート用の曲名
-    pub fn title_order(&self) -> Option<String> {
-        self.title.as_ref().map(|s| string_order_cnv::cnv(s))
+    pub fn title_order(&self) -> String {
+        string_order_cnv::cnv(&self.title)
     }
 
     /// ソート用のアーティスト
-    pub fn artist_order(&self) -> Option<String> {
-        self.artist.as_ref().map(|s| string_order_cnv::cnv(s))
+    pub fn artist_order(&self) -> String {
+        string_order_cnv::cnv(&self.artist)
     }
 
     /// ソート用のアルバムアーティスト
-    pub fn album_artist_order(&self) -> Option<String> {
-        self.album_artist.as_ref().map(|s| string_order_cnv::cnv(s))
+    pub fn album_artist_order(&self) -> String {
+        string_order_cnv::cnv(&self.album_artist)
     }
 
     /// ソート用のアルバム
-    pub fn album_order(&self) -> Option<String> {
-        self.album.as_ref().map(|s| string_order_cnv::cnv(s))
+    pub fn album_order(&self) -> String {
+        string_order_cnv::cnv(&self.album)
     }
 
     /// ソート用のジャンル
-    pub fn genre_order(&self) -> Option<String> {
-        self.genre.as_ref().map(|s| string_order_cnv::cnv(s))
+    pub fn genre_order(&self) -> String {
+        string_order_cnv::cnv(&self.genre)
     }
 
     /// ソート用の作曲者
-    pub fn composer_order(&self) -> Option<String> {
-        self.composer.as_ref().map(|s| string_order_cnv::cnv(s))
+    pub fn composer_order(&self) -> String {
+        string_order_cnv::cnv(&self.composer)
     }
 }
 
@@ -83,20 +83,24 @@ impl TrackSync {
     pub fn get_audio_metadata_entry(&self) -> (AudioMetaDataEntry, Vec<AudioPictureEntry>) {
         (
             AudioMetaDataEntry {
-                title: self.title.as_deref(),
-                artist: self.artist.as_deref(),
-                album: self.album.as_deref(),
-                genre: self.genre.as_deref(),
-                album_artist: self.album_artist.as_deref(),
-                composer: self.composer.as_deref(),
+                title: none_if_empty(&self.title),
+                artist: none_if_empty(&self.artist),
+                album: none_if_empty(&self.album),
+                genre: none_if_empty(&self.genre),
+                album_artist: none_if_empty(&self.album_artist),
+                composer: none_if_empty(&self.composer),
                 track_number: self.track_number,
                 track_max: self.track_max,
                 disc_number: self.disc_number,
                 disc_max: self.disc_max,
                 release_date: self.release_date,
-                memo: self.memo.as_deref(),
+                memo: none_if_empty(&self.memo),
             },
             self.artworks.iter().map(AudioPictureEntry::from).collect(),
         )
     }
+}
+
+fn none_if_empty(s: &str) -> Option<&str> {
+    if s.is_empty() { None } else { Some(s) }
 }

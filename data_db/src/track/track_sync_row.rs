@@ -1,7 +1,5 @@
 use chrono::NaiveDate;
 
-use crate::converts::DbOptionString;
-
 /// TrackSyncの、trackテーブルレコードの部分
 pub struct TrackSyncRow {
     /// 曲ID
@@ -11,18 +9,18 @@ pub struct TrackSyncRow {
     pub duration: i32,
 
     /// 曲名
-    pub title: DbOptionString,
+    pub title: String,
 
     /// アーティスト
-    pub artist: DbOptionString,
+    pub artist: String,
     /// アルバム
-    pub album: DbOptionString,
+    pub album: String,
     /// ジャンル
-    pub genre: DbOptionString,
+    pub genre: String,
     /// アルバムアーティスト
-    pub album_artist: DbOptionString,
+    pub album_artist: String,
     /// 作曲者
-    pub composer: DbOptionString,
+    pub composer: String,
 
     /// トラック番号
     pub track_number: Option<i32>,
@@ -38,8 +36,8 @@ pub struct TrackSyncRow {
     pub release_date: Option<NaiveDate>,
 
     /// メモ
-    pub memo: DbOptionString,
+    pub memo: String,
 
     /// 歌詞
-    pub lyrics: DbOptionString,
+    pub lyrics: String,
 }

@@ -61,8 +61,8 @@ where
         track_sync: &mut TrackSync,
     ) -> Result<()> {
         //曲名が空なら、ファイル名から取得
-        if track_sync.title.is_none() {
-            track_sync.title = Some(track_path.file_stem().to_owned());
+        if track_sync.title.is_empty() {
+            track_sync.title = track_path.file_stem().to_owned();
         };
 
         //親ディレクトリを登録してIDを取得
@@ -151,19 +151,19 @@ mod tests {
     fn track_sync() -> TrackSync {
         TrackSync {
             duration: 120000,
-            title: Some("曲名".to_owned()),
-            artist: Some("アーティスト".to_owned()),
-            album: Some("アルバむ".to_owned()),
-            genre: Some("Genre".to_owned()),
-            album_artist: Some("".to_owned()),
-            composer: Some("".to_owned()),
+            title: "曲名".to_owned(),
+            artist: "アーティスト".to_owned(),
+            album: "アルバむ".to_owned(),
+            genre: "Genre".to_owned(),
+            album_artist: "".to_owned(),
+            composer: "".to_owned(),
             track_number: Some(1),
             track_max: Some(2),
             disc_number: Some(3),
             disc_max: Some(4),
             release_date: Some(NaiveDate::from_ymd_opt(2013, 7, 14).unwrap()),
-            memo: Some("メモ".to_owned()),
-            lyrics: Some("歌詞".to_owned()),
+            memo: "メモ".to_owned(),
+            lyrics: "歌詞".to_owned(),
             artworks: vec![TrackArtwork {
                 picture: Arc::new(Picture {
                     bytes: vec![1, 2, 3, 4],
@@ -195,7 +195,7 @@ mod tests {
             .times(1)
             .returning(|_, a_track_sync, a_folder_id| {
                 assert_eq!(a_folder_id, FolderIdMayRoot::Root);
-                assert_eq!(a_track_sync.title.as_deref(), Some("曲名"));
+                assert_eq!(&a_track_sync.title, "曲名");
                 Ok(5)
             });
 
@@ -211,7 +211,7 @@ mod tests {
         let mut s = track_sync();
         target.register_db(&mut tx, &track_path(), &mut s).await?;
 
-        assert_eq!(s.title.as_deref(), Some("曲名"));
+        assert_eq!(&s.title, "曲名");
 
         checkpoint_all(&mut target);
         Ok(())
@@ -241,7 +241,7 @@ mod tests {
             .times(1)
             .returning(|_, a_track_sync, a_folder_id| {
                 assert_eq!(a_folder_id, FolderIdMayRoot::Folder(15));
-                assert_eq!(a_track_sync.title.as_deref(), Some("fuga"));
+                assert_eq!(&a_track_sync.title, "fuga");
                 Ok(5)
             });
 
@@ -255,11 +255,11 @@ mod tests {
         let mut tx = pool.begin().await?;
 
         let mut s = track_sync();
-        s.title = None;
+        s.title = String::default();
 
         target.register_db(&mut tx, &track_path(), &mut s).await?;
 
-        assert_eq!(s.title.as_deref(), Some("fuga"));
+        assert_eq!(&s.title, "fuga");
 
         checkpoint_all(&mut target);
         Ok(())

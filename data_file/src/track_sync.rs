@@ -50,18 +50,18 @@ pub fn read_track_sync(lib_root: &Path, track_path: &LibTrackPath) -> Result<Tra
 
     Ok(TrackSync {
         duration: meta.duration,
-        title: meta.title,
-        artist: meta.artist,
-        album: meta.album,
-        genre: meta.genre,
-        album_artist: meta.album_artist,
-        composer: meta.composer,
+        title: meta.title.unwrap_or_default(),
+        artist: meta.artist.unwrap_or_default(),
+        album: meta.album.unwrap_or_default(),
+        genre: meta.genre.unwrap_or_default(),
+        album_artist: meta.album_artist.unwrap_or_default(),
+        composer: meta.composer.unwrap_or_default(),
         track_number: meta.track_number,
         track_max: meta.track_max,
         disc_number: meta.disc_number,
         disc_max: meta.disc_max,
         release_date: meta.release_date,
-        memo: meta.memo,
+        memo: meta.memo.unwrap_or_default(),
         artworks: meta.artworks.into_iter().map(TrackArtwork::from).collect(),
         lyrics: read_lyrics(&track_abs)?,
     })
@@ -97,14 +97,14 @@ pub fn overwrite_track_sync(
 ///
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
-fn read_lyrics(path: &Path) -> Result<Option<String>> {
+fn read_lyrics(path: &Path) -> Result<String> {
     let lrc_path = utils::get_lrc_path(path);
 
     let mut f = match File::open(lrc_path) {
         Ok(f) => f,
         Err(e) => {
             if e.kind() == std::io::ErrorKind::NotFound {
-                return Ok(None);
+                return Ok(String::default());
             } else {
                 return Err(io_to_my_error(path, e).into());
             }
@@ -115,11 +115,7 @@ fn read_lyrics(path: &Path) -> Result<Option<String>> {
     f.read_to_string(&mut contents)
         .map_err(|e| io_to_my_error(path, e))?;
 
-    if contents.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(contents))
-    }
+    Ok(contents)
 }
 
 /// オーディオファイルに対応する歌詞を書き込み
@@ -127,25 +123,21 @@ fn read_lyrics(path: &Path) -> Result<Option<String>> {
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
 /// - lyrics: 保存する歌詞
-fn write_lyrics(path: &Path, lyrics: &Option<String>) -> Result<()> {
+fn write_lyrics(path: &Path, lyrics: &str) -> Result<()> {
     let lrc_path = utils::get_lrc_path(path);
 
-    match lyrics {
+    if lyrics.is_empty() {
+        // 歌詞が空の場合、.lrc ファイルがあれば削除
+        if lrc_path.exists() {
+            fs::remove_file(lrc_path).map_err(|e| io_to_my_error(path, e))?;
+        }
+
+        Ok(())
+    } else {
         //歌詞が空でない場合
-        Some(lyrics_str) => {
-            fs::write(lrc_path, lyrics_str).map_err(|e| io_to_my_error(path, e))?;
+        fs::write(lrc_path, lyrics).map_err(|e| io_to_my_error(path, e))?;
 
-            Ok(())
-        }
-        //歌詞が空の場合
-        None => {
-            //lrcファイルがあれば削除
-            if lrc_path.exists() {
-                fs::remove_file(lrc_path).map_err(|e| io_to_my_error(path, e))?;
-            }
-
-            Ok(())
-        }
+        Ok(())
     }
 }
 

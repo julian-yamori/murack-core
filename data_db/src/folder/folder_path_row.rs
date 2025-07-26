@@ -1,4 +1,4 @@
-use crate::converts::DbOptionString;
+use murack_core_domain::NonEmptyString;
 
 /// folder_pathテーブルのレコード
 pub struct FolderPathRow {
@@ -6,10 +6,10 @@ pub struct FolderPathRow {
     pub id: i32,
 
     /// パス
-    pub path: DbOptionString,
+    pub path: NonEmptyString,
 
     /// フォルダ名
-    pub name: DbOptionString,
+    pub name: NonEmptyString,
 
     /// 親フォルダID
     pub parent_id: Option<i32>,
