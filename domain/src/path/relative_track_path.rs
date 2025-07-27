@@ -1,6 +1,7 @@
+use anyhow::Result;
+
 use super::{LibDirPath, LibTrackPath};
 use crate::Error;
-use anyhow::Result;
 
 /// 曲ファイルを示す相対パス
 #[derive(Debug, PartialEq, Clone)]
@@ -17,7 +18,7 @@ impl RelativeTrackPath {
     /// parentからみたtrackの相対パス
     pub fn from_track_and_parent(track: &LibTrackPath, parent: &LibDirPath) -> Result<Self> {
         let parent_str = parent.as_str();
-        let track_str = track.as_str();
+        let track_str: &str = track.as_ref();
 
         //targetがparentで始まっているか確認
         if !track_str.starts_with(parent_str) {
@@ -33,14 +34,19 @@ impl RelativeTrackPath {
 
     /// LibDirPathと連結し、LibTrackPathを生成
     pub fn concat_lib_dir(&self, parent: &LibDirPath) -> LibTrackPath {
+        // 文字列を取得して連結
         let mut s = parent.as_str().to_owned();
         s.push_str(&self.0);
-        LibTrackPath::new(s)
+
+        // LibTrackPath に変換
+        s.try_into().unwrap()
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     use test_case::test_case;
 
@@ -56,7 +62,7 @@ mod tests {
     ) -> anyhow::Result<()> {
         assert_eq!(
             RelativeTrackPath::from_track_and_parent(
-                &LibTrackPath::new(track),
+                &LibTrackPath::from_str(track).unwrap(),
                 &LibDirPath::new(parent)
             )?,
             RelativeTrackPath(expect.to_owned())
@@ -67,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_from_track_and_parent_invalid() {
-        let track = LibTrackPath::new("hoge/fuga.flac");
+        let track = LibTrackPath::from_str("hoge/fuga.flac").unwrap();
         let parent = LibDirPath::new("piyo");
 
         let err = RelativeTrackPath::from_track_and_parent(&track, &parent).unwrap_err();
@@ -89,7 +95,7 @@ mod tests {
     fn test_concat_lib_dir(rel: &str, parent: &str, expect: &str) {
         assert_eq!(
             RelativeTrackPath(rel.to_owned()).concat_lib_dir(&LibDirPath::new(parent)),
-            LibTrackPath::new(expect)
+            LibTrackPath::from_str(expect).unwrap()
         )
     }
 }

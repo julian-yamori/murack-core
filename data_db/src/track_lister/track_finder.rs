@@ -61,7 +61,7 @@ where
         );
 
         let list: Vec<LibTrackPath> = sqlx::query(&query)
-            .map(|row: PgRow| LibTrackPath::new(row.get::<&str, _>(0)))
+            .map(|row: PgRow| row.get::<LibTrackPath, _>(0))
             .fetch_all(&mut **tx)
             .await?;
 

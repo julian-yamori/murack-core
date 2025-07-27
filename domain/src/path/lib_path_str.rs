@@ -1,4 +1,4 @@
-use super::{LibDirPath, LibTrackPath};
+use super::LibDirPath;
 use std::{
     fmt,
     path::{Path, PathBuf},
@@ -37,10 +37,6 @@ impl LibPathStr {
         buf
     }
 
-    /// このパスが曲を示していると解釈し、曲パスインスタンスを取得
-    pub fn to_track_path(&self) -> LibTrackPath {
-        LibTrackPath::new(&self.0)
-    }
     /// このパスがディレクトリを示していると解釈し、ディレクトリパスインスタンスを取得
     pub fn to_dir_path(&self) -> LibDirPath {
         LibDirPath::new(&self.0)

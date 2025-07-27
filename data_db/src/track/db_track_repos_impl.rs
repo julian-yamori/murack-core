@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use murack_core_domain::{
@@ -5,7 +7,7 @@ use murack_core_domain::{
     path::{LibDirPath, LibPathStr, LibTrackPath},
     track::DbTrackRepository,
 };
-use sqlx::{PgTransaction, Row, postgres::PgRow};
+use sqlx::PgTransaction;
 
 use crate::like_esc;
 
@@ -23,9 +25,12 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         tx: &mut PgTransaction<'c>,
         path: &LibTrackPath,
     ) -> Result<Option<i32>> {
-        let id = sqlx::query_scalar!("SELECT id FROM tracks WHERE path = $1", path.as_str(),)
-            .fetch_optional(&mut **tx)
-            .await?;
+        let id = sqlx::query_scalar!(
+            "SELECT id FROM tracks WHERE path = $1",
+            path.as_ref() as &str
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
 
         Ok(id)
     }
@@ -41,8 +46,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         let mut list = self.get_path_by_directory(tx, &dir_path).await?;
 
         //ファイル指定とみなしての検索でヒットしたら追加
-        let track_path = path.to_track_path();
-        if self.is_exist_path(tx, &track_path).await? {
+        if let Some(track_path) = self.path_str_as_track_path(tx, path).await? {
             list.push(track_path);
         }
 
@@ -61,8 +65,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     ) -> Result<Vec<LibTrackPath>> {
         if path.is_root() {
             //ルートフォルダ指定なら、全曲
-            let paths = sqlx::query!("SELECT path FROM tracks")
-                .map(|row| LibTrackPath::new(row.path))
+            let paths = sqlx::query_scalar!(r#"SELECT path AS "path: LibTrackPath" FROM tracks"#)
                 .fetch_all(&mut **tx)
                 .await?;
             Ok(paths)
@@ -79,13 +82,35 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
             };
 
             let sql = format!("SELECT path FROM tracks WHERE path {like_query}");
-            let paths = sqlx::query(&sql)
+            let paths = sqlx::query_scalar(&sql)
                 .bind(cmp_value)
-                .map(|row: PgRow| LibTrackPath::new(row.get::<&str, _>(0)))
                 .fetch_all(&mut **tx)
                 .await?;
 
             Ok(paths)
+        }
+    }
+
+    /// LibPathStr を曲ファイルのパスとみなすことができるか確認
+    ///
+    /// 曲のパスとみなすことができるなら `Some(LibTrackPath)` を返す。
+    ///
+    /// LibTrackPath への変換に失敗した (空文字列だった) 場合は None を返す。
+    /// 曲ファイルがそのパスに存在しなかった場合も None を返す。
+    async fn path_str_as_track_path<'c>(
+        &self,
+        tx: &mut PgTransaction,
+        path_str: &LibPathStr,
+    ) -> Result<Option<LibTrackPath>> {
+        match LibTrackPath::from_str(path_str.as_str()) {
+            Ok(track_path) => {
+                if self.is_exist_path(tx, &track_path).await? {
+                    Ok(Some(track_path))
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(_) => Ok(None),
         }
     }
 
@@ -129,9 +154,9 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     ) -> Result<()> {
         sqlx::query!(
             "UPDATE tracks SET path = $1, folder_id = $2 WHERE path = $3",
-            new_path.as_str(),
+            new_path.as_ref() as &str,
             new_folder_id.into_db(),
-            old_path.as_str(),
+            old_path.as_ref() as &str,
         )
         .execute(&mut **tx)
         .await?;

@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display, ops::Deref};
+use std::{error::Error, fmt::Display, ops::Deref, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use sqlx::{
@@ -10,12 +10,6 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonEmptyString(String);
-
-impl NonEmptyString {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
 
 impl TryFrom<String> for NonEmptyString {
     type Error = EmptyStringError;
@@ -29,9 +23,35 @@ impl TryFrom<String> for NonEmptyString {
     }
 }
 
+impl From<NonEmptyString> for String {
+    fn from(value: NonEmptyString) -> Self {
+        value.0
+    }
+}
+
+impl FromStr for NonEmptyString {
+    type Err = EmptyStringError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.to_string().try_into()
+    }
+}
+
 impl Display for NonEmptyString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl AsRef<String> for NonEmptyString {
+    fn as_ref(&self) -> &String {
+        &self.0
+    }
+}
+
+impl AsRef<str> for NonEmptyString {
+    fn as_ref(&self) -> &str {
+        &self.0
     }
 }
 
@@ -65,6 +85,10 @@ impl<'de> Deserialize<'de> for NonEmptyString {
 impl Type<Postgres> for NonEmptyString {
     fn type_info() -> PgTypeInfo {
         <String as Type<Postgres>>::type_info()
+    }
+
+    fn compatible(ty: &<Postgres as sqlx::Database>::TypeInfo) -> bool {
+        <String as Type<Postgres>>::compatible(ty)
     }
 }
 

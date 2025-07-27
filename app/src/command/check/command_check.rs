@@ -273,6 +273,7 @@ where
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::str::FromStr;
 
     use murack_core_domain::{
         path::LibPathStr, sync::MockDbTrackSyncRepository, test_utils::assert_eq_not_orderd,
@@ -372,20 +373,20 @@ mod tests {
                 assert_eq!(search, &search_path());
                 //なんとなく逆順
                 Ok(vec![
-                    LibTrackPath::new("test/hoge/track2.flac"),
-                    LibTrackPath::new("test/hoge/track1.flac"),
-                    LibTrackPath::new("test/hoge/child/track4.flac"),
-                    LibTrackPath::new("test/hoge/child/track3.flac"),
+                    LibTrackPath::from_str("test/hoge/track2.flac")?,
+                    LibTrackPath::from_str("test/hoge/track1.flac")?,
+                    LibTrackPath::from_str("test/hoge/child/track4.flac")?,
+                    LibTrackPath::from_str("test/hoge/child/track3.flac")?,
                 ])
             });
 
         assert_eq_not_orderd(
             &target.listup_track_path(&db_pool).await?,
             &[
-                LibTrackPath::new("test/hoge/child/track3.flac"),
-                LibTrackPath::new("test/hoge/child/track4.flac"),
-                LibTrackPath::new("test/hoge/track1.flac"),
-                LibTrackPath::new("test/hoge/track2.flac"),
+                LibTrackPath::from_str("test/hoge/child/track3.flac")?,
+                LibTrackPath::from_str("test/hoge/child/track4.flac")?,
+                LibTrackPath::from_str("test/hoge/track1.flac")?,
+                LibTrackPath::from_str("test/hoge/track2.flac")?,
             ],
         );
 
@@ -428,21 +429,21 @@ mod tests {
             .expect_get_path_by_path_str()
             .returning(|_| {
                 Ok(vec![
-                    LibTrackPath::new("test/hoge/child/track1.flac"),
-                    LibTrackPath::new("test/hoge/track2.flac"),
-                    LibTrackPath::new("test/hoge/db1.flac"),
+                    LibTrackPath::from_str("test/hoge/child/track1.flac")?,
+                    LibTrackPath::from_str("test/hoge/track2.flac")?,
+                    LibTrackPath::from_str("test/hoge/db1.flac")?,
                 ])
             });
 
         assert_eq!(
             target.listup_track_path(&db_pool).await?,
             vec![
-                LibTrackPath::new("test/hoge/child/dap1.flac"),
-                LibTrackPath::new("test/hoge/child/pc1.flac"),
-                LibTrackPath::new("test/hoge/child/track1.flac"),
-                LibTrackPath::new("test/hoge/db1.flac"),
-                LibTrackPath::new("test/hoge/pc2.flac"),
-                LibTrackPath::new("test/hoge/track2.flac"),
+                LibTrackPath::from_str("test/hoge/child/dap1.flac")?,
+                LibTrackPath::from_str("test/hoge/child/pc1.flac")?,
+                LibTrackPath::from_str("test/hoge/child/track1.flac")?,
+                LibTrackPath::from_str("test/hoge/db1.flac")?,
+                LibTrackPath::from_str("test/hoge/pc2.flac")?,
+                LibTrackPath::from_str("test/hoge/track2.flac")?,
             ]
         );
 

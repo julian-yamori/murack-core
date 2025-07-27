@@ -51,7 +51,7 @@ mod test_get_playlist_tree {
         }
 
         // プレイリスト名を確認
-        let names: Vec<&str> = result.iter().map(|p| p.name.as_str()).collect();
+        let names: Vec<&str> = result.iter().map(|p| p.name.as_ref()).collect();
         assert_eq!(names, vec!["one", "two", "three"]);
 
         // プレイリストIDを確認

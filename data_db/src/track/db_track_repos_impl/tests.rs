@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::Result;
 use murack_core_domain::{
     path::{LibDirPath, LibPathStr, LibTrackPath},
@@ -9,6 +11,7 @@ use crate::track::DbTrackRepositoryImpl;
 
 // get_path_by_path_str 関数のテスト
 mod test_get_path_by_path_str {
+
     use super::*;
 
     /// ディレクトリ指定でのパス取得テスト
@@ -28,9 +31,9 @@ mod test_get_path_by_path_str {
 
         // 結果は3つの楽曲パスであるはず
         assert_eq!(result.len(), 3);
-        assert!(result.contains(&LibTrackPath::new("test/hoge/track1.mp3")));
-        assert!(result.contains(&LibTrackPath::new("test/hoge/track2.flac")));
-        assert!(result.contains(&LibTrackPath::new("test/hoge/track3.m4a")));
+        assert!(result.contains(&LibTrackPath::from_str("test/hoge/track1.mp3")?));
+        assert!(result.contains(&LibTrackPath::from_str("test/hoge/track2.flac")?));
+        assert!(result.contains(&LibTrackPath::from_str("test/hoge/track3.m4a")?));
 
         Ok(())
     }
@@ -72,7 +75,7 @@ mod test_get_path_by_path_str {
             .await?;
 
         // 結果は指定した楽曲ファイル1つであるはず
-        assert_eq!(result, vec![LibTrackPath::new("test/hoge.flac")]);
+        assert_eq!(result, vec![LibTrackPath::from_str("test/hoge.flac")?]);
 
         // 指定された楽曲がデータベースに存在することを確認
         let exists = sqlx::query_scalar!(
@@ -103,9 +106,9 @@ mod test_get_path_by_path_str {
 
         // 結果は3つの楽曲パスであるはず
         assert_eq!(result.len(), 3);
-        assert!(result.contains(&LibTrackPath::new("track1.mp3")));
-        assert!(result.contains(&LibTrackPath::new("test/hoge/track2.flac")));
-        assert!(result.contains(&LibTrackPath::new("test/track3.m4a")));
+        assert!(result.contains(&LibTrackPath::from_str("track1.mp3")?));
+        assert!(result.contains(&LibTrackPath::from_str("test/hoge/track2.flac")?));
+        assert!(result.contains(&LibTrackPath::from_str("test/track3.m4a")?));
 
         // データベース内の全楽曲数を確認
         let total_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM tracks"#)
@@ -135,9 +138,9 @@ mod test_get_path_by_directory {
                 .get_path_by_directory(&mut tx, &LibDirPath::new("test"))
                 .await?,
             vec![
-                LibTrackPath::new("test/hoge.flac"),
-                LibTrackPath::new("test/hoge2.flac"),
-                LibTrackPath::new("test/dir/hoge3.flac"),
+                LibTrackPath::from_str("test/hoge.flac")?,
+                LibTrackPath::from_str("test/hoge2.flac")?,
+                LibTrackPath::from_str("test/dir/hoge3.flac")?,
             ]
         );
 
@@ -157,7 +160,7 @@ mod test_get_path_by_directory {
             target
                 .get_path_by_directory(&mut tx, &LibDirPath::new("test/dir"))
                 .await?,
-            vec![LibTrackPath::new("test/dir/hoge3.flac"),]
+            vec![LibTrackPath::from_str("test/dir/hoge3.flac")?]
         );
 
         Ok(())
@@ -177,12 +180,12 @@ mod test_get_path_by_directory {
                 .get_path_by_directory(&mut tx, &LibDirPath::root())
                 .await?,
             vec![
-                LibTrackPath::new("test/hoge.flac"),
-                LibTrackPath::new("test/hoge2.flac"),
-                LibTrackPath::new("fuga.flac"),
-                LibTrackPath::new("dummy/fuga.flac"),
-                LibTrackPath::new("test/dir/hoge3.flac"),
-                LibTrackPath::new("dummy/test/dir/dummy.mp3"),
+                LibTrackPath::from_str("test/hoge.flac")?,
+                LibTrackPath::from_str("test/hoge2.flac")?,
+                LibTrackPath::from_str("fuga.flac")?,
+                LibTrackPath::from_str("dummy/fuga.flac")?,
+                LibTrackPath::from_str("test/dir/hoge3.flac")?,
+                LibTrackPath::from_str("dummy/test/dir/dummy.mp3")?,
             ]
         );
 
@@ -202,7 +205,7 @@ mod test_get_path_by_directory {
             target
                 .get_path_by_directory(&mut tx, &LibDirPath::new("test/d%i_r$"))
                 .await?,
-            vec![LibTrackPath::new("test/d%i_r$/hoge.flac"),]
+            vec![LibTrackPath::from_str("test/d%i_r$/hoge.flac")?]
         );
 
         Ok(())

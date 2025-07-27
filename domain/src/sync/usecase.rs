@@ -114,7 +114,7 @@ mock! {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
 
     use chrono::NaiveDate;
     use murack_core_media::picture::Picture;
@@ -178,7 +178,7 @@ mod tests {
     #[sqlx::test]
     async fn test_register_db_root_folder(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
-            LibTrackPath::new("track.flac")
+            LibTrackPath::from_str("track.flac").unwrap()
         }
 
         let mut target = target();
@@ -220,7 +220,7 @@ mod tests {
     #[sqlx::test]
     async fn test_register_db_no_title(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
-            LibTrackPath::new("test/hoge/fuga.mp3")
+            LibTrackPath::from_str("test/hoge/fuga.mp3").unwrap()
         }
 
         let mut target = target();

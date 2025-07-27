@@ -37,7 +37,11 @@ where
         path: &LibTrackPath,
     ) -> Result<Option<DbTrackSync>> {
         //一旦trackテーブルから検索
-        let track_row = match sqlx::query_as!(TrackSyncRow, "SELECT id, duration, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, memo, lyrics FROM tracks WHERE path = $1", path.as_str()).fetch_optional(&mut **tx).await? {
+        let track_row = match sqlx::query_as!(
+            TrackSyncRow,
+            "SELECT id, duration, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, memo, lyrics FROM tracks WHERE path = $1",
+            path.as_ref() as &str
+        ).fetch_optional(&mut **tx).await? {
             Some(t) => t,
             None => return Ok(None),
         };
@@ -94,7 +98,7 @@ where
         let track_id = sqlx::query_scalar!(
             "INSERT INTO tracks (duration, path, folder_id, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, rating, original_track, suggest_target, memo, memo_manage, lyrics, title_order, artist_order, album_order, album_artist_order, composer_order, genre_order) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id",
             i32::try_from(track_sync.duration)?,
-            track_path.as_str(),
+            track_path.as_ref() as &str,
             folder_id.into_db(),
             &track_sync.title,
             &track_sync.artist,

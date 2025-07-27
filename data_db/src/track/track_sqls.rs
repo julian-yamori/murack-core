@@ -6,7 +6,7 @@ use sqlx::PgTransaction;
 pub async fn exists_path<'c>(tx: &mut PgTransaction<'c>, path: &LibTrackPath) -> Result<bool> {
     let count = sqlx::query_scalar!(
         r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE path = $1"#,
-        path.as_str(),
+        path.as_ref() as &str,
     )
     .fetch_one(&mut **tx)
     .await?;

@@ -36,6 +36,18 @@ pub trait DbTrackRepository {
         path: &LibDirPath,
     ) -> Result<Vec<LibTrackPath>>;
 
+    /// LibPathStr を曲ファイルのパスとみなすことができるか確認
+    ///
+    /// 曲のパスとみなすことができるなら `Some(LibTrackPath)` を返す。
+    ///
+    /// LibTrackPath への変換に失敗した (空文字列だった) 場合は None を返す。
+    /// 曲ファイルがそのパスに存在しなかった場合も None を返す。
+    async fn path_str_as_track_path<'c>(
+        &self,
+        tx: &mut PgTransaction,
+        path_str: &LibPathStr,
+    ) -> Result<Option<LibTrackPath>>;
+
     /// 指定したパスの曲が存在するか確認
     async fn is_exist_path<'c>(
         &self,
@@ -109,6 +121,14 @@ impl DbTrackRepository for MockDbTrackRepository {
         self.inner.get_path_by_directory(path)
     }
 
+    async fn path_str_as_track_path<'c>(
+        &self,
+        _db: &mut PgTransaction,
+        path_str: &LibPathStr,
+    ) -> Result<Option<LibTrackPath>> {
+        self.inner.path_str_as_track_path(path_str)
+    }
+
     async fn is_exist_path<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
@@ -166,6 +186,11 @@ mock! {
         ) -> Result<Vec<LibTrackPath>>;
 
         pub fn get_path_all(&self) -> Result<Vec<LibTrackPath>>;
+
+        pub fn path_str_as_track_path(
+            &self,
+            path_str: &LibPathStr,
+        ) -> Result<Option<LibTrackPath>>;
 
         pub fn is_exist_path(&self, path: &LibTrackPath) -> Result<bool>;
 

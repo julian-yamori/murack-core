@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, str::FromStr};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -89,18 +89,18 @@ where
         src: &LibPathStr,
         dest: &LibPathStr,
     ) -> Result<()> {
-        //指定パスが曲ファイル自体なら、1曲だけ処理
-        let src_as_track = src.to_track_path();
-        if self
+        if let Some(src_as_track) = self
             .db_track_repository
-            .is_exist_path(tx, &src_as_track)
+            .path_str_as_track_path(tx, src)
             .await?
         {
-            self.move_track_db_unit(tx, &src_as_track, &dest.to_track_path())
+            //指定パスが曲ファイル自体なら、1曲だけ処理
+            let dest_as_track = LibTrackPath::from_str(dest.as_str())?;
+            self.move_track_db_unit(tx, &src_as_track, &dest_as_track)
                 .await?;
-        }
-        //指定パス以下の全ての曲について、パスの変更を反映
-        else {
+        } else {
+            //指定パス以下の全ての曲について、パスの変更を反映
+
             let src_as_dir = src.to_dir_path();
             let dest_as_dir = dest.to_dir_path();
 
@@ -302,6 +302,8 @@ mock! {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use sqlx::PgPool;
 
     use super::*;
@@ -357,7 +359,7 @@ mod tests {
     #[sqlx::test]
     async fn test_delete_db_ok(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
-            LibTrackPath::new("hoge/fuga.flac")
+            LibTrackPath::try_from("hoge/fuga.flac".to_string()).unwrap()
         }
 
         let mut target = target();
@@ -425,7 +427,7 @@ mod tests {
     #[sqlx::test]
     async fn test_delete_db_no_track(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
-            LibTrackPath::new("hoge.mp3")
+            LibTrackPath::from_str("hoge.mp3").unwrap()
         }
 
         let mut target = target();
@@ -486,7 +488,7 @@ mod tests {
     #[sqlx::test]
     async fn test_delete_db_root_folder(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibTrackPath {
-            LibTrackPath::new("fuga.mp3")
+            LibTrackPath::from_str("fuga.mp3").unwrap()
         }
 
         let mut target = target();

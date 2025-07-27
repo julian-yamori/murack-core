@@ -6,6 +6,7 @@ use murack_core_domain::path::LibTrackPath;
 use std::{
     fs,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 /// aw-getコマンド
@@ -130,11 +131,11 @@ impl CommandArtworkGetArgs {
     pub fn parse(command_line: &[String]) -> Result<CommandArtworkGetArgs> {
         match command_line {
             [track, artwork, ..] => Ok(CommandArtworkGetArgs {
-                track_path: LibTrackPath::new(track),
+                track_path: LibTrackPath::from_str(track)?,
                 artwork_path: Some(artwork.into()),
             }),
             [track] => Ok(CommandArtworkGetArgs {
-                track_path: LibTrackPath::new(track),
+                track_path: LibTrackPath::from_str(track)?,
                 artwork_path: None,
             }),
             [] => Err(Error::InvalidCommandArgument {

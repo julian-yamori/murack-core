@@ -33,8 +33,8 @@ pub fn search_by_lib_path(lib_root: &Path, target: &LibPathStr) -> Result<Vec<Li
         .map(|abs_path| {
             //絶対パス->ライブラリパスに変換
             let rel_path = abs_path.strip_prefix(lib_root).unwrap();
-            LibTrackPath::from_path(rel_path)
-                .with_context(|| format!("UTF-8への変換に失敗しました: {}", abs_path.display()))
+            let track_path = LibTrackPath::try_from(rel_path.to_owned())?;
+            Ok(track_path)
         })
         .collect()
 }

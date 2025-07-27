@@ -263,7 +263,7 @@ fn write_playlist_file(
     for track_path in track_path_list {
         file_data.push_str("#EXTINF:,\n");
         file_data.push_str(TRACK_PATH);
-        file_data.push_str(track_path.as_str());
+        file_data.push_str(track_path.as_ref());
         file_data.push('\n')
     }
 
@@ -272,7 +272,7 @@ fn write_playlist_file(
 }
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{fs, str::FromStr};
 
     use murack_core_domain::playlist::{PlaylistType, SortType};
     use test_case::test_case;
@@ -282,10 +282,10 @@ mod tests {
     #[test]
     fn test_write_playlist_file() -> anyhow::Result<()> {
         let track_path_list = vec![
-            LibTrackPath::new("test/hoge/track1.flac"),
-            LibTrackPath::new("test/track3.m4a"),
-            LibTrackPath::new("track4.m4a"),
-            LibTrackPath::new("test/hoge/track2.mp3"),
+            LibTrackPath::from_str("test/hoge/track1.flac")?,
+            LibTrackPath::from_str("test/track3.m4a")?,
+            LibTrackPath::from_str("track4.m4a")?,
+            LibTrackPath::from_str("test/hoge/track2.mp3")?,
         ];
         const FILE_NAME: &str = "playlist.m3u";
 

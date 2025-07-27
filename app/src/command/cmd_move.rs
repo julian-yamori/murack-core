@@ -111,10 +111,9 @@ where
         let mut tx = db_pool.begin().await?;
 
         //曲のチェック
-        let dest_track_path = dest_path_str.to_track_path();
-        if self
+        if let Some(dest_track_path) = self
             .db_track_repository
-            .is_exist_path(&mut tx, &dest_track_path)
+            .path_str_as_track_path(&mut tx, dest_path_str)
             .await?
         {
             return Err(DomainError::DbTrackAlreadyExists(dest_track_path).into());
