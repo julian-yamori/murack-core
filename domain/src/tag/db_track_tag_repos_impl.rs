@@ -1,7 +1,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use murack_core_domain::tag::DbTrackTagRepository;
 use sqlx::PgTransaction;
+
+use crate::tag::DbTrackTagRepository;
 
 /// DbTrackTagRepositoryの本実装
 #[derive(new)]

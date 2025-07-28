@@ -2,7 +2,6 @@
 
 pub mod db_components;
 
-pub mod tag;
 pub mod track;
 
 #[macro_use]
