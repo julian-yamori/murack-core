@@ -1,13 +1,13 @@
 use std::sync::{Arc, Mutex};
 
 use murack_core_domain::{
+    artwork::{ArtworkCache, DbArtworkRepositoryImpl},
     playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
     track_query::TrackFinderImpl,
 };
 use once_cell::sync::Lazy;
 
 use crate::{
-    artwork::{ArtworkCache, DbArtworkRepositoryImpl},
     folder::DbFolderRepositoryImpl,
     tag::DbTrackTagRepositoryImpl,
     track::{DbTrackRepositoryImpl, DbTrackSyncRepositoryImpl},

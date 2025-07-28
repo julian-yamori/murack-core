@@ -2,7 +2,6 @@
 
 pub mod db_components;
 
-pub mod artwork;
 pub mod folder;
 pub mod tag;
 pub mod track;

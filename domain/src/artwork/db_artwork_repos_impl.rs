@@ -2,11 +2,12 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use murack_core_domain::artwork::{DbArtworkRepository, TrackArtwork};
 use murack_core_media::picture::Picture;
 use sqlx::PgTransaction;
 
-use super::{ArtworkCache, ArtworkCachedData, ArtworkImageRow};
+use crate::artwork::{
+    ArtworkCache, ArtworkCachedData, ArtworkImageRow, DbArtworkRepository, TrackArtwork,
+};
 
 /// DbArtworkRepositoryの本実装
 #[derive(new)]
