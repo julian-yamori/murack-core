@@ -89,17 +89,22 @@ where
         src: &LibPathStr,
         dest: &LibPathStr,
     ) -> Result<()> {
-        if let Some(src_as_track) = self
+        // パス文字列がファイルかどうかを、完全一致するパスの曲が DB に存在するかどうかで判定
+        let src_as_track: LibTrackPath = NonEmptyString::from(src.clone()).into();
+        let track_exists = self
             .db_track_repository
-            .path_str_as_track_path(tx, src)
-            .await?
-        {
-            //指定パスが曲ファイル自体なら、1曲だけ処理
+            .is_exist_path(tx, &src_as_track)
+            .await?;
+
+        if track_exists {
+            // 指定された 1 曲だけ処理
+
             let dest_as_track: LibTrackPath = NonEmptyString::from(dest.clone()).into();
+
             self.move_track_db_unit(tx, &src_as_track, &dest_as_track)
                 .await?;
         } else {
-            //指定パス以下の全ての曲について、パスの変更を反映
+            // 指定ディレクトリ以下の全ての曲について、パスの変更を反映
 
             let src_as_dir: LibDirPath = NonEmptyString::from(src.clone()).into();
             let dest_as_dir: LibDirPath = NonEmptyString::from(dest.clone()).into();

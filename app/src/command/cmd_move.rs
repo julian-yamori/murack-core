@@ -2,7 +2,7 @@ use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError, NonEmptyString,
     folder::DbFolderRepository,
-    path::{LibDirPath, LibPathStr},
+    path::{LibDirPath, LibPathStr, LibTrackPath},
     track::{DbTrackRepository, TrackUsecase},
 };
 use sqlx::PgPool;
@@ -108,16 +108,18 @@ where
     async fn check_db_exist(&self, db_pool: &PgPool) -> Result<()> {
         let mut tx = db_pool.begin().await?;
 
-        //曲のチェック
-        if let Some(dest_track_path) = self
+        // 曲が存在しないかチェック
+        let dest_track_path: LibTrackPath =
+            NonEmptyString::from(self.args.dest_path.clone()).into();
+        if self
             .db_track_repository
-            .path_str_as_track_path(&mut tx, &self.args.dest_path)
+            .is_exist_path(&mut tx, &dest_track_path)
             .await?
         {
             return Err(DomainError::DbTrackAlreadyExists(dest_track_path).into());
         }
 
-        //フォルダのチェック
+        // フォルダが存在しないかチェック
         let dest_dir_path: LibDirPath = NonEmptyString::from(self.args.dest_path.clone()).into();
 
         if self

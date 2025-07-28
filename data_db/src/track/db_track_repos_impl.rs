@@ -45,7 +45,8 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         let mut list = self.get_path_by_directory(tx, &dir_path).await?;
 
         //ファイル指定とみなしての検索でヒットしたら追加
-        if let Some(track_path) = self.path_str_as_track_path(tx, path).await? {
+        let track_path: LibTrackPath = NonEmptyString::from(path.clone()).into();
+        if self.is_exist_path(tx, &track_path).await? {
             list.push(track_path);
         }
 
@@ -88,25 +89,6 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
             .await?;
 
         Ok(paths)
-    }
-
-    /// LibPathStr を曲ファイルのパスとみなすことができるか確認
-    ///
-    /// 曲のパスとみなすことができるなら `Some(LibTrackPath)` を返す。
-    ///
-    /// 曲ファイルがそのパスに存在しなかった場合は None を返す。
-    async fn path_str_as_track_path<'c>(
-        &self,
-        tx: &mut PgTransaction,
-        path_str: &LibPathStr,
-    ) -> Result<Option<LibTrackPath>> {
-        let track_path: LibTrackPath = NonEmptyString::from(path_str.clone()).into();
-
-        if self.is_exist_path(tx, &track_path).await? {
-            Ok(Some(track_path))
-        } else {
-            Ok(None)
-        }
     }
 
     /// 指定したパスの曲が存在するか確認
