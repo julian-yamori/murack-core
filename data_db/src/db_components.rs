@@ -8,7 +8,7 @@ use crate::{
     playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
     tag::DbTrackTagRepositoryImpl,
     track::{DbTrackRepositoryImpl, DbTrackSyncRepositoryImpl},
-    track_lister::{TrackFinderImpl, TrackListerFilterImpl},
+    track_lister::TrackFinderImpl,
 };
 
 /// data層DB機能のDIを解決するオブジェクト
@@ -24,7 +24,7 @@ impl DbComponents {
     }
 
     pub fn track_finder(&self) -> TypeTrackFinder {
-        TrackFinderImpl::new(TrackListerFilterImpl {})
+        TrackFinderImpl::new()
     }
 
     pub fn db_artwork_repository(&self) -> TypeDbArtworkRepository {
@@ -62,7 +62,7 @@ impl Default for DbComponents {
     }
 }
 
-pub type TypeTrackFinder = TrackFinderImpl<TrackListerFilterImpl>;
+pub type TypeTrackFinder = TrackFinderImpl;
 pub type TypeDbArtworkRepository = DbArtworkRepositoryImpl;
 pub type TypeDbFolderRepository = DbFolderRepositoryImpl;
 pub type TypeDbPlaylistRepository = DbPlaylistRepositoryImpl;

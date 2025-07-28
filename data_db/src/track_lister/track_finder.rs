@@ -12,7 +12,7 @@ use murack_core_domain::{
 use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
-use super::{TrackListerFilter, esc::esci};
+use super::{esc::esci, select_track_id_by_filter};
 use crate::{
     Error,
     playlist::{PlaylistRow, playlist_sqls},
@@ -20,18 +20,10 @@ use crate::{
 
 /// TrackFinderの本実装
 #[derive(new)]
-pub struct TrackFinderImpl<SLF>
-where
-    SLF: TrackListerFilter + Sync + Send,
-{
-    track_lister_filter: SLF,
-}
+pub struct TrackFinderImpl {}
 
 #[async_trait]
-impl<SLF> TrackFinder for TrackFinderImpl<SLF>
-where
-    SLF: TrackListerFilter + Sync + Send,
-{
+impl TrackFinder for TrackFinderImpl {
     /// プレイリストに含まれる曲のパスリストを取得
     /// # Arguments
     /// - plist 取得対象のプレイリスト情報(※childrenは不要)
@@ -72,10 +64,7 @@ where
 /// playlist_track.orderカラムに付ける別名
 const PLIST_TRACK_IDX_COLUMN: &str = "playlist_index";
 
-impl<SLF> TrackFinderImpl<SLF>
-where
-    SLF: TrackListerFilter + Sync + Send,
-{
+impl TrackFinderImpl {
     /// プレイリストに含まれる曲を検索するクエリを作成
     /// # Arguments
     /// - plist: 対象プレイリスト情報
@@ -217,7 +206,7 @@ where
                 plist_id: plist.rowid,
             })?;
 
-        self.track_lister_filter.list_track_id(tx, filter).await
+        select_track_id_by_filter(tx, filter).await
     }
 }
 

@@ -2,7 +2,6 @@
 mod tests;
 
 use anyhow::Result;
-use async_trait::async_trait;
 use chrono::NaiveDate;
 use murack_core_domain::filter::{
     ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,
@@ -13,44 +12,24 @@ use sqlx::PgTransaction;
 use super::esc::escs;
 use crate::like_esc;
 
-/// フィルタを使用した曲データ列挙
-#[async_trait]
-pub trait TrackListerFilter {
-    /// 曲IDを列挙
-    /// # Arguments
-    /// - filter: 検索に使用するフィルタ情報
-    async fn list_track_id<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        filter: &RootFilter,
-    ) -> Result<Vec<i32>>;
-}
+/// フィルタを使用して曲 ID を列挙
+/// # Arguments
+/// - filter: 検索に使用するフィルタ情報
+pub async fn select_track_id_by_filter<'c>(
+    tx: &mut PgTransaction<'c>,
+    filter: &RootFilter,
+) -> Result<Vec<i32>> {
+    let mut query_base = "SELECT tracks.id FROM tracks".to_owned();
 
-/// TrackListerFilterの本実装
-pub struct TrackListerFilterImpl {}
-
-#[async_trait]
-impl TrackListerFilter for TrackListerFilterImpl {
-    /// 曲IDを列挙
-    /// # Arguments
-    /// - filter: 検索に使用するフィルタ情報
-    async fn list_track_id<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        filter: &RootFilter,
-    ) -> Result<Vec<i32>> {
-        let mut query_base = "SELECT tracks.id FROM tracks".to_owned();
-
-        //フィルタから条件を取得して追加
-        let query_where = get_query_filter_where(filter);
-        if !query_where.is_empty() {
-            query_base = format!("{query_base} WHERE {query_where}");
-        }
-
-        let list = sqlx::query_scalar(&query_base).fetch_all(&mut **tx).await?;
-
-        Ok(list)
+    //フィルタから条件を取得して追加
+    let query_where = get_query_filter_where(filter);
+    if !query_where.is_empty() {
+        query_base = format!("{query_base} WHERE {query_where}");
     }
+
+    let list = sqlx::query_scalar(&query_base).fetch_all(&mut **tx).await?;
+
+    Ok(list)
 }
 
 /// 指定されたフィルターに相当するSQL文のWHERE条件を取得
