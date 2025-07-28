@@ -6,6 +6,5 @@ mod track_finder_impl;
 pub use track_finder_impl::TrackFinderImpl;
 
 mod filter;
-pub use filter::select_track_id_by_filter;
 
 mod esc;

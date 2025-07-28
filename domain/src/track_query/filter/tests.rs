@@ -41,7 +41,7 @@ mod test_group_filter {
             ],
         };
 
-        let result = select_track_id_by_filter(&mut tx, &filter).await?;
+        let result = get_track_ids(&mut tx, &filter).await?;
 
         // track_ids: 1, 3, 6, 7 が該当するはず
         assert_eq_not_orderd(&result, &[1, 3, 6, 7]);
@@ -62,7 +62,7 @@ mod test_string_filter {
     async fn equal(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(StringFilterRange::Equal {
                 value: "test".to_owned(),
@@ -78,7 +78,7 @@ mod test_string_filter {
     async fn not_equal(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(StringFilterRange::NotEqual {
                 value: "test".to_owned(),
@@ -94,7 +94,7 @@ mod test_string_filter {
     async fn start(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(StringFilterRange::Start {
                 value: "test".to_owned(),
@@ -110,7 +110,7 @@ mod test_string_filter {
     async fn end(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(StringFilterRange::End {
                 value: "test".to_owned(),
@@ -126,7 +126,7 @@ mod test_string_filter {
     async fn contain(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(StringFilterRange::Contain {
                 value: "test".to_owned(),
@@ -142,7 +142,7 @@ mod test_string_filter {
     async fn not_contain(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(StringFilterRange::NotContain {
                 value: "test".to_owned(),
@@ -158,7 +158,7 @@ mod test_string_filter {
     async fn equal_with_special_chars(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(StringFilterRange::Equal {
                 value: "te%st".to_owned(),
@@ -174,7 +174,7 @@ mod test_string_filter {
     async fn contain_with_special_chars(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(StringFilterRange::Contain {
                 value: "te%st".to_owned(),
@@ -209,8 +209,7 @@ mod test_int_filter {
     async fn equal(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result =
-            select_track_id_by_filter(&mut tx, &filter(IntFilterRange::Equal { value: 9 })).await?;
+        let result = get_track_ids(&mut tx, &filter(IntFilterRange::Equal { value: 9 })).await?;
 
         assert_eq_not_orderd(&result, &[4]);
         Ok(())
@@ -222,8 +221,7 @@ mod test_int_filter {
 
         // ※nullは含めない仕様(WalkBase1がそうなっていたので)
         let result =
-            select_track_id_by_filter(&mut tx, &filter(IntFilterRange::NotEqual { value: 25 }))
-                .await?;
+            get_track_ids(&mut tx, &filter(IntFilterRange::NotEqual { value: 25 })).await?;
 
         assert_eq_not_orderd(&result, &[2, 3, 4, 5, 7]);
         Ok(())
@@ -234,8 +232,7 @@ mod test_int_filter {
         let mut tx = pool.begin().await?;
 
         let result =
-            select_track_id_by_filter(&mut tx, &filter(IntFilterRange::LargeEqual { value: 10 }))
-                .await?;
+            get_track_ids(&mut tx, &filter(IntFilterRange::LargeEqual { value: 10 })).await?;
 
         assert_eq_not_orderd(&result, &[5, 6, 7]);
         Ok(())
@@ -246,8 +243,7 @@ mod test_int_filter {
         let mut tx = pool.begin().await?;
 
         let result =
-            select_track_id_by_filter(&mut tx, &filter(IntFilterRange::SmallEqual { value: 5 }))
-                .await?;
+            get_track_ids(&mut tx, &filter(IntFilterRange::SmallEqual { value: 5 })).await?;
 
         assert_eq_not_orderd(&result, &[2, 3]);
         Ok(())
@@ -257,7 +253,7 @@ mod test_int_filter {
     async fn range_in(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(IntFilterRange::RangeIn { min: 9, max: 25 }),
         )
@@ -271,7 +267,7 @@ mod test_int_filter {
     async fn range_out(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(IntFilterRange::RangeOut { min: 5, max: 10 }),
         )
@@ -294,9 +290,7 @@ mod test_tags_filter {
     async fn contain_existing_tag(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result =
-            select_track_id_by_filter(&mut tx, &filter(TagsFilterRange::Contain { value: 4 }))
-                .await?;
+        let result = get_track_ids(&mut tx, &filter(TagsFilterRange::Contain { value: 4 })).await?;
 
         assert_eq_not_orderd(&result, &[2, 3]);
         Ok(())
@@ -307,8 +301,7 @@ mod test_tags_filter {
         let mut tx = pool.begin().await?;
 
         let result =
-            select_track_id_by_filter(&mut tx, &filter(TagsFilterRange::NotContain { value: 4 }))
-                .await?;
+            get_track_ids(&mut tx, &filter(TagsFilterRange::NotContain { value: 4 })).await?;
 
         assert_eq_not_orderd(&result, &[1, 4]);
         Ok(())
@@ -318,9 +311,7 @@ mod test_tags_filter {
     async fn contain_nonexistent_tag(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result =
-            select_track_id_by_filter(&mut tx, &filter(TagsFilterRange::Contain { value: 5 }))
-                .await?;
+        let result = get_track_ids(&mut tx, &filter(TagsFilterRange::Contain { value: 5 })).await?;
 
         assert_eq_not_orderd(&result, &[]);
         Ok(())
@@ -331,8 +322,7 @@ mod test_tags_filter {
         let mut tx = pool.begin().await?;
 
         let result =
-            select_track_id_by_filter(&mut tx, &filter(TagsFilterRange::NotContain { value: 5 }))
-                .await?;
+            get_track_ids(&mut tx, &filter(TagsFilterRange::NotContain { value: 5 })).await?;
 
         assert_eq_not_orderd(&result, &[1, 2, 3, 4]);
         Ok(())
@@ -343,8 +333,7 @@ mod test_tags_filter {
         let mut tx = pool.begin().await?;
 
         let result =
-            select_track_id_by_filter(&mut tx, &filter(TagsFilterRange::Contain { value: 83 }))
-                .await?;
+            get_track_ids(&mut tx, &filter(TagsFilterRange::Contain { value: 83 })).await?;
 
         assert_eq_not_orderd(&result, &[3, 4]);
         Ok(())
@@ -355,8 +344,7 @@ mod test_tags_filter {
         let mut tx = pool.begin().await?;
 
         let result =
-            select_track_id_by_filter(&mut tx, &filter(TagsFilterRange::NotContain { value: 83 }))
-                .await?;
+            get_track_ids(&mut tx, &filter(TagsFilterRange::NotContain { value: 83 })).await?;
 
         assert_eq_not_orderd(&result, &[1, 2]);
         Ok(())
@@ -366,7 +354,7 @@ mod test_tags_filter {
     async fn none(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(&mut tx, &filter(TagsFilterRange::None)).await?;
+        let result = get_track_ids(&mut tx, &filter(TagsFilterRange::None)).await?;
 
         assert_eq_not_orderd(&result, &[1]);
         Ok(())
@@ -385,7 +373,7 @@ mod test_bool_filter {
     async fn is_true(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(&mut tx, &filter(BoolFilterRange::True)).await?;
+        let result = get_track_ids(&mut tx, &filter(BoolFilterRange::True)).await?;
 
         assert_eq_not_orderd(&result, &[1]);
         Ok(())
@@ -395,7 +383,7 @@ mod test_bool_filter {
     async fn is_false(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(&mut tx, &filter(BoolFilterRange::False)).await?;
+        let result = get_track_ids(&mut tx, &filter(BoolFilterRange::False)).await?;
 
         assert_eq_not_orderd(&result, &[2]);
         Ok(())
@@ -414,7 +402,7 @@ mod test_artwork_filter {
     async fn has_artwork(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(&mut tx, &filter(ArtworkFilterRange::Has)).await?;
+        let result = get_track_ids(&mut tx, &filter(ArtworkFilterRange::Has)).await?;
 
         assert_eq_not_orderd(&result, &[2, 3]);
         Ok(())
@@ -424,7 +412,7 @@ mod test_artwork_filter {
     async fn no_artwork(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(&mut tx, &filter(ArtworkFilterRange::None)).await?;
+        let result = get_track_ids(&mut tx, &filter(ArtworkFilterRange::None)).await?;
 
         assert_eq_not_orderd(&result, &[1]);
         Ok(())
@@ -444,7 +432,7 @@ mod test_date_filter {
     async fn equal(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(DateFilterRange::Equal {
                 value: NaiveDate::from_ymd_opt(2012, 4, 5).unwrap(),
@@ -461,7 +449,7 @@ mod test_date_filter {
         let mut tx = pool.begin().await?;
 
         // ※nullは含めない仕様(WalkBase1がそうなっていたので)
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(DateFilterRange::NotEqual {
                 value: NaiveDate::from_ymd_opt(2012, 4, 5).unwrap(),
@@ -477,7 +465,7 @@ mod test_date_filter {
     async fn before(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(DateFilterRange::Before {
                 value: NaiveDate::from_ymd_opt(2012, 11, 12).unwrap(),
@@ -493,7 +481,7 @@ mod test_date_filter {
     async fn after(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(
+        let result = get_track_ids(
             &mut tx,
             &filter(DateFilterRange::After {
                 value: NaiveDate::from_ymd_opt(2012, 4, 5).unwrap(),
@@ -509,7 +497,7 @@ mod test_date_filter {
     async fn none(pool: PgPool) -> anyhow::Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = select_track_id_by_filter(&mut tx, &filter(DateFilterRange::None)).await?;
+        let result = get_track_ids(&mut tx, &filter(DateFilterRange::None)).await?;
 
         assert_eq_not_orderd(&result, &[1]);
         Ok(())

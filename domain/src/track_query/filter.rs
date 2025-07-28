@@ -17,7 +17,7 @@ use crate::{
 /// フィルタを使用して曲 ID を列挙
 /// # Arguments
 /// - filter: 検索に使用するフィルタ情報
-pub async fn select_track_id_by_filter<'c>(
+pub async fn get_track_ids<'c>(
     tx: &mut PgTransaction<'c>,
     filter: &RootFilter,
 ) -> Result<Vec<i32>> {
