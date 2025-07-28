@@ -1,6 +1,7 @@
 use anyhow::Result;
-use murack_core_domain::path::LibraryTrackPath;
 use sqlx::PgTransaction;
+
+use crate::path::LibraryTrackPath;
 
 /// 指定されたpathのレコードが存在するか確認
 pub async fn exists_path<'c>(tx: &mut PgTransaction<'c>, path: &LibraryTrackPath) -> Result<bool> {

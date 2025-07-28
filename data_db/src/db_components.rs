@@ -4,12 +4,12 @@ use murack_core_domain::{
     artwork::{ArtworkCache, DbArtworkRepositoryImpl},
     folder::DbFolderRepositoryImpl,
     playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
+    sync::DbTrackSyncRepositoryImpl,
     tag::DbTrackTagRepositoryImpl,
+    track::DbTrackRepositoryImpl,
     track_query::TrackFinderImpl,
 };
 use once_cell::sync::Lazy;
-
-use crate::track::{DbTrackRepositoryImpl, DbTrackSyncRepositoryImpl};
 
 /// data層DB機能のDIを解決するオブジェクト
 pub struct DbComponents {
