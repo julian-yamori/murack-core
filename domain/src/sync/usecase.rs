@@ -66,13 +66,14 @@ where
         };
 
         //親ディレクトリを登録してIDを取得
-        let parent_path = track_path.parent();
-        let folder_id = if parent_path.is_root() {
-            FolderIdMayRoot::Root
-        } else {
-            self.db_folder_repository
-                .register_not_exists(tx, &parent_path)
-                .await?
+        let parent_path_opt = track_path.parent();
+        let folder_id = match parent_path_opt {
+            None => FolderIdMayRoot::Root,
+            Some(parent_path) => {
+                self.db_folder_repository
+                    .register_not_exists(tx, &parent_path)
+                    .await?
+            }
         };
 
         //DBに書き込み
@@ -230,7 +231,7 @@ mod tests {
             .expect_register_not_exists()
             .times(1)
             .returning(|a_path| {
-                assert_eq!(a_path, &LibDirPath::new("test/hoge"));
+                assert_eq!(a_path, &LibDirPath::from_str("test/hoge").unwrap());
                 Ok(FolderIdMayRoot::Folder(15))
             });
 

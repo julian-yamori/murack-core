@@ -58,14 +58,18 @@ impl LibTrackPath {
     }
 
     /// 親のディレクトリパスを取得
-    pub fn parent(&self) -> LibDirPath {
-        let parent_str = match self.0.rfind('/') {
-            Some(slash) => &self.0[0..slash + 1],
+    ///
+    /// 親がルートディレクトリの場合は None
+    pub fn parent(&self) -> Option<LibDirPath> {
+        match self.0.rfind('/') {
+            Some(slash) => {
+                let parent_str = &self.0[0..slash + 1];
+                let non_empty = NonEmptyString::from_str(parent_str).unwrap();
+                Some(LibDirPath::from(non_empty))
+            }
             //(スラッシュがなければ、親はライブラリルート)
-            None => "",
-        };
-
-        LibDirPath::new(parent_str)
+            None => None,
+        }
     }
 }
 
@@ -217,14 +221,14 @@ mod tests {
 
     #[test]
     fn test_parent() {
-        assert!(str_to_path("hoge.mp3").parent().is_root());
+        assert_eq!(str_to_path("hoge.mp3").parent(), None);
         assert_eq!(
             str_to_path("hoge/fuga.flac").parent(),
-            LibDirPath::new("hoge")
+            Some(LibDirPath::from_str("hoge").unwrap())
         );
         assert_eq!(
             str_to_path("hoge/fuga/piyo.m4a").parent(),
-            LibDirPath::new("hoge/fuga")
+            Some(LibDirPath::from_str("hoge/fuga").unwrap()),
         );
     }
 }

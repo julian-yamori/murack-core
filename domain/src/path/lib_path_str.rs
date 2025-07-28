@@ -1,7 +1,10 @@
+use crate::NonEmptyString;
+
 use super::LibDirPath;
 use std::{
     fmt,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 /// ライブラリ内の文字列表現による文字列パス
@@ -38,8 +41,15 @@ impl LibPathStr {
     }
 
     /// このパスがディレクトリを示していると解釈し、ディレクトリパスインスタンスを取得
-    pub fn to_dir_path(&self) -> LibDirPath {
-        LibDirPath::new(&self.0)
+    ///
+    /// パス文字列が空 (root 指定) なら None を返す
+    pub fn to_dir_path(&self) -> Option<LibDirPath> {
+        if self.is_root() {
+            None
+        } else {
+            let non_empty = NonEmptyString::from_str(&self.0).unwrap();
+            Some(LibDirPath::from(non_empty))
+        }
     }
 }
 

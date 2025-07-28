@@ -1,6 +1,6 @@
 use std::{path::Path, str::FromStr};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use async_trait::async_trait;
 use mockall::mock;
 
@@ -101,8 +101,12 @@ where
         } else {
             //指定パス以下の全ての曲について、パスの変更を反映
 
-            let src_as_dir = src.to_dir_path();
-            let dest_as_dir = dest.to_dir_path();
+            let Some(src_as_dir) = src.to_dir_path() else {
+                bail!("src パスが空です");
+            };
+            let Some(dest_as_dir) = dest.to_dir_path() else {
+                bail!("dest パスが空です");
+            };
 
             for src_track in self
                 .db_track_repository
@@ -155,10 +159,10 @@ where
             .unregister_track_artworks(tx, track_id)
             .await?;
 
-        //他に使用する曲がなければ、フォルダを削除
-        self.folder_usecase
-            .delete_db_if_empty(tx, &path.parent())
-            .await?;
+        //他に使用する曲がなければ、親フォルダを削除
+        if let Some(parent) = path.parent() {
+            self.folder_usecase.delete_db_if_empty(tx, &parent).await?;
+        };
 
         self.db_playlist_repository.reset_listuped_flag(tx).await?;
 
@@ -212,13 +216,14 @@ where
         }
 
         //移動先の親フォルダを登録してIDを取得
-        let dest_parent = dest.parent();
-        let new_folder_id = if dest_parent.is_root() {
-            FolderIdMayRoot::Root
-        } else {
-            self.db_folder_repository
-                .register_not_exists(tx, &dest_parent)
-                .await?
+        let dest_parent_opt = dest.parent();
+        let new_folder_id = match dest_parent_opt {
+            None => FolderIdMayRoot::Root,
+            Some(dest_parent) => {
+                self.db_folder_repository
+                    .register_not_exists(tx, &dest_parent)
+                    .await?
+            }
         };
 
         //曲のパス情報を変更
@@ -227,9 +232,9 @@ where
             .await?;
 
         //子要素がなくなった親フォルダを削除
-        self.folder_usecase
-            .delete_db_if_empty(tx, &src.parent())
-            .await?;
+        if let Some(parent) = src.parent() {
+            self.folder_usecase.delete_db_if_empty(tx, &parent).await?;
+        }
 
         //パスを使用したフィルタがあるかもしれないので、
         //プレイリストのリストアップ済みフラグを解除
@@ -405,7 +410,7 @@ mod tests {
             .folder_usecase
             .inner
             .expect_delete_db_if_empty()
-            .withf(|folder_path| folder_path == &LibDirPath::new("hoge"))
+            .withf(|folder_path| folder_path == &LibDirPath::from_str("hoge").unwrap())
             .times(1)
             .returning(|_| Ok(()));
 
@@ -534,9 +539,7 @@ mod tests {
             .folder_usecase
             .inner
             .expect_delete_db_if_empty()
-            .withf(|folder_path| folder_path == &LibDirPath::root())
-            .times(1)
-            .returning(|_| Ok(()));
+            .never();
 
         target
             .db_playlist_repository

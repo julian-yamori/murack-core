@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, bail};
 use murack_core_domain::{
     Error as DomainError,
     folder::DbFolderRepository,
@@ -120,7 +120,10 @@ where
         }
 
         //フォルダのチェック
-        let dest_dir_path = dest_path_str.to_dir_path();
+        let Some(dest_dir_path) = dest_path_str.to_dir_path() else {
+            bail!("dest パスが空です")
+        };
+
         if self
             .db_folder_repository
             .is_exist_path(&mut tx, &dest_dir_path)

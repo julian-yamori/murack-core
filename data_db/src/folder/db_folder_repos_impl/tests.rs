@@ -9,6 +9,8 @@ use crate::folder::DbFolderRepositoryImpl;
 
 // register_not_exists 関数のテスト
 mod test_register_not_exists {
+    use std::str::FromStr;
+
     use super::*;
 
     /// 複数階層のフォルダパスを登録するテスト
@@ -18,7 +20,7 @@ mod test_register_not_exists {
         fixtures("test_register_not_exists_2dir")
     )]
     async fn 存在しない2階層を作成(pool: PgPool) -> Result<()> {
-        let lib_dir_path = LibDirPath::new("test/hoge/fuga");
+        let lib_dir_path = LibDirPath::from_str("test/hoge/fuga")?;
 
         let target = DbFolderRepositoryImpl::new();
 
@@ -64,7 +66,7 @@ mod test_register_not_exists {
         fixtures("test_register_not_exists_root")
     )]
     async fn ルート直下に作成(pool: PgPool) -> Result<()> {
-        let lib_dir_path = LibDirPath::new("test");
+        let lib_dir_path = LibDirPath::from_str("test")?;
 
         let target = DbFolderRepositoryImpl::new();
 
@@ -101,7 +103,7 @@ mod test_register_not_exists {
         fixtures("test_register_not_exists_exists")
     )]
     async fn 既に存在する場合(pool: PgPool) -> Result<()> {
-        let lib_dir_path = LibDirPath::new("test/hoge/fuga");
+        let lib_dir_path = LibDirPath::from_str("test/hoge/fuga")?;
 
         let target = DbFolderRepositoryImpl::new();
 

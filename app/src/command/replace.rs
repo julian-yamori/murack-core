@@ -10,8 +10,8 @@ use walk_base_2_domain::{
     folder::{DbFolderRepository, FolderUsecase},
     path::{LibPathStr, LibTrackPath},
     playlist::DbPlaylistRepository,
-    track::DbTrackRepository,
     sync::DbTrackSyncRepository,
+    track::DbTrackRepository,
 };
 
 /// replaceコマンド
@@ -206,10 +206,12 @@ impl CommandReplace {
 
         let db_track = db.run_in_transaction(|tx| {
             //新規パスの親ディレクトリを登録してIDを取得
-            let new_parent = unit.new_lib_path.parent();
-            let new_folder_id = self
-                .db_folder_repository
-                .register_not_exists(tx, &new_parent)?;
+            let new_folder_id = if let Some(new_parent) = unit.new_lib_path.parent() {
+                self.db_folder_repository
+                    .register_not_exists(tx, &new_parent)?;
+            } else {
+                FolderIdMayRoot::Root
+            };
 
             //DBにパスの変更を反映
             //todo usecase層でフォルダ登録の処理もした方が良さそう。
@@ -221,8 +223,9 @@ impl CommandReplace {
             )?;
 
             //旧パスの親ディレクトリが無くなるなら削除
-            self.folder_usecase
-                .delete_db_if_empty(tx, &unit.old_lib_path.parent())?;
+            if let Some(parent) = unit.old_lib_path.parent() {
+                self.folder_usecase.delete_db_if_empty(tx, &parent)?;
+            }
 
             let db_track = self
                 .db_track_sync_repository
@@ -382,8 +385,8 @@ mod tests {
         folder::{MockDbFolderRepository, MockFolderUsecase},
         mocks,
         playlist::MockDbPlaylistRepository,
-        track::MockDbTrackRepository,
         sync::MockDbTrackSyncRepository,
+        track::MockDbTrackRepository,
     };
 
     mocks! {

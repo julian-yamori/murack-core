@@ -53,8 +53,6 @@ mod tests {
     #[test_case("hoge/fuga.flac", "hoge", "fuga.flac" ; "1")]
     #[test_case("hoge/fuga/piyo.flac", "hoge", "fuga/piyo.flac" ; "2")]
     #[test_case("hoge/fuga/piyo.flac", "hoge/fuga", "piyo.flac" ; "3")]
-    #[test_case("piyo.flac", "", "piyo.flac" ; "root")]
-    #[test_case("hoge/piyo.flac", "", "hoge/piyo.flac" ; "in_dir_from_root")]
     fn test_from_track_and_parent_valid(
         track: &str,
         parent: &str,
@@ -63,7 +61,7 @@ mod tests {
         assert_eq!(
             RelativeTrackPath::from_track_and_parent(
                 &LibTrackPath::from_str(track).unwrap(),
-                &LibDirPath::new(parent)
+                &LibDirPath::from_str(parent).unwrap()
             )?,
             RelativeTrackPath(expect.to_owned())
         );
@@ -74,7 +72,7 @@ mod tests {
     #[test]
     fn test_from_track_and_parent_invalid() {
         let track = LibTrackPath::from_str("hoge/fuga.flac").unwrap();
-        let parent = LibDirPath::new("piyo");
+        let parent = LibDirPath::from_str("piyo").unwrap();
 
         let err = RelativeTrackPath::from_track_and_parent(&track, &parent).unwrap_err();
         match err.downcast_ref() {
@@ -91,10 +89,10 @@ mod tests {
 
     #[test_case("fuga.flac", "hoge", "hoge/fuga.flac" ; "normal")]
     #[test_case("piyo/fuga.flac", "hoge", "hoge/piyo/fuga.flac" ; "rel_in_dir")]
-    #[test_case("piyo/fuga.flac", "", "piyo/fuga.flac" ; "root_parent")]
     fn test_concat_lib_dir(rel: &str, parent: &str, expect: &str) {
         assert_eq!(
-            RelativeTrackPath(rel.to_owned()).concat_lib_dir(&LibDirPath::new(parent)),
+            RelativeTrackPath(rel.to_owned())
+                .concat_lib_dir(&LibDirPath::from_str(parent).unwrap()),
             LibTrackPath::from_str(expect).unwrap()
         )
     }

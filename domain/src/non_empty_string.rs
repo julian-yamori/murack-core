@@ -11,6 +11,16 @@ use thiserror::Error;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonEmptyString(String);
 
+impl NonEmptyString {
+    pub fn push(&mut self, ch: char) {
+        self.0.push(ch);
+    }
+
+    pub fn push_str(&mut self, string: &str) {
+        self.0.push_str(string);
+    }
+}
+
 impl TryFrom<String> for NonEmptyString {
     type Error = EmptyStringError;
 

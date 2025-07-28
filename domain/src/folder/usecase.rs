@@ -47,11 +47,6 @@ where
         tx: &mut PgTransaction<'c>,
         folder_path: &LibDirPath,
     ) -> Result<()> {
-        //rootが指定されたら無視
-        if folder_path.is_root() {
-            return Ok(());
-        }
-
         //IDを取得
         let folder_id = self
             .db_folder_repository

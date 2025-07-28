@@ -25,6 +25,9 @@ pub trait DbTrackRepository {
         path: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>>;
 
+    /// 全ての曲のパスを取得
+    async fn get_all_path<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<LibTrackPath>>;
+
     /// ディレクトリを指定してパスを取得
     /// # Arguments
     /// - path: 検索対象のライブラリパス
@@ -113,6 +116,10 @@ impl DbTrackRepository for MockDbTrackRepository {
         self.inner.get_path_by_path_str(path)
     }
 
+    async fn get_all_path<'c>(&self, _db: &mut PgTransaction<'c>) -> Result<Vec<LibTrackPath>> {
+        self.inner.get_all_path()
+    }
+
     async fn get_path_by_directory<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
@@ -179,6 +186,8 @@ mock! {
             &self,
             path: &LibPathStr,
         ) -> Result<Vec<LibTrackPath>>;
+
+        pub fn get_all_path(&self) -> Result<Vec<LibTrackPath>> ;
 
         pub fn get_path_by_directory(
             &self,

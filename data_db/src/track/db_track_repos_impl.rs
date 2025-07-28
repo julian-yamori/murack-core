@@ -42,8 +42,13 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         path: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>> {
         //ディレクトリ指定とみなして検索
-        let dir_path = path.to_dir_path();
-        let mut list = self.get_path_by_directory(tx, &dir_path).await?;
+        let mut list = match path.to_dir_path() {
+            Some(dir_path) => self.get_path_by_directory(tx, &dir_path).await?,
+            None => {
+                // 空文字列の場合はルート指定とみなし、全曲取得
+                self.get_all_path(tx).await?
+            }
+        };
 
         //ファイル指定とみなしての検索でヒットしたら追加
         if let Some(track_path) = self.path_str_as_track_path(tx, path).await? {
@@ -51,6 +56,14 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         }
 
         Ok(list)
+    }
+
+    /// 全ての曲のパスを取得
+    async fn get_all_path<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<LibTrackPath>> {
+        let paths = sqlx::query_scalar!(r#"SELECT path AS "path: LibTrackPath" FROM tracks"#)
+            .fetch_all(&mut **tx)
+            .await?;
+        Ok(paths)
     }
 
     /// ディレクトリを指定してパスを取得
@@ -63,32 +76,24 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Vec<LibTrackPath>> {
-        if path.is_root() {
-            //ルートフォルダ指定なら、全曲
-            let paths = sqlx::query_scalar!(r#"SELECT path AS "path: LibTrackPath" FROM tracks"#)
-                .fetch_all(&mut **tx)
-                .await?;
-            Ok(paths)
+        let path_str = path.as_str();
+
+        //LIKE文エスケープ
+        let cmp_value_buff;
+        let (like_query, cmp_value) = if like_esc::is_need(path_str) {
+            cmp_value_buff = like_esc::escape(path_str);
+            ("LIKE $1 || '%' ESCAPE '$'", cmp_value_buff.as_str())
         } else {
-            let path_str = path.as_str();
+            ("LIKE $1 || '%'", path_str)
+        };
 
-            //LIKE文エスケープ
-            let cmp_value_buff;
-            let (like_query, cmp_value) = if like_esc::is_need(path_str) {
-                cmp_value_buff = like_esc::escape(path_str);
-                ("LIKE $1 || '%' ESCAPE '$'", cmp_value_buff.as_str())
-            } else {
-                ("LIKE $1 || '%'", path_str)
-            };
+        let sql = format!("SELECT path FROM tracks WHERE path {like_query}");
+        let paths = sqlx::query_scalar(&sql)
+            .bind(cmp_value)
+            .fetch_all(&mut **tx)
+            .await?;
 
-            let sql = format!("SELECT path FROM tracks WHERE path {like_query}");
-            let paths = sqlx::query_scalar(&sql)
-                .bind(cmp_value)
-                .fetch_all(&mut **tx)
-                .await?;
-
-            Ok(paths)
-        }
+        Ok(paths)
     }
 
     /// LibPathStr を曲ファイルのパスとみなすことができるか確認

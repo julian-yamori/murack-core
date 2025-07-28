@@ -135,7 +135,7 @@ mod test_get_path_by_directory {
 
         assert_eq!(
             target
-                .get_path_by_directory(&mut tx, &LibDirPath::new("test"))
+                .get_path_by_directory(&mut tx, &LibDirPath::from_str("test")?)
                 .await?,
             vec![
                 LibTrackPath::from_str("test/hoge.flac")?,
@@ -158,35 +158,9 @@ mod test_get_path_by_directory {
 
         assert_eq!(
             target
-                .get_path_by_directory(&mut tx, &LibDirPath::new("test/dir"))
+                .get_path_by_directory(&mut tx, &LibDirPath::from_str("test/dir")?)
                 .await?,
             vec![LibTrackPath::from_str("test/dir/hoge3.flac")?]
-        );
-
-        Ok(())
-    }
-
-    #[sqlx::test(
-        migrator = "crate::MIGRATOR",
-        fixtures("fixtures/test_get_path_by_directory/normal_chars.sql")
-    )]
-    fn ルート指定(pool: PgPool) -> anyhow::Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
-        let mut tx = pool.begin().await?;
-
-        assert_eq!(
-            target
-                .get_path_by_directory(&mut tx, &LibDirPath::root())
-                .await?,
-            vec![
-                LibTrackPath::from_str("test/hoge.flac")?,
-                LibTrackPath::from_str("test/hoge2.flac")?,
-                LibTrackPath::from_str("fuga.flac")?,
-                LibTrackPath::from_str("dummy/fuga.flac")?,
-                LibTrackPath::from_str("test/dir/hoge3.flac")?,
-                LibTrackPath::from_str("dummy/test/dir/dummy.mp3")?,
-            ]
         );
 
         Ok(())
@@ -203,7 +177,7 @@ mod test_get_path_by_directory {
 
         assert_eq!(
             target
-                .get_path_by_directory(&mut tx, &LibDirPath::new("test/d%i_r$"))
+                .get_path_by_directory(&mut tx, &LibDirPath::from_str("test/d%i_r$")?)
                 .await?,
             vec![LibTrackPath::from_str("test/d%i_r$/hoge.flac")?]
         );

@@ -89,11 +89,6 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
         tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<FolderIdMayRoot> {
-        //ライブラリルートならNone
-        if path.is_root() {
-            return Ok(FolderIdMayRoot::Root);
-        }
-
         //同一パスのデータを検索し、そのIDを取得
         let existing_id =
             sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
@@ -106,16 +101,15 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
         }
 
         //親ディレクトリについて再帰呼出し、親のID取得
-        let parent_id = self
-            .register_not_exists(tx, &path.parent().unwrap())
-            .await?;
-
-        let my_name = path.dir_name().unwrap();
+        let parent_id = match path.parent() {
+            Some(parent_path) => self.register_not_exists(tx, &parent_path).await?,
+            None => FolderIdMayRoot::Root,
+        };
 
         let new_id = sqlx::query_scalar!(
             "INSERT INTO folder_paths (path, name, parent_id) VALUES ($1, $2, $3) RETURNING id",
             path.as_str(),
-            my_name,
+            path.dir_name(),
             parent_id.into_db()
         )
         .fetch_one(&mut **tx)
