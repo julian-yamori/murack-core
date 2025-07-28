@@ -1,8 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{
-    folder::{DbFolderRepository, FolderIdMayRoot},
-    path::LibDirPath,
-};
+use murack_core_domain::{folder::DbFolderRepository, path::LibDirPath};
 use sqlx::PgPool;
 
 use crate::folder::DbFolderRepositoryImpl;
@@ -26,10 +23,7 @@ mod test_register_not_exists {
 
         let mut tx = pool.begin().await?;
 
-        let result = target.register_not_exists(&mut tx, &lib_dir_path).await?;
-
-        // 結果は Root 以外の新しいフォルダのIDを返すはず
-        assert!(matches!(result, FolderIdMayRoot::Folder(_)));
+        target.register_not_exists(&mut tx, &lib_dir_path).await?;
 
         // 対象フォルダが実際に作成されたことを確認
         let exists = sqlx::query_scalar!(
@@ -72,10 +66,7 @@ mod test_register_not_exists {
 
         let mut tx = pool.begin().await?;
 
-        let result = target.register_not_exists(&mut tx, &lib_dir_path).await?;
-
-        // 結果は Root 以外の新しいフォルダのIDを返すはず
-        assert!(matches!(result, FolderIdMayRoot::Folder(_)));
+        target.register_not_exists(&mut tx, &lib_dir_path).await?;
 
         // 対象フォルダが実際に作成されたことを確認
         let exists =
@@ -109,10 +100,11 @@ mod test_register_not_exists {
 
         let mut tx = pool.begin().await?;
 
-        let result = target.register_not_exists(&mut tx, &lib_dir_path).await?;
-
-        // 結果は既存のフォルダID (12) を返すはず
-        assert_eq!(result, FolderIdMayRoot::Folder(12));
+        assert_eq!(
+            target.register_not_exists(&mut tx, &lib_dir_path).await?,
+            // 結果は既存のフォルダID (12) を返すはず
+            12
+        );
 
         // フォルダ数が変わっていないことを確認（新規作成されていない）
         let total_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM folder_paths"#)

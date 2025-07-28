@@ -88,7 +88,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
         &self,
         tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
-    ) -> Result<FolderIdMayRoot> {
+    ) -> Result<i32> {
         //同一パスのデータを検索し、そのIDを取得
         let existing_id =
             sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
@@ -97,12 +97,15 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
 
         //見つかった場合はこのIDを返す
         if let Some(i) = existing_id {
-            return Ok(FolderIdMayRoot::Folder(i));
+            return Ok(i);
         }
 
         //親ディレクトリについて再帰呼出し、親のID取得
         let parent_id = match path.parent() {
-            Some(parent_path) => self.register_not_exists(tx, &parent_path).await?,
+            Some(parent_path) => {
+                let id = self.register_not_exists(tx, &parent_path).await?;
+                FolderIdMayRoot::Folder(id)
+            }
             None => FolderIdMayRoot::Root,
         };
 
@@ -115,7 +118,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
         .fetch_one(&mut **tx)
         .await?;
 
-        Ok(FolderIdMayRoot::Folder(new_id))
+        Ok(new_id)
     }
 
     /// フォルダを削除

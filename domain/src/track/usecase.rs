@@ -220,9 +220,11 @@ where
         let new_folder_id = match dest_parent_opt {
             None => FolderIdMayRoot::Root,
             Some(dest_parent) => {
-                self.db_folder_repository
+                let id = self
+                    .db_folder_repository
                     .register_not_exists(tx, &dest_parent)
-                    .await?
+                    .await?;
+                FolderIdMayRoot::Folder(id)
             }
         };
 

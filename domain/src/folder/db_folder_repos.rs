@@ -52,7 +52,7 @@ pub trait DbFolderRepository {
         &self,
         tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
-    ) -> Result<FolderIdMayRoot>;
+    ) -> Result<i32>;
 
     /// フォルダを削除
     ///
@@ -103,7 +103,7 @@ impl DbFolderRepository for MockDbFolderRepository {
         &self,
         _db: &mut PgTransaction<'c>,
         path: &LibDirPath,
-    ) -> Result<FolderIdMayRoot> {
+    ) -> Result<i32> {
         self.inner.register_not_exists(path)
     }
 
@@ -134,7 +134,7 @@ mock! {
         pub fn register_not_exists(
             &self,
             path: &LibDirPath,
-        ) -> Result<FolderIdMayRoot>;
+        ) -> Result<i32>;
 
         pub fn delete(&self, folder_id: i32) -> Result<()>;
     }

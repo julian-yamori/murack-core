@@ -70,9 +70,11 @@ where
         let folder_id = match parent_path_opt {
             None => FolderIdMayRoot::Root,
             Some(parent_path) => {
-                self.db_folder_repository
+                let id = self
+                    .db_folder_repository
                     .register_not_exists(tx, &parent_path)
-                    .await?
+                    .await?;
+                FolderIdMayRoot::Folder(id)
             }
         };
 
@@ -232,7 +234,7 @@ mod tests {
             .times(1)
             .returning(|a_path| {
                 assert_eq!(a_path, &LibDirPath::from_str("test/hoge").unwrap());
-                Ok(FolderIdMayRoot::Folder(15))
+                Ok(15)
             });
 
         target
