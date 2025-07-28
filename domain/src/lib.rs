@@ -3,6 +3,8 @@
 mod error;
 pub use error::Error;
 
+pub mod db_components;
+
 pub mod artwork;
 pub mod db_utils;
 pub mod filter;
