@@ -1,6 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use murack_core_domain::playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl};
+use murack_core_domain::{
+    playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
+    track_query::TrackFinderImpl,
+};
 use once_cell::sync::Lazy;
 
 use crate::{
@@ -8,7 +11,6 @@ use crate::{
     folder::DbFolderRepositoryImpl,
     tag::DbTrackTagRepositoryImpl,
     track::{DbTrackRepositoryImpl, DbTrackSyncRepositoryImpl},
-    track_lister::TrackFinderImpl,
 };
 
 /// data層DB機能のDIを解決するオブジェクト

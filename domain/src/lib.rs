@@ -4,7 +4,6 @@ mod error;
 pub use error::Error;
 
 pub mod artwork;
-pub mod dap;
 pub mod db_utils;
 pub mod filter;
 pub mod folder;
@@ -18,6 +17,7 @@ pub mod string_order_cnv;
 pub mod sync;
 pub mod tag;
 pub mod track;
+pub mod track_query;
 
 pub mod test_utils;
 

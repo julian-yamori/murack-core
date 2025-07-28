@@ -6,9 +6,9 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
     NonEmptyString,
-    dap::TrackFinder,
     path::LibraryTrackPath,
     playlist::{DbPlaylistRepository, Playlist},
+    track_query::TrackFinder,
 };
 use sqlx::{PgPool, PgTransaction};
 

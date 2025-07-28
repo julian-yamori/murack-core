@@ -6,7 +6,6 @@ pub mod artwork;
 pub mod folder;
 pub mod tag;
 pub mod track;
-pub mod track_lister;
 
 #[macro_use]
 extern crate derive_new;
