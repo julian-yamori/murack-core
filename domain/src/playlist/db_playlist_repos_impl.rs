@@ -5,7 +5,7 @@ use sqlx::PgTransaction;
 use crate::{
     NonEmptyString,
     playlist::{
-        DbPlaylistRepository, Playlist, PlaylistRow, PlaylistType, SortType,
+        DbPlaylistRepository, Playlist, PlaylistRow, PlaylistTree, PlaylistType, SortType,
         playlist_error::{PlaylistError, PlaylistNoParentsDetectedItem},
     },
 };
@@ -41,7 +41,7 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     /// プレイリストのツリー構造を取得
     /// # Returns
     /// 最上位プレイリストのリスト
-    async fn get_playlist_tree<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<Playlist>> {
+    async fn get_playlist_tree<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<PlaylistTree>> {
         let remain_pool = sqlx::query_as!(
             PlaylistRow,
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
@@ -106,31 +106,37 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
 /// - 0: `parent`引数を親に持つプレイリストのリスト(子リスト構築済み)
 /// - 1: まだ親が見つかってないプレイリスト
 fn build_plist_children_recursive(
-    parent: Option<&Playlist>,
+    parent: Option<&PlaylistTree>,
     remain_pool: Vec<PlaylistRow>,
-) -> anyhow::Result<(Vec<Playlist>, Vec<PlaylistRow>)> {
+) -> anyhow::Result<(Vec<PlaylistTree>, Vec<PlaylistRow>)> {
     //親プレイリストが対象のものと、それ以外を分ける
     let (targets, mut remain_pool): (Vec<PlaylistRow>, Vec<PlaylistRow>) = remain_pool
         .into_iter()
-        .partition(|row| row.parent_id == parent.map(|p| p.rowid));
+        .partition(|row| row.parent_id == parent.map(|p| p.playlist.rowid));
 
     let mut result_list = Vec::new();
 
     for target in targets {
-        let mut plist = Playlist::try_from(target)?;
+        let mut current_tree = PlaylistTree {
+            playlist: Playlist::try_from(target)?,
+            children: vec![],
+            parent_names: vec![],
+        };
 
         //親プレイリスト名を親から繋げる
-        if let Some(p) = parent {
-            plist.parent_names = p.parent_names.clone();
-            plist.parent_names.push(p.name.clone());
+        if let Some(parent_tree) = parent {
+            current_tree.parent_names = parent_tree.parent_names.clone();
+            current_tree
+                .parent_names
+                .push(parent_tree.playlist.name.clone());
         }
 
         //再帰実行して子プレイリスト一覧を取得
-        let tuple = build_plist_children_recursive(Some(&plist), remain_pool)?;
-        plist.children = tuple.0;
+        let tuple = build_plist_children_recursive(Some(&current_tree), remain_pool)?;
+        current_tree.children = tuple.0;
         remain_pool = tuple.1;
 
-        result_list.push(plist);
+        result_list.push(current_tree);
     }
 
     Ok((result_list, remain_pool))

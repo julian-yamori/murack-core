@@ -50,14 +50,4 @@ pub struct Playlist {
 
     /// 前回DAPに反映してから、リストが変更されたか
     pub dap_changed: bool,
-
-    /// 子プレイリストの一覧
-    ///
-    /// ツリー構築時のみ有効
-    pub children: Vec<Playlist>,
-
-    /// 親プレイリストの名前リスト
-    ///
-    /// ツリー構築時のみ有効
-    pub parent_names: Vec<NonEmptyString>,
 }

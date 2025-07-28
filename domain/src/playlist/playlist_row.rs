@@ -66,9 +66,6 @@ impl TryFrom<PlaylistRow> for Playlist {
             save_dap: row.save_dap,
             listuped_flag: row.listuped_flag,
             dap_changed: row.dap_changed,
-            //todo 以下は暫定
-            children: vec![],
-            parent_names: vec![],
         })
     }
 }

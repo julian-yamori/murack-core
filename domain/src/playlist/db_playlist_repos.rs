@@ -3,6 +3,8 @@ use async_trait::async_trait;
 use mockall::mock;
 use sqlx::PgTransaction;
 
+use crate::playlist::PlaylistTree;
+
 use super::Playlist;
 
 /// プレイリスト関係のDBリポジトリ
@@ -20,7 +22,7 @@ pub trait DbPlaylistRepository {
     /// プレイリストのツリー構造を取得
     /// # Returns
     /// 最上位プレイリストのリスト
-    async fn get_playlist_tree<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<Playlist>>;
+    async fn get_playlist_tree<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<PlaylistTree>>;
 
     /// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
     async fn reset_listuped_flag<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<()>;
@@ -49,7 +51,10 @@ impl DbPlaylistRepository for MockDbPlaylistRepository {
         self.inner.get_playlist(id)
     }
 
-    async fn get_playlist_tree<'c>(&self, _db: &mut PgTransaction<'c>) -> Result<Vec<Playlist>> {
+    async fn get_playlist_tree<'c>(
+        &self,
+        _db: &mut PgTransaction<'c>,
+    ) -> Result<Vec<PlaylistTree>> {
         self.inner.get_playlist_tree()
     }
 
@@ -69,7 +74,7 @@ mock! {
     pub DbPlaylistRepositoryInner {
         pub fn get_playlist(&self, id: i32) -> Result<Option<Playlist>>;
 
-        pub fn get_playlist_tree(&self) -> Result<Vec<Playlist>>;
+        pub fn get_playlist_tree(&self) -> Result<Vec<PlaylistTree>>;
 
         pub fn reset_listuped_flag(&self) -> Result<()>;
 

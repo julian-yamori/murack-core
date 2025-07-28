@@ -7,7 +7,7 @@ use async_recursion::async_recursion;
 use murack_core_domain::{
     NonEmptyString,
     path::LibraryTrackPath,
-    playlist::{DbPlaylistRepository, Playlist},
+    playlist::{DbPlaylistRepository, PlaylistTree},
     track_query::playlist_query,
 };
 use sqlx::{PgPool, PgTransaction};
@@ -105,7 +105,7 @@ where
     #[async_recursion]
     async fn save_plists_recursive<'c>(
         &self,
-        plist_trees: &[Playlist],
+        plist_trees: &[PlaylistTree],
         tx: &mut PgTransaction<'c>,
         root_path: &Path,
         save_offset: u32,
@@ -116,22 +116,22 @@ where
 
         let save_count_digit = get_digit(save_count);
 
-        for plist in plist_trees {
+        for tree in plist_trees {
             //DAPに保存するプレイリストなら処理
-            if plist.save_dap {
+            if tree.playlist.save_dap {
                 now_save_offset += 1;
 
                 //プレイリストのファイル名を作成
                 let plist_file_name =
-                    playlist_to_file_name(plist, now_save_offset, save_count_digit);
+                    playlist_to_file_name(tree, now_save_offset, save_count_digit);
 
                 //プレイリスト内の曲パスを取得
-                let track_paths = playlist_query::get_track_path_list(tx, plist).await?;
+                let track_paths = playlist_query::get_track_path_list(tx, &tree.playlist).await?;
 
                 //プレイリストの曲データ取得後に、リストに変更があったか確認
                 let new_plist_data = self
                     .db_playlist_repository
-                    .get_playlist(tx, plist.rowid)
+                    .get_playlist(tx, tree.playlist.rowid)
                     .await?
                     .expect("playlist not found");
 
@@ -158,7 +158,7 @@ where
             //子プレイリストの保存
             now_save_offset += self
                 .save_plists_recursive(
-                    &plist.children,
+                    &tree.children,
                     tx,
                     root_path,
                     now_save_offset,
@@ -186,15 +186,15 @@ const PLAYLIST_EXT: &str = "m3u";
 ///
 /// # todo
 /// modelに移行できそうな処理
-fn count_save_plists_recursive(plists: &[Playlist]) -> u32 {
+fn count_save_plists_recursive(trees: &[PlaylistTree]) -> u32 {
     let mut count = 0;
 
-    for plist in plists {
-        if plist.save_dap {
+    for tree in trees {
+        if tree.playlist.save_dap {
             count += 1;
         }
 
-        count += count_save_plists_recursive(&plist.children);
+        count += count_save_plists_recursive(&tree.children);
     }
 
     count
@@ -214,13 +214,10 @@ fn get_digit(mut num: u32) -> u32 {
 
 /// プレイリスト情報から、プレイリストのファイル名を取得
 /// # Arguments
-/// - plist: パスを取得するプレイリスト
+/// - tree: パスを取得する対象のプレイリストのノード
 /// - offset: このプレイリストが、全体で何番目か
 /// - digit: 保存するプレイリスト数の桁数
-///
-/// # todo
-/// modelに移行できそう
-fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
+fn playlist_to_file_name(tree: &PlaylistTree, offset: u32, digit: u32) -> String {
     //番号を付ける
     //TODO 書式つかってもっときれいに実装できそう
     let mut buf = offset.to_string();
@@ -230,8 +227,8 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
     }
 
     //親がいるなら追加
-    if !plist.parent_names.is_empty() {
-        let joined_names = plist
+    if !tree.parent_names.is_empty() {
+        let joined_names = tree
             .parent_names
             .iter()
             .map(NonEmptyString::deref)
@@ -241,7 +238,7 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
         buf = format!("{buf}-{joined_names}");
     }
 
-    format!("{}-{}.{}", buf, plist.name, PLAYLIST_EXT)
+    format!("{}-{}.{}", buf, tree.playlist.name, PLAYLIST_EXT)
 }
 
 /// プレイリストに曲パスリストを書き込み
@@ -267,11 +264,12 @@ fn write_playlist_file(
     //プレイリストファイルを作成する
     dap_playlist_repository::make_playlist_file(root_path, plist_file_name, &file_data)
 }
+
 #[cfg(test)]
 mod tests {
     use std::{fs, str::FromStr};
 
-    use murack_core_domain::playlist::{PlaylistType, SortType};
+    use murack_core_domain::playlist::{Playlist, PlaylistType, SortType};
     use test_case::test_case;
 
     use super::*;
@@ -320,20 +318,22 @@ mod tests {
         digit: u32,
         expect: &str,
     ) {
-        let plist = Playlist {
-            rowid: 3,
-            playlist_type: PlaylistType::Normal,
-            parent_id: if parents.is_empty() { None } else { Some(34) },
-            in_folder_order: 99,
-            filter: None,
-            sort_type: SortType::Artist,
-            sort_desc: false,
-            save_dap: true,
-            listuped_flag: true,
-            dap_changed: true,
+        let plist = PlaylistTree {
+            playlist: Playlist {
+                rowid: 3,
+                playlist_type: PlaylistType::Normal,
+                name: name.to_string().try_into().unwrap(),
+                parent_id: if parents.is_empty() { None } else { Some(34) },
+                in_folder_order: 99,
+                filter: None,
+                sort_type: SortType::Artist,
+                sort_desc: false,
+                save_dap: true,
+                listuped_flag: true,
+                dap_changed: true,
+            },
             children: Vec::new(),
 
-            name: name.to_string().try_into().unwrap(),
             parent_names: parents
                 .iter()
                 .map(|s| (*s).to_string().try_into().unwrap())

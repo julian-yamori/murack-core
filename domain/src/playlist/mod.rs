@@ -20,6 +20,9 @@ pub use playlist_row::PlaylistRow;
 
 pub mod playlist_sqls;
 
+mod playlist_tree;
+pub use playlist_tree::PlaylistTree;
+
 mod playlist_type;
 pub use playlist_type::PlaylistType;
 
