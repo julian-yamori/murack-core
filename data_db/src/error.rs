@@ -3,16 +3,6 @@ use murack_core_domain::NonEmptyString;
 /// murack-core data_db 層のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    // enum変換エラー
-    #[error("不正なPlaylistTypeです: {type_num}")]
-    InvalidPlaylistType { type_num: i64 },
-    #[error("不正なSortTypeです: {type_num}")]
-    InvalidSortType { type_num: i64 },
-    #[error("不正なFilterTargetです: {type_num}")]
-    InvalidFilterTarget { type_num: i64 },
-    #[error("不正なFilterValueRangeです: {type_num}")]
-    InvalidFilterValueRange { type_num: i64 },
-
     #[error("親が見つからないプレイリストが検出されました: {}", diaplay_playlist_no_parents_detected(.0))]
     PlaylistNoParentsDetected(Vec<PlaylistNoParentsDetectedItem>),
 
@@ -25,13 +15,6 @@ pub struct PlaylistNoParentsDetectedItem {
     pub playlist_id: i32,
     pub name: NonEmptyString,
     pub parent_id: Option<i32>,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct FilterNoParentsDetectedItem {
-    pub filter_id: i32,
-    pub parent_id: Option<i32>,
-    pub root_id: i32,
 }
 
 fn diaplay_playlist_no_parents_detected(items: &[PlaylistNoParentsDetectedItem]) -> String {
