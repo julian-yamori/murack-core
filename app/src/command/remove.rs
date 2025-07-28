@@ -120,7 +120,7 @@ impl CommandRemoveArgs {
     pub fn parse(command_line: &[String]) -> Result<CommandRemoveArgs> {
         match command_line {
             [s, ..] => Ok(CommandRemoveArgs {
-                path: s.clone().into(),
+                path: s.clone().try_into()?,
             }),
             [] => Err(Error::InvalidCommandArgument {
                 msg: "target path is not specified.".to_owned(),

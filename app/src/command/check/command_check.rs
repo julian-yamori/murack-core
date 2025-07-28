@@ -106,16 +106,25 @@ where
 
         //PCからリストアップ
         cui_outln!(cui, "PCの検索中...")?;
-        for path in murack_core_data_file::search_by_lib_path(&self.config.pc_lib, &self.args.path)?
-        {
+        let pc_list = match &self.args.path {
+            Some(path_str) => {
+                murack_core_data_file::search_by_lib_path(&self.config.pc_lib, path_str)?
+            }
+            None => murack_core_data_file::search_all(&self.config.pc_lib)?,
+        };
+        for path in pc_list {
             set.insert(path);
         }
 
         //DAPからリストアップ
         cui_outln!(cui, "DAPの検索中...")?;
-        for path in
-            murack_core_data_file::search_by_lib_path(&self.config.dap_lib, &self.args.path)?
-        {
+        let dap_list = match &self.args.path {
+            Some(path_str) => {
+                murack_core_data_file::search_by_lib_path(&self.config.dap_lib, path_str)?
+            }
+            None => murack_core_data_file::search_all(&self.config.dap_lib)?,
+        };
+        for path in dap_list {
             set.insert(path);
         }
 
@@ -124,11 +133,15 @@ where
 
         let mut tx = db_pool.begin().await?;
 
-        for path in self
-            .db_track_repository
-            .get_path_by_path_str(&mut tx, &self.args.path)
-            .await?
-        {
+        let db_list = match &self.args.path {
+            Some(path_str) => {
+                self.db_track_repository
+                    .get_path_by_path_str(&mut tx, path_str)
+                    .await?
+            }
+            None => self.db_track_repository.get_all_path(&mut tx).await?,
+        };
+        for path in db_list {
             set.insert(path);
         }
 
@@ -285,7 +298,7 @@ mod tests {
     use crate::cui::BufferCui;
 
     fn target<'config, 'cui>(
-        arg_path: LibPathStr,
+        arg_path: Option<LibPathStr>,
         ignore_dap_content: bool,
         config: &'config Config,
         cui: &'cui BufferCui,
@@ -333,7 +346,7 @@ mod tests {
     #[sqlx::test]
     fn test_listup_track_path_green(db_pool: PgPool) -> anyhow::Result<()> {
         fn search_path() -> LibPathStr {
-            "test/hoge".to_owned().into()
+            LibPathStr::from_str("test/hoge").unwrap()
         }
 
         // temp ディレクトリを作成
@@ -361,7 +374,7 @@ mod tests {
         config.dap_lib = dap_lib;
 
         let cui = BufferCui::new();
-        let mut target = target(search_path(), false, &config, &cui);
+        let mut target = target(Some(search_path()), false, &config, &cui);
 
         // DB 側から返すパスリストを指定
         target
@@ -420,7 +433,8 @@ mod tests {
         config.dap_lib = dap_lib;
 
         let cui = BufferCui::new();
-        let mut target = target("test/hoge".to_owned().into(), false, &config, &cui);
+        let arg_path = Some(LibPathStr::from_str("test/hoge")?);
+        let mut target = target(arg_path, false, &config, &cui);
 
         // DB 側から返すパスリストを指定
         target

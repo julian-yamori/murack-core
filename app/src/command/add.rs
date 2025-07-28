@@ -128,7 +128,7 @@ impl CommandAddArgs {
     pub fn parse(command_line: &[String]) -> Result<CommandAddArgs> {
         match command_line {
             [s, ..] => Ok(CommandAddArgs {
-                path: s.clone().into(),
+                path: s.clone().try_into()?,
             }),
             [] => Err(Error::InvalidCommandArgument {
                 msg: "target path is not specified.".to_owned(),

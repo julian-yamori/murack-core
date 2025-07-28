@@ -1,8 +1,7 @@
-use std::str::FromStr;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use murack_core_domain::{
+    NonEmptyString,
     folder::FolderIdMayRoot,
     path::{LibDirPath, LibPathStr, LibTrackPath},
     track::DbTrackRepository,
@@ -42,13 +41,8 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         path: &LibPathStr,
     ) -> Result<Vec<LibTrackPath>> {
         //ディレクトリ指定とみなして検索
-        let mut list = match path.to_dir_path() {
-            Some(dir_path) => self.get_path_by_directory(tx, &dir_path).await?,
-            None => {
-                // 空文字列の場合はルート指定とみなし、全曲取得
-                self.get_all_path(tx).await?
-            }
-        };
+        let dir_path: LibDirPath = NonEmptyString::from(path.clone()).into();
+        let mut list = self.get_path_by_directory(tx, &dir_path).await?;
 
         //ファイル指定とみなしての検索でヒットしたら追加
         if let Some(track_path) = self.path_str_as_track_path(tx, path).await? {
@@ -100,22 +94,18 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     ///
     /// 曲のパスとみなすことができるなら `Some(LibTrackPath)` を返す。
     ///
-    /// LibTrackPath への変換に失敗した (空文字列だった) 場合は None を返す。
-    /// 曲ファイルがそのパスに存在しなかった場合も None を返す。
+    /// 曲ファイルがそのパスに存在しなかった場合は None を返す。
     async fn path_str_as_track_path<'c>(
         &self,
         tx: &mut PgTransaction,
         path_str: &LibPathStr,
     ) -> Result<Option<LibTrackPath>> {
-        match LibTrackPath::from_str(path_str.as_str()) {
-            Ok(track_path) => {
-                if self.is_exist_path(tx, &track_path).await? {
-                    Ok(Some(track_path))
-                } else {
-                    Ok(None)
-                }
-            }
-            Err(_) => Ok(None),
+        let track_path: LibTrackPath = NonEmptyString::from(path_str.clone()).into();
+
+        if self.is_exist_path(tx, &track_path).await? {
+            Ok(Some(track_path))
+        } else {
+            Ok(None)
         }
     }
 

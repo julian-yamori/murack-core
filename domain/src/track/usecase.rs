@@ -1,6 +1,6 @@
-use std::{path::Path, str::FromStr};
+use std::path::Path;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
 
@@ -95,18 +95,14 @@ where
             .await?
         {
             //指定パスが曲ファイル自体なら、1曲だけ処理
-            let dest_as_track = LibTrackPath::from_str(dest.as_str())?;
+            let dest_as_track: LibTrackPath = NonEmptyString::from(dest.clone()).into();
             self.move_track_db_unit(tx, &src_as_track, &dest_as_track)
                 .await?;
         } else {
             //指定パス以下の全ての曲について、パスの変更を反映
 
-            let Some(src_as_dir) = src.to_dir_path() else {
-                bail!("src パスが空です");
-            };
-            let Some(dest_as_dir) = dest.to_dir_path() else {
-                bail!("dest パスが空です");
-            };
+            let src_as_dir: LibDirPath = NonEmptyString::from(src.clone()).into();
+            let dest_as_dir: LibDirPath = NonEmptyString::from(dest.clone()).into();
 
             for src_track in self
                 .db_track_repository

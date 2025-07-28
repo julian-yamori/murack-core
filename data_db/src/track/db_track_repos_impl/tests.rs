@@ -26,7 +26,7 @@ mod test_get_path_by_path_str {
         let mut tx = pool.begin().await?;
 
         let result = target
-            .get_path_by_path_str(&mut tx, &LibPathStr::from("test/hoge".to_owned()))
+            .get_path_by_path_str(&mut tx, &LibPathStr::from_str("test/hoge")?)
             .await?;
 
         // 結果は3つの楽曲パスであるはず
@@ -50,7 +50,7 @@ mod test_get_path_by_path_str {
         let mut tx = pool.begin().await?;
 
         let result = target
-            .get_path_by_path_str(&mut tx, &LibPathStr::from("test/hoge".to_owned()))
+            .get_path_by_path_str(&mut tx, &LibPathStr::from_str("test/hoge")?)
             .await?;
 
         // 結果は空であるはず
@@ -71,7 +71,7 @@ mod test_get_path_by_path_str {
         let mut tx = pool.begin().await?;
 
         let result = target
-            .get_path_by_path_str(&mut tx, &LibPathStr::from("test/hoge.flac".to_owned()))
+            .get_path_by_path_str(&mut tx, &LibPathStr::from_str("test/hoge.flac")?)
             .await?;
 
         // 結果は指定した楽曲ファイル1つであるはず
@@ -85,36 +85,6 @@ mod test_get_path_by_path_str {
         .fetch_one(&mut *tx)
         .await?;
         assert_eq!(exists, 1);
-
-        Ok(())
-    }
-
-    /// ルート指定でのパス取得テスト
-    /// ライブラリ全体の楽曲を取得する場合
-    #[sqlx::test(
-        migrator = "crate::MIGRATOR",
-        fixtures("test_get_path_by_path_str_root")
-    )]
-    async fn ルート指定(pool: PgPool) -> Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
-        let mut tx = pool.begin().await?;
-
-        let result = target
-            .get_path_by_path_str(&mut tx, &LibPathStr::root())
-            .await?;
-
-        // 結果は3つの楽曲パスであるはず
-        assert_eq!(result.len(), 3);
-        assert!(result.contains(&LibTrackPath::from_str("track1.mp3")?));
-        assert!(result.contains(&LibTrackPath::from_str("test/hoge/track2.flac")?));
-        assert!(result.contains(&LibTrackPath::from_str("test/track3.m4a")?));
-
-        // データベース内の全楽曲数を確認
-        let total_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM tracks"#)
-            .fetch_one(&mut *tx)
-            .await?;
-        assert_eq!(total_count, 3);
 
         Ok(())
     }

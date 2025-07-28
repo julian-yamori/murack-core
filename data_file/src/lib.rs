@@ -13,7 +13,7 @@ mod mod_move;
 pub use mod_move::move_path_str;
 
 mod search;
-pub use search::{search_by_lib_path, search_track_outside_lib};
+pub use search::{search_all, search_by_lib_path, search_track_outside_lib};
 
 mod track_sync;
 pub use track_sync::{overwrite_track_sync, read_metadata, read_track_sync};

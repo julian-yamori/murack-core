@@ -1,8 +1,8 @@
-use anyhow::{Result, bail};
+use anyhow::Result;
 use murack_core_domain::{
-    Error as DomainError,
+    Error as DomainError, NonEmptyString,
     folder::DbFolderRepository,
-    path::LibPathStr,
+    path::{LibDirPath, LibPathStr},
     track::{DbTrackRepository, TrackUsecase},
 };
 use sqlx::PgPool;
@@ -106,23 +106,19 @@ where
 
     /// DBの移動先に既に存在しないか確認する
     async fn check_db_exist(&self, db_pool: &PgPool) -> Result<()> {
-        let dest_path_str = &self.args.dest_path;
-
         let mut tx = db_pool.begin().await?;
 
         //曲のチェック
         if let Some(dest_track_path) = self
             .db_track_repository
-            .path_str_as_track_path(&mut tx, dest_path_str)
+            .path_str_as_track_path(&mut tx, &self.args.dest_path)
             .await?
         {
             return Err(DomainError::DbTrackAlreadyExists(dest_track_path).into());
         }
 
         //フォルダのチェック
-        let Some(dest_dir_path) = dest_path_str.to_dir_path() else {
-            bail!("dest パスが空です")
-        };
+        let dest_dir_path: LibDirPath = NonEmptyString::from(self.args.dest_path.clone()).into();
 
         if self
             .db_folder_repository
@@ -154,8 +150,8 @@ impl CommandMoveArgs {
     pub fn parse(command_line: &[String]) -> Result<CommandMoveArgs> {
         match command_line {
             [src, dest, ..] => Ok(CommandMoveArgs {
-                src_path: src.clone().into(),
-                dest_path: dest.clone().into(),
+                src_path: src.clone().try_into()?,
+                dest_path: dest.clone().try_into()?,
             }),
             [_] => Err(Error::InvalidCommandArgument {
                 msg: "destination path is not specified.".to_owned(),

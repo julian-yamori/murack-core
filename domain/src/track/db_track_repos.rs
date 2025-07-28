@@ -43,8 +43,7 @@ pub trait DbTrackRepository {
     ///
     /// 曲のパスとみなすことができるなら `Some(LibTrackPath)` を返す。
     ///
-    /// LibTrackPath への変換に失敗した (空文字列だった) 場合は None を返す。
-    /// 曲ファイルがそのパスに存在しなかった場合も None を返す。
+    /// 曲ファイルがそのパスに存在しなかった場合は None を返す。
     async fn path_str_as_track_path<'c>(
         &self,
         tx: &mut PgTransaction,
