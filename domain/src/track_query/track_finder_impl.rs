@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
-use super::{esc::esci, filter};
+use super::{esc::esci, filter_query};
 use crate::{
     NonEmptyString,
     path::LibraryTrackPath,
@@ -204,7 +204,7 @@ impl TrackFinderImpl {
                 plist_id: plist.rowid,
             })?;
 
-        filter::get_track_ids(tx, filter).await
+        filter_query::get_track_ids(tx, filter).await
     }
 }
 

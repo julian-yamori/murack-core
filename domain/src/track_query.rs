@@ -5,6 +5,6 @@ pub use track_finder::{MockTrackFinder, TrackFinder};
 mod track_finder_impl;
 pub use track_finder_impl::TrackFinderImpl;
 
-mod filter;
+mod filter_query;
 
 mod esc;
