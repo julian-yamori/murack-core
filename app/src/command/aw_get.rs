@@ -1,7 +1,7 @@
 use crate::{Config, Error, cui::Cui};
 
 use anyhow::{Context, Result, anyhow};
-use murack_core_domain::path::LibTrackPath;
+use murack_core_domain::path::LibraryTrackPath;
 
 use std::{
     fs,
@@ -115,7 +115,7 @@ fn make_output_path(
 /// コマンドの引数
 pub struct CommandArtworkGetArgs {
     /// 曲ファイルのパス
-    pub track_path: LibTrackPath,
+    pub track_path: LibraryTrackPath,
 
     /// 画像ファイルの保存先パス
     ///
@@ -131,11 +131,11 @@ impl CommandArtworkGetArgs {
     pub fn parse(command_line: &[String]) -> Result<CommandArtworkGetArgs> {
         match command_line {
             [track, artwork, ..] => Ok(CommandArtworkGetArgs {
-                track_path: LibTrackPath::from_str(track)?,
+                track_path: LibraryTrackPath::from_str(track)?,
                 artwork_path: Some(artwork.into()),
             }),
             [track] => Ok(CommandArtworkGetArgs {
-                track_path: LibTrackPath::from_str(track)?,
+                track_path: LibraryTrackPath::from_str(track)?,
                 artwork_path: None,
             }),
             [] => Err(Error::InvalidCommandArgument {

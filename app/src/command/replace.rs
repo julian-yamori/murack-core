@@ -8,7 +8,7 @@ use walk_base_2_domain::{
     FileLibraryRepository,
     db_wrapper::{ConnectionFactory, ConnectionWrapper},
     folder::{DbFolderRepository, FolderUsecase},
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     playlist::DbPlaylistRepository,
     sync::DbTrackSyncRepository,
     track::DbTrackRepository,
@@ -140,9 +140,9 @@ impl CommandReplace {
     /// 該当する曲の情報(見つからなければNone)
     fn find_lib_track_from_name(
         &self,
-        lib_track_list: &mut Vec<LibTrackPath>,
+        lib_track_list: &mut Vec<LibraryTrackPath>,
         src_file_path: &Path,
-    ) -> Result<Option<LibTrackPath>> {
+    ) -> Result<Option<LibraryTrackPath>> {
         //todo ファイル名だけで判断してるので、引数より下のディレクトリ構造が無視される。
         // 一旦このままでいいかな…
 
@@ -297,8 +297,8 @@ impl CommandReplace {
     }
 }
 
-/// LibTrackPathの拡張子を他のパスのものに変更
-fn track_ext_from_others(track_path: &LibTrackPath, others: &Path) -> Result<LibTrackPath> {
+/// LibraryTrackPathの拡張子を他のパスのものに変更
+fn track_ext_from_others(track_path: &LibraryTrackPath, others: &Path) -> Result<LibraryTrackPath> {
     match others.extension() {
         Some(ext) => {
             let ext_utf8 = ext
@@ -317,7 +317,7 @@ struct ListupResult {
     /// 作業対象のファイル情報のリスト
     unit_list: Vec<OpeUnit>,
     /// 上書きされないライブラリ内の曲リスト
-    remain_lib_tracks: Vec<LibTrackPath>,
+    remain_lib_tracks: Vec<LibraryTrackPath>,
     /// DBに見つからなかった、ライブラリ外のファイルパス
     lib_not_founds: Vec<PathBuf>,
 }
@@ -331,14 +331,14 @@ struct OpeUnit {
     /// 差し替え前のライブラリ内パス
     ///
     /// 該当するデータが見つからない場合はNone
-    old_lib_path: LibTrackPath,
+    old_lib_path: LibraryTrackPath,
 
     /// 差し替え後の拡張子を変更したライブラリ内パス
     ///
     /// 該当するデータが見つからない場合はNone
     /// # todo
     /// Optionにする必要ないかも
-    new_lib_path: LibTrackPath,
+    new_lib_path: LibraryTrackPath,
 }
 
 /// コマンドの引数
@@ -418,7 +418,7 @@ mod tests {
         });
         mocks.db_track_repository(|m| {
             m.expect_get_path_by_path_str()
-                .returning(|_, _| Ok(vec![LibTrackPath::new("folder/test.mp3")]));
+                .returning(|_, _| Ok(vec![LibraryTrackPath::new("folder/test.mp3")]));
         });
 
         let mut db = mocks.connection_factory.open().unwrap();
@@ -429,8 +429,8 @@ mod tests {
                 ListupResult {
                     unit_list: vec![OpeUnit {
                         new_file_path: PathBuf::from("/home/taro/test.flac"),
-                        old_lib_path: LibTrackPath::new("folder/test.mp3"),
-                        new_lib_path: LibTrackPath::new("folder/test.flac"),
+                        old_lib_path: LibraryTrackPath::new("folder/test.mp3"),
+                        new_lib_path: LibraryTrackPath::new("folder/test.flac"),
                     }],
                     lib_not_founds: vec![],
                     remain_lib_tracks: vec![],
@@ -450,7 +450,7 @@ mod tests {
         });
         mocks.db_track_repository(|m| {
             m.expect_get_path_by_path_str()
-                .returning(|_, _| Ok(vec![LibTrackPath::new("test.mp3")]));
+                .returning(|_, _| Ok(vec![LibraryTrackPath::new("test.mp3")]));
         });
 
         let mut db = mocks.connection_factory.open().unwrap();
@@ -461,8 +461,8 @@ mod tests {
                 ListupResult {
                     unit_list: vec![OpeUnit {
                         new_file_path: PathBuf::from("/home/taro/test.flac"),
-                        old_lib_path: LibTrackPath::new("test.mp3"),
-                        new_lib_path: LibTrackPath::new("test.flac"),
+                        old_lib_path: LibraryTrackPath::new("test.mp3"),
+                        new_lib_path: LibraryTrackPath::new("test.flac"),
                     }],
                     lib_not_founds: vec![],
                     remain_lib_tracks: vec![],
@@ -488,9 +488,9 @@ mod tests {
         mocks.db_track_repository(|m| {
             m.expect_get_path_by_path_str().returning(|_, _| {
                 Ok(vec![
-                    LibTrackPath::new("folder/under/track1.mp3"),
-                    LibTrackPath::new("folder/under/track3.mp3"),
-                    LibTrackPath::new("folder/under/track2.flac"),
+                    LibraryTrackPath::new("folder/under/track1.mp3"),
+                    LibraryTrackPath::new("folder/under/track3.mp3"),
+                    LibraryTrackPath::new("folder/under/track2.flac"),
                 ])
             });
         });
@@ -504,18 +504,18 @@ mod tests {
                     unit_list: vec![
                         OpeUnit {
                             new_file_path: PathBuf::from("/home/taro/track1.flac"),
-                            old_lib_path: LibTrackPath::new("folder/under/track1.mp3"),
-                            new_lib_path: LibTrackPath::new("folder/under/track1.flac"),
+                            old_lib_path: LibraryTrackPath::new("folder/under/track1.mp3"),
+                            new_lib_path: LibraryTrackPath::new("folder/under/track1.flac"),
                         },
                         OpeUnit {
                             new_file_path: PathBuf::from("/home/taro/track2.flac"),
-                            old_lib_path: LibTrackPath::new("folder/under/track2.flac"),
-                            new_lib_path: LibTrackPath::new("folder/under/track2.flac"),
+                            old_lib_path: LibraryTrackPath::new("folder/under/track2.flac"),
+                            new_lib_path: LibraryTrackPath::new("folder/under/track2.flac"),
                         },
                         OpeUnit {
                             new_file_path: PathBuf::from("/home/taro/track3.flac"),
-                            old_lib_path: LibTrackPath::new("folder/under/track3.mp3"),
-                            new_lib_path: LibTrackPath::new("folder/under/track3.flac"),
+                            old_lib_path: LibraryTrackPath::new("folder/under/track3.mp3"),
+                            new_lib_path: LibraryTrackPath::new("folder/under/track3.flac"),
                         },
                     ],
                     lib_not_founds: vec![],
@@ -544,11 +544,11 @@ mod tests {
         mocks.db_track_repository(|m| {
             m.expect_get_path_by_path_str().returning(|_, _| {
                 Ok(vec![
-                    LibTrackPath::new("folder/under/d_rem1.mp3"),
-                    LibTrackPath::new("folder/under/track1.mp3"),
-                    LibTrackPath::new("folder/under/track3.mp3"),
-                    LibTrackPath::new("folder/under/track2.flac"),
-                    LibTrackPath::new("folder/under/d_rem2.mp3"),
+                    LibraryTrackPath::new("folder/under/d_rem1.mp3"),
+                    LibraryTrackPath::new("folder/under/track1.mp3"),
+                    LibraryTrackPath::new("folder/under/track3.mp3"),
+                    LibraryTrackPath::new("folder/under/track2.flac"),
+                    LibraryTrackPath::new("folder/under/d_rem2.mp3"),
                 ])
             });
         });
@@ -562,18 +562,18 @@ mod tests {
                     unit_list: vec![
                         OpeUnit {
                             new_file_path: PathBuf::from("/home/taro/track1.flac"),
-                            old_lib_path: LibTrackPath::new("folder/under/track1.mp3"),
-                            new_lib_path: LibTrackPath::new("folder/under/track1.flac"),
+                            old_lib_path: LibraryTrackPath::new("folder/under/track1.mp3"),
+                            new_lib_path: LibraryTrackPath::new("folder/under/track1.flac"),
                         },
                         OpeUnit {
                             new_file_path: PathBuf::from("/home/taro/track2.flac"),
-                            old_lib_path: LibTrackPath::new("folder/under/track2.flac"),
-                            new_lib_path: LibTrackPath::new("folder/under/track2.flac"),
+                            old_lib_path: LibraryTrackPath::new("folder/under/track2.flac"),
+                            new_lib_path: LibraryTrackPath::new("folder/under/track2.flac"),
                         },
                         OpeUnit {
                             new_file_path: PathBuf::from("/home/taro/track3.flac"),
-                            old_lib_path: LibTrackPath::new("folder/under/track3.mp3"),
-                            new_lib_path: LibTrackPath::new("folder/under/track3.flac"),
+                            old_lib_path: LibraryTrackPath::new("folder/under/track3.mp3"),
+                            new_lib_path: LibraryTrackPath::new("folder/under/track3.flac"),
                         },
                     ],
                     lib_not_founds: vec![
@@ -581,8 +581,8 @@ mod tests {
                         PathBuf::from("/home/taro/rem2.flac"),
                     ],
                     remain_lib_tracks: vec![
-                        LibTrackPath::new("folder/under/rem1.mp3"),
-                        LibTrackPath::new("folder/under/rem2.mp3"),
+                        LibraryTrackPath::new("folder/under/rem1.mp3"),
+                        LibraryTrackPath::new("folder/under/rem2.mp3"),
                     ],
                 }
             )

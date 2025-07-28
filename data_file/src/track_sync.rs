@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::Result;
 use murack_core_domain::{
-    Error as DomainError, artwork::TrackArtwork, path::LibTrackPath, sync::TrackSync,
+    Error as DomainError, artwork::TrackArtwork, path::LibraryTrackPath, sync::TrackSync,
 };
 use murack_core_media::audio_meta::{AudioMetaData, FormatType, formats};
 
@@ -19,7 +19,7 @@ use crate::utils;
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - track_path: 取得対象の曲のライブラリ内パス
-pub fn read_metadata(lib_root: &Path, track_path: &LibTrackPath) -> Result<AudioMetaData> {
+pub fn read_metadata(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<AudioMetaData> {
     let track_abs = track_path.abs(lib_root);
 
     //ファイルがない場合はdomain側で判別したいので個別エラー
@@ -43,7 +43,7 @@ pub fn read_metadata(lib_root: &Path, track_path: &LibTrackPath) -> Result<Audio
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - track_path: 取得対象の曲のライブラリ内パス
-pub fn read_track_sync(lib_root: &Path, track_path: &LibTrackPath) -> Result<TrackSync> {
+pub fn read_track_sync(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<TrackSync> {
     let meta = read_metadata(lib_root, track_path)?;
 
     let track_abs = track_path.abs(lib_root);
@@ -75,7 +75,7 @@ pub fn read_track_sync(lib_root: &Path, track_path: &LibTrackPath) -> Result<Tra
 /// - track_sync: 保存する曲データ
 pub fn overwrite_track_sync(
     lib_root: &Path,
-    track_path: &LibTrackPath,
+    track_path: &LibraryTrackPath,
     track_sync: &TrackSync,
 ) -> Result<()> {
     let track_abs = track_path.abs(lib_root);

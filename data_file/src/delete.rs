@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::Result;
-use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibTrackPath};
+use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
 
 use crate::utils;
 
@@ -13,7 +13,7 @@ use crate::utils;
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - target: 削除対象の曲のライブラリ内パス
-pub fn delete_track(lib_root: &Path, target: &LibTrackPath) -> Result<()> {
+pub fn delete_track(lib_root: &Path, target: &LibraryTrackPath) -> Result<()> {
     //ファイルが存在するか確認
     let abs_path = target.abs(lib_root);
     if !abs_path.exists() {
@@ -79,7 +79,7 @@ fn delete_track_checked(abs_path: &Path) -> Result<()> {
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - target: 削除対象の曲のライブラリ内パス
-pub fn trash_track(lib_root: &Path, target: &LibTrackPath) -> Result<()> {
+pub fn trash_track(lib_root: &Path, target: &LibraryTrackPath) -> Result<()> {
     //ファイルが存在するか確認
     let abs_path = target.abs(lib_root);
     if !abs_path.exists() {

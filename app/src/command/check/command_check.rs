@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 
 use anyhow::Result;
 use murack_core_domain::{
-    path::LibTrackPath, sync::DbTrackSyncRepository, track::DbTrackRepository,
+    path::LibraryTrackPath, sync::DbTrackSyncRepository, track::DbTrackRepository,
 };
 use sqlx::PgPool;
 
@@ -98,11 +98,11 @@ where
     /// 全ての対象曲をリストアップ
     /// # Returns
     /// 全対象曲のパス
-    async fn listup_track_path(&self, db_pool: &PgPool) -> Result<Vec<LibTrackPath>> {
+    async fn listup_track_path(&self, db_pool: &PgPool) -> Result<Vec<LibraryTrackPath>> {
         let cui = &self.cui;
 
         //マージ用set
-        let mut set = BTreeSet::<LibTrackPath>::new();
+        let mut set = BTreeSet::<LibraryTrackPath>::new();
 
         //PCからリストアップ
         cui_outln!(cui, "PCの検索中...")?;
@@ -156,11 +156,11 @@ where
     async fn summary_check(
         &self,
         db_pool: &PgPool,
-        path_list: Vec<LibTrackPath>,
-    ) -> Result<Vec<LibTrackPath>> {
+        path_list: Vec<LibraryTrackPath>,
+    ) -> Result<Vec<LibraryTrackPath>> {
         let cui = &self.cui;
 
-        let mut conflict_list = Vec::<(LibTrackPath, Vec<CheckIssueSummary>)>::new();
+        let mut conflict_list = Vec::<(LibraryTrackPath, Vec<CheckIssueSummary>)>::new();
 
         //全曲に対して整合性チェック
         let all_count = path_list.len();
@@ -201,7 +201,7 @@ where
     /// 簡易チェックの結果確認CUI処理
     /// # Returns
     /// 次の解決処理に進むならtrue
-    fn summary_result_cui(&self, conflict_list: &[LibTrackPath]) -> Result<bool> {
+    fn summary_result_cui(&self, conflict_list: &[LibraryTrackPath]) -> Result<bool> {
         let cui = &self.cui;
 
         //齟齬がなければ終了
@@ -229,7 +229,7 @@ where
     async fn resolve_all_tracks(
         &self,
         db_pool: &PgPool,
-        conflict_list: &[LibTrackPath],
+        conflict_list: &[LibraryTrackPath],
     ) -> Result<bool> {
         let all_count = conflict_list.len();
         for (current_index, track_path) in conflict_list.iter().enumerate() {
@@ -260,7 +260,7 @@ where
     ///
     /// # Returns
     /// 次の曲の解決処理へ継続するか
-    async fn resolve_track(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<bool> {
+    async fn resolve_track(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<bool> {
         //存在チェック・解決処理
         match self.resolve_existance.resolve(db_pool, track_path).await? {
             ResolveFileExistanceResult::Resolved => {}
@@ -386,20 +386,20 @@ mod tests {
                 assert_eq!(search, &search_path());
                 //なんとなく逆順
                 Ok(vec![
-                    LibTrackPath::from_str("test/hoge/track2.flac")?,
-                    LibTrackPath::from_str("test/hoge/track1.flac")?,
-                    LibTrackPath::from_str("test/hoge/child/track4.flac")?,
-                    LibTrackPath::from_str("test/hoge/child/track3.flac")?,
+                    LibraryTrackPath::from_str("test/hoge/track2.flac")?,
+                    LibraryTrackPath::from_str("test/hoge/track1.flac")?,
+                    LibraryTrackPath::from_str("test/hoge/child/track4.flac")?,
+                    LibraryTrackPath::from_str("test/hoge/child/track3.flac")?,
                 ])
             });
 
         assert_eq_not_orderd(
             &target.listup_track_path(&db_pool).await?,
             &[
-                LibTrackPath::from_str("test/hoge/child/track3.flac")?,
-                LibTrackPath::from_str("test/hoge/child/track4.flac")?,
-                LibTrackPath::from_str("test/hoge/track1.flac")?,
-                LibTrackPath::from_str("test/hoge/track2.flac")?,
+                LibraryTrackPath::from_str("test/hoge/child/track3.flac")?,
+                LibraryTrackPath::from_str("test/hoge/child/track4.flac")?,
+                LibraryTrackPath::from_str("test/hoge/track1.flac")?,
+                LibraryTrackPath::from_str("test/hoge/track2.flac")?,
             ],
         );
 
@@ -443,21 +443,21 @@ mod tests {
             .expect_get_path_by_path_str()
             .returning(|_| {
                 Ok(vec![
-                    LibTrackPath::from_str("test/hoge/child/track1.flac")?,
-                    LibTrackPath::from_str("test/hoge/track2.flac")?,
-                    LibTrackPath::from_str("test/hoge/db1.flac")?,
+                    LibraryTrackPath::from_str("test/hoge/child/track1.flac")?,
+                    LibraryTrackPath::from_str("test/hoge/track2.flac")?,
+                    LibraryTrackPath::from_str("test/hoge/db1.flac")?,
                 ])
             });
 
         assert_eq!(
             target.listup_track_path(&db_pool).await?,
             vec![
-                LibTrackPath::from_str("test/hoge/child/dap1.flac")?,
-                LibTrackPath::from_str("test/hoge/child/pc1.flac")?,
-                LibTrackPath::from_str("test/hoge/child/track1.flac")?,
-                LibTrackPath::from_str("test/hoge/db1.flac")?,
-                LibTrackPath::from_str("test/hoge/pc2.flac")?,
-                LibTrackPath::from_str("test/hoge/track2.flac")?,
+                LibraryTrackPath::from_str("test/hoge/child/dap1.flac")?,
+                LibraryTrackPath::from_str("test/hoge/child/pc1.flac")?,
+                LibraryTrackPath::from_str("test/hoge/child/track1.flac")?,
+                LibraryTrackPath::from_str("test/hoge/db1.flac")?,
+                LibraryTrackPath::from_str("test/hoge/pc2.flac")?,
+                LibraryTrackPath::from_str("test/hoge/track2.flac")?,
             ]
         );
 

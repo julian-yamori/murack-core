@@ -11,7 +11,7 @@ use sqlx::encode::IsNull;
 use sqlx::postgres::{PgArgumentBuffer, PgTypeInfo, PgValueRef};
 
 use crate::NonEmptyString;
-use crate::path::{LibDirPath, PathError};
+use crate::path::{LibraryDirectoryPath, PathError};
 
 /// ライブラリ内の曲ファイルの位置を示すパス
 ///
@@ -21,10 +21,10 @@ use crate::path::{LibDirPath, PathError};
 ///
 /// また、DBの`track.path`に保存する値。
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LibTrackPath(NonEmptyString);
+pub struct LibraryTrackPath(NonEmptyString);
 
-impl LibTrackPath {
-    /// ライブラリルートのパスを指定し、LibTrackPath が指す絶対パスを取得
+impl LibraryTrackPath {
+    /// ライブラリルートのパスを指定し、LibraryTrackPath が指す絶対パスを取得
     pub fn abs(&self, root: &Path) -> PathBuf {
         root.join::<&str>(self.0.as_ref())
     }
@@ -47,25 +47,25 @@ impl LibTrackPath {
     }
 
     /// 拡張子を差し替えて取得
-    pub fn with_extension(&self, extension: &str) -> LibTrackPath {
+    pub fn with_extension(&self, extension: &str) -> LibraryTrackPath {
         let mut sbuf = match self.0.rfind('.') {
             Some(dot) => self.0[..dot].to_string(),
             None => self.0.clone().into(),
         };
         sbuf.push('.');
         sbuf.push_str(extension);
-        LibTrackPath(sbuf.try_into().unwrap())
+        LibraryTrackPath(sbuf.try_into().unwrap())
     }
 
     /// 親のディレクトリパスを取得
     ///
     /// 親がルートディレクトリの場合は None
-    pub fn parent(&self) -> Option<LibDirPath> {
+    pub fn parent(&self) -> Option<LibraryDirectoryPath> {
         match self.0.rfind('/') {
             Some(slash) => {
                 let parent_str = &self.0[0..slash + 1];
                 let non_empty = NonEmptyString::from_str(parent_str).unwrap();
-                Some(LibDirPath::from(non_empty))
+                Some(LibraryDirectoryPath::from(non_empty))
             }
             //(スラッシュがなければ、親はライブラリルート)
             None => None,
@@ -73,7 +73,7 @@ impl LibTrackPath {
     }
 }
 
-impl TryFrom<PathBuf> for LibTrackPath {
+impl TryFrom<PathBuf> for LibraryTrackPath {
     type Error = PathError;
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
@@ -84,7 +84,7 @@ impl TryFrom<PathBuf> for LibTrackPath {
     }
 }
 
-impl TryFrom<String> for LibTrackPath {
+impl TryFrom<String> for LibraryTrackPath {
     type Error = PathError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -92,19 +92,19 @@ impl TryFrom<String> for LibTrackPath {
     }
 }
 
-impl From<NonEmptyString> for LibTrackPath {
+impl From<NonEmptyString> for LibraryTrackPath {
     fn from(value: NonEmptyString) -> Self {
         Self(value)
     }
 }
 
-impl From<LibTrackPath> for PathBuf {
-    fn from(value: LibTrackPath) -> Self {
+impl From<LibraryTrackPath> for PathBuf {
+    fn from(value: LibraryTrackPath) -> Self {
         PathBuf::from(String::from(value.0))
     }
 }
 
-impl FromStr for LibTrackPath {
+impl FromStr for LibraryTrackPath {
     type Err = PathError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -112,37 +112,37 @@ impl FromStr for LibTrackPath {
     }
 }
 
-impl AsRef<String> for LibTrackPath {
+impl AsRef<String> for LibraryTrackPath {
     fn as_ref(&self) -> &String {
         self.0.as_ref()
     }
 }
 
-impl AsRef<str> for LibTrackPath {
+impl AsRef<str> for LibraryTrackPath {
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
-impl AsRef<Path> for LibTrackPath {
+impl AsRef<Path> for LibraryTrackPath {
     fn as_ref(&self) -> &Path {
         Path::new(<Self as AsRef<str>>::as_ref(self))
     }
 }
 
-impl AsRef<NonEmptyString> for LibTrackPath {
+impl AsRef<NonEmptyString> for LibraryTrackPath {
     fn as_ref(&self) -> &NonEmptyString {
         &self.0
     }
 }
 
-impl fmt::Display for LibTrackPath {
+impl fmt::Display for LibraryTrackPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl Serialize for LibTrackPath {
+impl Serialize for LibraryTrackPath {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -151,7 +151,7 @@ impl Serialize for LibTrackPath {
     }
 }
 
-impl<'de> Deserialize<'de> for LibTrackPath {
+impl<'de> Deserialize<'de> for LibraryTrackPath {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -161,7 +161,7 @@ impl<'de> Deserialize<'de> for LibTrackPath {
     }
 }
 
-impl sqlx::Type<Postgres> for LibTrackPath {
+impl sqlx::Type<Postgres> for LibraryTrackPath {
     fn type_info() -> PgTypeInfo {
         NonEmptyString::type_info()
     }
@@ -171,14 +171,14 @@ impl sqlx::Type<Postgres> for LibTrackPath {
     }
 }
 
-impl<'r> sqlx::Decode<'r, Postgres> for LibTrackPath {
+impl<'r> sqlx::Decode<'r, Postgres> for LibraryTrackPath {
     fn decode(value: PgValueRef<'r>) -> Result<Self, sqlx::error::BoxDynError> {
         let s = NonEmptyString::decode(value)?;
         Ok(Self::from(s))
     }
 }
 
-impl<'q> sqlx::Encode<'q, Postgres> for LibTrackPath {
+impl<'q> sqlx::Encode<'q, Postgres> for LibraryTrackPath {
     fn encode_by_ref(
         &self,
         buf: &mut PgArgumentBuffer,
@@ -192,8 +192,8 @@ mod tests {
     use super::*;
     use test_case::test_case;
 
-    fn str_to_path(s: &str) -> LibTrackPath {
-        LibTrackPath::from_str(s).unwrap()
+    fn str_to_path(s: &str) -> LibraryTrackPath {
+        LibraryTrackPath::from_str(s).unwrap()
     }
 
     #[test]
@@ -224,11 +224,11 @@ mod tests {
         assert_eq!(str_to_path("hoge.mp3").parent(), None);
         assert_eq!(
             str_to_path("hoge/fuga.flac").parent(),
-            Some(LibDirPath::from_str("hoge").unwrap())
+            Some(LibraryDirectoryPath::from_str("hoge").unwrap())
         );
         assert_eq!(
             str_to_path("hoge/fuga/piyo.m4a").parent(),
-            Some(LibDirPath::from_str("hoge/fuga").unwrap()),
+            Some(LibraryDirectoryPath::from_str("hoge/fuga").unwrap()),
         );
     }
 }

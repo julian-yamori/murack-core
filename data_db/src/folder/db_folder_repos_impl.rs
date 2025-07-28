@@ -5,7 +5,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use murack_core_domain::{
     folder::{DbFolderRepository, FolderIdMayRoot},
-    path::LibDirPath,
+    path::LibraryDirectoryPath,
 };
 use sqlx::PgTransaction;
 
@@ -19,7 +19,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     async fn get_id_by_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibDirPath,
+        path: &LibraryDirectoryPath,
     ) -> Result<Option<i32>> {
         let row = sqlx::query!(
             "SELECT id FROM folder_paths WHERE path = $1",
@@ -50,7 +50,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     async fn is_exist_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibDirPath,
+        path: &LibraryDirectoryPath,
     ) -> Result<bool> {
         let count = sqlx::query_scalar!(
             r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE path = $1"#,
@@ -90,7 +90,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     async fn register_not_exists<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibDirPath,
+        path: &LibraryDirectoryPath,
     ) -> Result<i32> {
         //同一パスのデータを検索し、そのIDを取得
         let existing_id = sqlx::query_scalar!(

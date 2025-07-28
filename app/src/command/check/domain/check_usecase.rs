@@ -7,7 +7,7 @@ use std::{fs::File, io::prelude::*, path::Path};
 use anyhow::Result;
 use murack_core_domain::{
     Error,
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     sync::{DbTrackSyncRepository, TrackSync},
     track::TrackItemKind,
 };
@@ -27,7 +27,7 @@ pub async fn listup_issue_summary<SSR>(
     db_pool: &PgPool,
     pc_lib: &Path,
     dap_lib: &Path,
-    track_path: &LibTrackPath,
+    track_path: &LibraryTrackPath,
     ignore_dap_content: bool,
     db_track_sync_repository: &SSR,
 ) -> Result<Vec<CheckIssueSummary>>
@@ -166,7 +166,7 @@ pub fn check_artwork(pc_data: &TrackSync, db_data: &TrackSync) -> bool {
 pub fn check_pc_dap_content(
     pc_lib: &Path,
     dap_lib: &Path,
-    track_path: &LibTrackPath,
+    track_path: &LibraryTrackPath,
 ) -> Result<bool> {
     //PCデータ読み込み
     let pc_path = track_path.abs(pc_lib);

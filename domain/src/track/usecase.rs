@@ -9,7 +9,7 @@ use crate::{
     Error, NonEmptyString,
     artwork::DbArtworkRepository,
     folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
-    path::{LibDirPath, LibTrackPath},
+    path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{DbPlaylistRepository, DbPlaylistTrackRepository},
     tag::DbTrackTagRepository,
 };
@@ -33,7 +33,7 @@ pub trait TrackUsecase {
     async fn delete_track_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<()>;
 
     /// パス文字列を指定してDBから削除
@@ -47,7 +47,7 @@ pub trait TrackUsecase {
         &self,
         tx: &mut PgTransaction<'c>,
         path_str: &NonEmptyString,
-    ) -> Result<Vec<LibTrackPath>>;
+    ) -> Result<Vec<LibraryTrackPath>>;
 }
 
 /// TrackUsecaseの本実装
@@ -90,7 +90,7 @@ where
         dest: &NonEmptyString,
     ) -> Result<()> {
         // パス文字列がファイルかどうかを、完全一致するパスの曲が DB に存在するかどうかで判定
-        let src_as_track: LibTrackPath = src.clone().into();
+        let src_as_track: LibraryTrackPath = src.clone().into();
         let track_exists = self
             .db_track_repository
             .is_exist_path(tx, &src_as_track)
@@ -99,15 +99,15 @@ where
         if track_exists {
             // 指定された 1 曲だけ処理
 
-            let dest_as_track: LibTrackPath = dest.clone().into();
+            let dest_as_track: LibraryTrackPath = dest.clone().into();
 
             self.move_track_db_unit(tx, &src_as_track, &dest_as_track)
                 .await?;
         } else {
             // 指定ディレクトリ以下の全ての曲について、パスの変更を反映
 
-            let src_as_dir: LibDirPath = src.clone().into();
-            let dest_as_dir: LibDirPath = dest.clone().into();
+            let src_as_dir: LibraryDirectoryPath = src.clone().into();
+            let dest_as_dir: LibraryDirectoryPath = dest.clone().into();
 
             for src_track in self
                 .db_track_repository
@@ -129,7 +129,7 @@ where
     async fn delete_track_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<()> {
         let db_track_repository = &self.db_track_repository;
 
@@ -178,7 +178,7 @@ where
         &self,
         tx: &mut PgTransaction<'c>,
         path_str: &NonEmptyString,
-    ) -> Result<Vec<LibTrackPath>> {
+    ) -> Result<Vec<LibraryTrackPath>> {
         let track_path_list = self
             .db_track_repository
             .get_path_by_path_str(tx, path_str)
@@ -206,8 +206,8 @@ where
     async fn move_track_db_unit<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        src: &LibTrackPath,
-        dest: &LibTrackPath,
+        src: &LibraryTrackPath,
+        dest: &LibraryTrackPath,
     ) -> Result<()> {
         if self.db_track_repository.is_exist_path(tx, dest).await? {
             return Err(Error::DbTrackAlreadyExists(dest.to_owned()).into());
@@ -251,10 +251,10 @@ where
 
 /// move コマンドで指定された src_dir の子の src_track から、dest_dir の子として移動する先のパスを取得
 fn src_child_path_to_dest(
-    src_track: &LibTrackPath,
-    src_dir: &LibDirPath,
-    dest_dir: &LibDirPath,
-) -> anyhow::Result<LibTrackPath> {
+    src_track: &LibraryTrackPath,
+    src_dir: &LibraryDirectoryPath,
+    dest_dir: &LibraryDirectoryPath,
+) -> anyhow::Result<LibraryTrackPath> {
     let src_dir_str: &str = src_dir.as_ref();
     let src_track_str: &str = src_track.as_ref();
 
@@ -294,7 +294,7 @@ impl TrackUsecase for MockTrackUsecase {
     async fn delete_track_db<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<()> {
         self.inner.delete_track_db(path)
     }
@@ -303,7 +303,7 @@ impl TrackUsecase for MockTrackUsecase {
         &self,
         _db: &mut PgTransaction<'c>,
         path_str: &NonEmptyString,
-    ) -> Result<Vec<LibTrackPath>> {
+    ) -> Result<Vec<LibraryTrackPath>> {
         self.inner.delete_path_str_db(path_str)
     }
 }
@@ -315,11 +315,11 @@ mock! {
             dest: &NonEmptyString,
         ) -> Result<()>;
 
-        pub fn delete_track_pc(&self, pc_lib: &Path, track_path: &LibTrackPath) -> Result<()>;
+        pub fn delete_track_pc(&self, pc_lib: &Path, track_path: &LibraryTrackPath) -> Result<()>;
 
-        pub fn delete_track_dap(&self, dap_lib: &Path, track_path: &LibTrackPath) -> Result<()>;
+        pub fn delete_track_dap(&self, dap_lib: &Path, track_path: &LibraryTrackPath) -> Result<()>;
 
-        pub fn delete_track_db(&self, path: &LibTrackPath) -> Result<()>;
+        pub fn delete_track_db(&self, path: &LibraryTrackPath) -> Result<()>;
 
         pub fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &NonEmptyString) -> Result<()>;
 
@@ -328,7 +328,7 @@ mock! {
         pub fn delete_path_str_db(
             &self,
             path_str: &NonEmptyString,
-        ) -> Result<Vec<LibTrackPath>>;
+        ) -> Result<Vec<LibraryTrackPath>>;
     }
 }
 
@@ -343,7 +343,7 @@ mod tests {
     use crate::{
         artwork::MockDbArtworkRepository,
         folder::{MockDbFolderRepository, MockFolderUsecase},
-        path::LibDirPath,
+        path::LibraryDirectoryPath,
         playlist::{MockDbPlaylistRepository, MockDbPlaylistTrackRepository},
         tag::MockDbTrackTagRepository,
         track::MockDbTrackRepository,
@@ -391,8 +391,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_delete_db_ok(pool: PgPool) -> anyhow::Result<()> {
-        fn track_path() -> LibTrackPath {
-            LibTrackPath::try_from("hoge/fuga.flac".to_string()).unwrap()
+        fn track_path() -> LibraryTrackPath {
+            LibraryTrackPath::try_from("hoge/fuga.flac".to_string()).unwrap()
         }
 
         let mut target = target();
@@ -438,7 +438,7 @@ mod tests {
             .folder_usecase
             .inner
             .expect_delete_db_if_empty()
-            .withf(|folder_path| folder_path == &LibDirPath::from_str("hoge").unwrap())
+            .withf(|folder_path| folder_path == &LibraryDirectoryPath::from_str("hoge").unwrap())
             .times(1)
             .returning(|_| Ok(()));
 
@@ -459,8 +459,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_delete_db_no_track(pool: PgPool) -> anyhow::Result<()> {
-        fn track_path() -> LibTrackPath {
-            LibTrackPath::from_str("hoge.mp3").unwrap()
+        fn track_path() -> LibraryTrackPath {
+            LibraryTrackPath::from_str("hoge.mp3").unwrap()
         }
 
         let mut target = target();
@@ -520,8 +520,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_delete_db_root_folder(pool: PgPool) -> anyhow::Result<()> {
-        fn track_path() -> LibTrackPath {
-            LibTrackPath::from_str("fuga.mp3").unwrap()
+        fn track_path() -> LibraryTrackPath {
+            LibraryTrackPath::from_str("fuga.mp3").unwrap()
         }
 
         let mut target = target();
@@ -597,9 +597,9 @@ mod tests {
         expect_dest_track: &str,
     ) -> anyhow::Result<()> {
         let actual = src_child_path_to_dest(
-            &LibTrackPath::from_str(src_track)?,
-            &LibDirPath::from_str(src_dir)?,
-            &LibDirPath::from_str(dest_dir)?,
+            &LibraryTrackPath::from_str(src_track)?,
+            &LibraryDirectoryPath::from_str(src_dir)?,
+            &LibraryDirectoryPath::from_str(dest_dir)?,
         )?;
 
         assert_eq!(actual.as_ref() as &str, expect_dest_track);

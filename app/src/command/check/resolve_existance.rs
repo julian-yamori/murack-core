@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use mockall::automock;
 use murack_core_domain::{
     Error as DomainError,
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     sync::{DbTrackSyncRepository, SyncUsecase, TrackSync},
     track::TrackUsecase,
 };
@@ -26,7 +26,7 @@ pub trait ResolveExistance {
     async fn resolve(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult>;
 }
 
@@ -64,7 +64,7 @@ where
     async fn resolve(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         //PCデータ読み込み
         let pc_read_result =
@@ -176,7 +176,7 @@ where
     /// DAPにのみ存在しない状態の解決
     fn resolve_not_exists_dap(
         &self,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         let cui = &self.cui;
 
@@ -211,7 +211,7 @@ where
     async fn resolve_not_exists_db(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         pc_track: &mut TrackSync,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
@@ -253,7 +253,7 @@ where
     async fn resolve_not_exists_db_dap(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         pc_track: &mut TrackSync,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
@@ -303,7 +303,7 @@ where
     async fn resolve_not_exists_pc(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -350,7 +350,7 @@ where
     async fn resolve_not_exists_pc_dap(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -384,7 +384,7 @@ where
     async fn resolve_not_exists_pc_db(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         let cui = &self.cui;
 
@@ -441,7 +441,7 @@ where
     async fn add_track_db_from_pc(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         pc_track: &mut TrackSync,
     ) -> Result<()> {
         let mut tx = db_pool.begin().await?;
@@ -455,7 +455,7 @@ where
     }
 
     /// DBから曲を削除
-    async fn delete_track_db(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<()> {
+    async fn delete_track_db(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<()> {
         let mut tx = db_pool.begin().await?;
 
         self.track_usecase

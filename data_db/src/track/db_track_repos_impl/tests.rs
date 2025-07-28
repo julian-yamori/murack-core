@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anyhow::Result;
 use murack_core_domain::{
     NonEmptyString,
-    path::{LibDirPath, LibTrackPath},
+    path::{LibraryDirectoryPath, LibraryTrackPath},
     track::DbTrackRepository,
 };
 use sqlx::PgPool;
@@ -32,9 +32,9 @@ mod test_get_path_by_path_str {
 
         // 結果は3つの楽曲パスであるはず
         assert_eq!(result.len(), 3);
-        assert!(result.contains(&LibTrackPath::from_str("test/hoge/track1.mp3")?));
-        assert!(result.contains(&LibTrackPath::from_str("test/hoge/track2.flac")?));
-        assert!(result.contains(&LibTrackPath::from_str("test/hoge/track3.m4a")?));
+        assert!(result.contains(&LibraryTrackPath::from_str("test/hoge/track1.mp3")?));
+        assert!(result.contains(&LibraryTrackPath::from_str("test/hoge/track2.flac")?));
+        assert!(result.contains(&LibraryTrackPath::from_str("test/hoge/track3.m4a")?));
 
         Ok(())
     }
@@ -76,7 +76,7 @@ mod test_get_path_by_path_str {
             .await?;
 
         // 結果は指定した楽曲ファイル1つであるはず
-        assert_eq!(result, vec![LibTrackPath::from_str("test/hoge.flac")?]);
+        assert_eq!(result, vec![LibraryTrackPath::from_str("test/hoge.flac")?]);
 
         // 指定された楽曲がデータベースに存在することを確認
         let exists = sqlx::query_scalar!(
@@ -106,12 +106,12 @@ mod test_get_path_by_directory {
 
         assert_eq!(
             target
-                .get_path_by_directory(&mut tx, &LibDirPath::from_str("test")?)
+                .get_path_by_directory(&mut tx, &LibraryDirectoryPath::from_str("test")?)
                 .await?,
             vec![
-                LibTrackPath::from_str("test/hoge.flac")?,
-                LibTrackPath::from_str("test/hoge2.flac")?,
-                LibTrackPath::from_str("test/dir/hoge3.flac")?,
+                LibraryTrackPath::from_str("test/hoge.flac")?,
+                LibraryTrackPath::from_str("test/hoge2.flac")?,
+                LibraryTrackPath::from_str("test/dir/hoge3.flac")?,
             ]
         );
 
@@ -129,9 +129,9 @@ mod test_get_path_by_directory {
 
         assert_eq!(
             target
-                .get_path_by_directory(&mut tx, &LibDirPath::from_str("test/dir")?)
+                .get_path_by_directory(&mut tx, &LibraryDirectoryPath::from_str("test/dir")?)
                 .await?,
-            vec![LibTrackPath::from_str("test/dir/hoge3.flac")?]
+            vec![LibraryTrackPath::from_str("test/dir/hoge3.flac")?]
         );
 
         Ok(())
@@ -148,9 +148,9 @@ mod test_get_path_by_directory {
 
         assert_eq!(
             target
-                .get_path_by_directory(&mut tx, &LibDirPath::from_str("test/d%i_r$")?)
+                .get_path_by_directory(&mut tx, &LibraryDirectoryPath::from_str("test/d%i_r$")?)
                 .await?,
-            vec![LibTrackPath::from_str("test/d%i_r$/hoge.flac")?]
+            vec![LibraryTrackPath::from_str("test/d%i_r$/hoge.flac")?]
         );
 
         Ok(())

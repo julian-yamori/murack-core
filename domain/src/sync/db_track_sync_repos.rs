@@ -5,7 +5,7 @@ use sqlx::PgTransaction;
 
 use crate::{
     folder::FolderIdMayRoot,
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     sync::{DbTrackSync, TrackSync},
 };
 
@@ -21,7 +21,7 @@ pub trait DbTrackSyncRepository {
     async fn get_by_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<Option<DbTrackSync>>;
 
     /// 曲を新規登録
@@ -36,7 +36,7 @@ pub trait DbTrackSyncRepository {
     async fn register<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         track_sync: &TrackSync,
         folder_id: FolderIdMayRoot,
     ) -> Result<i32>;
@@ -61,7 +61,7 @@ impl DbTrackSyncRepository for MockDbTrackSyncRepository {
     async fn get_by_path<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<Option<DbTrackSync>> {
         self.inner.get_by_path(path)
     }
@@ -69,7 +69,7 @@ impl DbTrackSyncRepository for MockDbTrackSyncRepository {
     async fn register<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         track_sync: &TrackSync,
         folder_id: FolderIdMayRoot,
     ) -> Result<i32> {
@@ -88,12 +88,12 @@ mock! {
     pub DbTrackSyncRepositoryInner {
         pub fn get_by_path(
             &self,
-            path: &LibTrackPath,
+            path: &LibraryTrackPath,
         ) -> Result<Option<DbTrackSync>>;
 
         pub fn register(
             &self,
-            track_path: &LibTrackPath,
+            track_path: &LibraryTrackPath,
             track_sync: &TrackSync,
             folder_id: FolderIdMayRoot,
         ) -> Result<i32>;

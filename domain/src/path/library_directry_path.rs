@@ -19,13 +19,13 @@ use crate::path::PathError;
 ///
 /// この構造体では、`Config.pc_lib` より下のディレクトリのパスを扱う。`Config.pc_lib` 自体 (ルートディレクトリ) 自体のパスは扱わない。
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LibDirPath(
+pub struct LibraryDirectoryPath(
     /// `/` で終わる形のパスを保存する。
     /// （後ろに他のパスをすぐ連結できる形）
     NonEmptyString,
 );
 
-impl LibDirPath {
+impl LibraryDirectoryPath {
     /// ディレクトリの絶対パスを取得
     ///
     /// # Arguments
@@ -48,7 +48,7 @@ impl LibDirPath {
     /// 親のディレクトリパスを取得
     ///
     /// 親ディレクトリがライブラリルートだった場合、None を返す。
-    pub fn parent(&self) -> Option<LibDirPath> {
+    pub fn parent(&self) -> Option<LibraryDirectoryPath> {
         let len = self.0.len();
 
         //末尾以外のスラッシュを検索
@@ -63,7 +63,7 @@ impl LibDirPath {
     }
 }
 
-impl TryFrom<PathBuf> for LibDirPath {
+impl TryFrom<PathBuf> for LibraryDirectoryPath {
     type Error = PathError;
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
@@ -78,7 +78,7 @@ impl TryFrom<PathBuf> for LibDirPath {
     }
 }
 
-impl TryFrom<String> for LibDirPath {
+impl TryFrom<String> for LibraryDirectoryPath {
     type Error = PathError;
 
     /// 文字列からパスインスタンスを生成
@@ -88,7 +88,7 @@ impl TryFrom<String> for LibDirPath {
     }
 }
 
-impl From<NonEmptyString> for LibDirPath {
+impl From<NonEmptyString> for LibraryDirectoryPath {
     fn from(mut value: NonEmptyString) -> Self {
         //終端が `/` でなければ追加
         if !value.ends_with('/') {
@@ -99,13 +99,13 @@ impl From<NonEmptyString> for LibDirPath {
     }
 }
 
-impl From<LibDirPath> for PathBuf {
-    fn from(value: LibDirPath) -> Self {
+impl From<LibraryDirectoryPath> for PathBuf {
+    fn from(value: LibraryDirectoryPath) -> Self {
         PathBuf::from(String::from(value.0))
     }
 }
 
-impl FromStr for LibDirPath {
+impl FromStr for LibraryDirectoryPath {
     type Err = PathError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -113,37 +113,37 @@ impl FromStr for LibDirPath {
     }
 }
 
-impl AsRef<String> for LibDirPath {
+impl AsRef<String> for LibraryDirectoryPath {
     fn as_ref(&self) -> &String {
         self.0.as_ref()
     }
 }
 
-impl AsRef<str> for LibDirPath {
+impl AsRef<str> for LibraryDirectoryPath {
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
-impl AsRef<Path> for LibDirPath {
+impl AsRef<Path> for LibraryDirectoryPath {
     fn as_ref(&self) -> &Path {
         Path::new(<Self as AsRef<str>>::as_ref(self))
     }
 }
 
-impl AsRef<NonEmptyString> for LibDirPath {
+impl AsRef<NonEmptyString> for LibraryDirectoryPath {
     fn as_ref(&self) -> &NonEmptyString {
         &self.0
     }
 }
 
-impl fmt::Display for LibDirPath {
+impl fmt::Display for LibraryDirectoryPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl Serialize for LibDirPath {
+impl Serialize for LibraryDirectoryPath {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -152,7 +152,7 @@ impl Serialize for LibDirPath {
     }
 }
 
-impl<'de> Deserialize<'de> for LibDirPath {
+impl<'de> Deserialize<'de> for LibraryDirectoryPath {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -162,7 +162,7 @@ impl<'de> Deserialize<'de> for LibDirPath {
     }
 }
 
-impl sqlx::Type<Postgres> for LibDirPath {
+impl sqlx::Type<Postgres> for LibraryDirectoryPath {
     fn type_info() -> PgTypeInfo {
         NonEmptyString::type_info()
     }
@@ -172,14 +172,14 @@ impl sqlx::Type<Postgres> for LibDirPath {
     }
 }
 
-impl<'r> sqlx::Decode<'r, Postgres> for LibDirPath {
+impl<'r> sqlx::Decode<'r, Postgres> for LibraryDirectoryPath {
     fn decode(value: PgValueRef<'r>) -> Result<Self, sqlx::error::BoxDynError> {
         let s = NonEmptyString::decode(value)?;
         Ok(Self::from(s))
     }
 }
 
-impl<'q> sqlx::Encode<'q, Postgres> for LibDirPath {
+impl<'q> sqlx::Encode<'q, Postgres> for LibraryDirectoryPath {
     fn encode_by_ref(
         &self,
         buf: &mut PgArgumentBuffer,
@@ -192,13 +192,13 @@ impl<'q> sqlx::Encode<'q, Postgres> for LibDirPath {
 mod tests {
     use super::*;
 
-    fn str_to_path(s: &str) -> LibDirPath {
-        LibDirPath::from_str(s).unwrap()
+    fn str_to_path(s: &str) -> LibraryDirectoryPath {
+        LibraryDirectoryPath::from_str(s).unwrap()
     }
 
     #[test]
     fn from_empty_str_should_error() {
-        let result = LibDirPath::from_str("");
+        let result = LibraryDirectoryPath::from_str("");
         assert!(matches!(result, Err(PathError::EmptyString(_))));
     }
 
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_abs() {
-        let path = LibDirPath::from_str("hoge/fuga/").unwrap();
+        let path = LibraryDirectoryPath::from_str("hoge/fuga/").unwrap();
         let root = PathBuf::from("/home/taro/Musics");
         assert_eq!(
             path.abs(&root),

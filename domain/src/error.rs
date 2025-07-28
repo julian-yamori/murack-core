@@ -1,6 +1,6 @@
 use crate::{
     NonEmptyString,
-    path::{LibDirPath, LibTrackPath},
+    path::{LibraryDirectoryPath, LibraryTrackPath},
 };
 use std::path::PathBuf;
 
@@ -14,7 +14,7 @@ pub enum Error {
     #[error("曲ファイルが存在しません: {track_path} (in {lib_root})")]
     FileTrackNotFound {
         lib_root: PathBuf,
-        track_path: LibTrackPath,
+        track_path: LibraryTrackPath,
     },
     #[error("指定されたパスが存在しません: {path_str} (in {lib_root})")]
     FilePathStrNotFound {
@@ -24,7 +24,7 @@ pub enum Error {
     #[error("曲ファイルが既に存在しています: {track_path} (in {lib_root})")]
     FileTrackAlreadyExists {
         lib_root: PathBuf,
-        track_path: LibTrackPath,
+        track_path: LibraryTrackPath,
     },
     #[error("指定されたパスが既に存在しています: {path_str} (in {lib_root})")]
     FilePathStrAlreadyExists {
@@ -33,21 +33,21 @@ pub enum Error {
     },
 
     #[error("曲データがDBに存在しません: {0}")]
-    DbTrackNotFound(LibTrackPath),
+    DbTrackNotFound(LibraryTrackPath),
     #[error("DBに指定されたパスが存在しません: {0}")]
     DbPathStrNotFound(NonEmptyString),
     #[error("曲データが既にDBに存在します: {0}")]
-    DbTrackAlreadyExists(LibTrackPath),
+    DbTrackAlreadyExists(LibraryTrackPath),
     #[error("フォルダがDBに存在しません: {0}")]
-    DbFolderPathNotFound(LibDirPath),
+    DbFolderPathNotFound(LibraryDirectoryPath),
     #[error("フォルダIDがDBに存在しません: {0}")]
     DbFolderIdNotFound(i32),
     #[error("フォルダが既にDBに存在します: {0}")]
-    DbFolderAlreadyExists(LibDirPath),
+    DbFolderAlreadyExists(LibraryDirectoryPath),
 
     #[error("相対パスの取得に失敗しました: \"{parent}\" 内の \"{track}\"")]
     GetRelativePathFailed {
-        track: LibTrackPath,
-        parent: LibDirPath,
+        track: LibraryTrackPath,
+        parent: LibraryDirectoryPath,
     },
 }

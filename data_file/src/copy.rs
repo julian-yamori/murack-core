@@ -3,7 +3,7 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use murack_core_domain::{Error as DomainError, path::LibTrackPath};
+use murack_core_domain::{Error as DomainError, path::LibraryTrackPath};
 
 use crate::{Error, utils};
 
@@ -15,7 +15,11 @@ use crate::{Error, utils};
 /// - src_lib: コピー元のライブラリのルート絶対パス
 /// - dest_lib: コピー先のライブラリのルート絶対パス
 /// - target: コピーする曲のライブラリ内パス
-pub fn copy_track_over_lib(src_lib: &Path, dest_lib: &Path, target: &LibTrackPath) -> Result<()> {
+pub fn copy_track_over_lib(
+    src_lib: &Path,
+    dest_lib: &Path,
+    target: &LibraryTrackPath,
+) -> Result<()> {
     //コピー元にファイルがあるか確認
     let src_track = target.abs(src_lib);
     if !src_track.exists() {
@@ -65,7 +69,7 @@ pub fn copy_track_over_lib(src_lib: &Path, dest_lib: &Path, target: &LibTrackPat
 /// - src_path: コピー元のライブラリ外のファイル絶対パス
 pub fn copy_from_outside_lib(
     lib_root: &Path,
-    track_path: &LibTrackPath,
+    track_path: &LibraryTrackPath,
     src_path: &Path,
 ) -> Result<()> {
     //コピー元にファイルがあるか確認
@@ -101,7 +105,7 @@ pub fn copy_from_outside_lib(
 pub fn overwrite_track_over_lib(
     src_lib: &Path,
     dest_lib: &Path,
-    target: &LibTrackPath,
+    target: &LibraryTrackPath,
 ) -> Result<()> {
     //コピー元にファイルがあるか確認
     let src_track = target.abs(src_lib);

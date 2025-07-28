@@ -6,7 +6,7 @@ use sqlx::PgTransaction;
 use crate::{
     NonEmptyString,
     folder::FolderIdMayRoot,
-    path::{LibDirPath, LibTrackPath},
+    path::{LibraryDirectoryPath, LibraryTrackPath},
 };
 
 /// 曲データのDBリポジトリ
@@ -16,7 +16,7 @@ pub trait DbTrackRepository {
     async fn get_id_by_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<Option<i32>>;
 
     /// 文字列でパスを指定して、該当曲のパスリストを取得
@@ -24,10 +24,10 @@ pub trait DbTrackRepository {
         &self,
         tx: &mut PgTransaction<'c>,
         path: &NonEmptyString,
-    ) -> Result<Vec<LibTrackPath>>;
+    ) -> Result<Vec<LibraryTrackPath>>;
 
     /// 全ての曲のパスを取得
-    async fn get_all_path<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<LibTrackPath>>;
+    async fn get_all_path<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<LibraryTrackPath>>;
 
     /// ディレクトリを指定してパスを取得
     /// # Arguments
@@ -37,14 +37,14 @@ pub trait DbTrackRepository {
     async fn get_path_by_directory<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibDirPath,
-    ) -> Result<Vec<LibTrackPath>>;
+        path: &LibraryDirectoryPath,
+    ) -> Result<Vec<LibraryTrackPath>>;
 
     /// 指定したパスの曲が存在するか確認
     async fn is_exist_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<bool>;
 
     /// 指定されたフォルダに曲が存在するか確認
@@ -63,8 +63,8 @@ pub trait DbTrackRepository {
     async fn update_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        old_path: &LibTrackPath,
-        new_path: &LibTrackPath,
+        old_path: &LibraryTrackPath,
+        new_path: &LibraryTrackPath,
         new_folder_id: FolderIdMayRoot,
     ) -> Result<()>;
 
@@ -92,7 +92,7 @@ impl DbTrackRepository for MockDbTrackRepository {
     async fn get_id_by_path<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<Option<i32>> {
         self.inner.get_id_by_path(path)
     }
@@ -101,26 +101,26 @@ impl DbTrackRepository for MockDbTrackRepository {
         &self,
         _db: &mut PgTransaction<'c>,
         path: &NonEmptyString,
-    ) -> Result<Vec<LibTrackPath>> {
+    ) -> Result<Vec<LibraryTrackPath>> {
         self.inner.get_path_by_path_str(path)
     }
 
-    async fn get_all_path<'c>(&self, _db: &mut PgTransaction<'c>) -> Result<Vec<LibTrackPath>> {
+    async fn get_all_path<'c>(&self, _db: &mut PgTransaction<'c>) -> Result<Vec<LibraryTrackPath>> {
         self.inner.get_all_path()
     }
 
     async fn get_path_by_directory<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        path: &LibDirPath,
-    ) -> Result<Vec<LibTrackPath>> {
+        path: &LibraryDirectoryPath,
+    ) -> Result<Vec<LibraryTrackPath>> {
         self.inner.get_path_by_directory(path)
     }
 
     async fn is_exist_path<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<bool> {
         self.inner.is_exist_path(path)
     }
@@ -136,8 +136,8 @@ impl DbTrackRepository for MockDbTrackRepository {
     async fn update_path<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        old_path: &LibTrackPath,
-        new_path: &LibTrackPath,
+        old_path: &LibraryTrackPath,
+        new_path: &LibraryTrackPath,
         new_folder_id: FolderIdMayRoot,
     ) -> Result<()> {
         self.inner.update_path(old_path, new_path, new_folder_id)
@@ -160,31 +160,31 @@ mock! {
     pub DbTrackRepositoryInner {
         pub fn get_id_by_path(
             &self,
-            path: &LibTrackPath,
+            path: &LibraryTrackPath,
         ) -> Result<Option<i32>>;
 
         pub fn get_path_by_path_str(
             &self,
             path: &NonEmptyString,
-        ) -> Result<Vec<LibTrackPath>>;
+        ) -> Result<Vec<LibraryTrackPath>>;
 
-        pub fn get_all_path(&self) -> Result<Vec<LibTrackPath>> ;
+        pub fn get_all_path(&self) -> Result<Vec<LibraryTrackPath>> ;
 
         pub fn get_path_by_directory(
             &self,
-            path: &LibDirPath,
-        ) -> Result<Vec<LibTrackPath>>;
+            path: &LibraryDirectoryPath,
+        ) -> Result<Vec<LibraryTrackPath>>;
 
-        pub fn get_path_all(&self) -> Result<Vec<LibTrackPath>>;
+        pub fn get_path_all(&self) -> Result<Vec<LibraryTrackPath>>;
 
-        pub fn is_exist_path(&self, path: &LibTrackPath) -> Result<bool>;
+        pub fn is_exist_path(&self, path: &LibraryTrackPath) -> Result<bool>;
 
         pub fn is_exist_in_folder(&self, folder_id: i32) -> Result<bool>;
 
         pub fn update_path(
             &self,
-            old_path: &LibTrackPath,
-            new_path: &LibTrackPath,
+            old_path: &LibraryTrackPath,
+            new_path: &LibraryTrackPath,
             new_folder_id: FolderIdMayRoot,
         ) -> Result<()>;
 

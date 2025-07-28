@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use murack_core_domain::{
     NonEmptyString,
     folder::FolderIdMayRoot,
-    path::{LibDirPath, LibTrackPath},
+    path::{LibraryDirectoryPath, LibraryTrackPath},
     track::DbTrackRepository,
 };
 use sqlx::PgTransaction;
@@ -22,7 +22,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     async fn get_id_by_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<Option<i32>> {
         let id = sqlx::query_scalar!(
             "SELECT id FROM tracks WHERE path = $1",
@@ -39,13 +39,13 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         &self,
         tx: &mut PgTransaction<'c>,
         path: &NonEmptyString,
-    ) -> Result<Vec<LibTrackPath>> {
+    ) -> Result<Vec<LibraryTrackPath>> {
         //ディレクトリ指定とみなして検索
-        let dir_path: LibDirPath = path.clone().into();
+        let dir_path: LibraryDirectoryPath = path.clone().into();
         let mut list = self.get_path_by_directory(tx, &dir_path).await?;
 
         //ファイル指定とみなしての検索でヒットしたら追加
-        let track_path: LibTrackPath = path.clone().into();
+        let track_path: LibraryTrackPath = path.clone().into();
         if self.is_exist_path(tx, &track_path).await? {
             list.push(track_path);
         }
@@ -54,8 +54,8 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     }
 
     /// 全ての曲のパスを取得
-    async fn get_all_path<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<LibTrackPath>> {
-        let paths = sqlx::query_scalar!(r#"SELECT path AS "path: LibTrackPath" FROM tracks"#)
+    async fn get_all_path<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<LibraryTrackPath>> {
+        let paths = sqlx::query_scalar!(r#"SELECT path AS "path: LibraryTrackPath" FROM tracks"#)
             .fetch_all(&mut **tx)
             .await?;
         Ok(paths)
@@ -69,8 +69,8 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     async fn get_path_by_directory<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibDirPath,
-    ) -> Result<Vec<LibTrackPath>> {
+        path: &LibraryDirectoryPath,
+    ) -> Result<Vec<LibraryTrackPath>> {
         let path_str: &str = path.as_ref();
 
         //LIKE文エスケープ
@@ -95,7 +95,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     async fn is_exist_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<bool> {
         track_sqls::exists_path(tx, path).await
     }
@@ -125,8 +125,8 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     async fn update_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        old_path: &LibTrackPath,
-        new_path: &LibTrackPath,
+        old_path: &LibraryTrackPath,
+        new_path: &LibraryTrackPath,
         new_folder_id: FolderIdMayRoot,
     ) -> Result<()> {
         sqlx::query!(

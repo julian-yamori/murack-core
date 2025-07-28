@@ -6,12 +6,12 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibTrackPath};
+use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
 
 use crate::utils;
 
 /// ライブラリのフォルダ内の全ての曲のパスを列挙
-pub fn search_all(lib_root: &Path) -> Result<Vec<LibTrackPath>> {
+pub fn search_all(lib_root: &Path) -> Result<Vec<LibraryTrackPath>> {
     search_lib_path_from(lib_root, lib_root)
 }
 
@@ -27,22 +27,25 @@ pub fn search_all(lib_root: &Path) -> Result<Vec<LibTrackPath>> {
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - target: 検索対象のライブラリ内パス
-pub fn search_by_lib_path(lib_root: &Path, target: &NonEmptyString) -> Result<Vec<LibTrackPath>> {
+pub fn search_by_lib_path(
+    lib_root: &Path,
+    target: &NonEmptyString,
+) -> Result<Vec<LibraryTrackPath>> {
     let target_abs = lib_root.join(target);
 
     search_lib_path_from(lib_root, &target_abs)
 }
 
-/// 絶対パスを指定して、その配下の曲のパスを `Vec<LibTrackPath>` で返す
+/// 絶対パスを指定して、その配下の曲のパスを `Vec<LibraryTrackPath>` で返す
 ///
 /// search_all() と search_by_lib_path() の共通部分
-fn search_lib_path_from(lib_root: &Path, target_abs: &Path) -> Result<Vec<LibTrackPath>> {
+fn search_lib_path_from(lib_root: &Path, target_abs: &Path) -> Result<Vec<LibraryTrackPath>> {
     search_track_abs_path(target_abs)?
         .into_iter()
         .map(|abs_path| {
             //絶対パス->ライブラリパスに変換
             let rel_path = abs_path.strip_prefix(lib_root).unwrap();
-            let track_path = LibTrackPath::try_from(rel_path.to_owned())?;
+            let track_path = LibraryTrackPath::try_from(rel_path.to_owned())?;
             Ok(track_path)
         })
         .collect()

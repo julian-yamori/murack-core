@@ -5,7 +5,7 @@ use mockall::mock;
 use super::{DbTrackSyncRepository, TrackSync};
 use crate::{
     folder::{DbFolderRepository, FolderIdMayRoot},
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     playlist::DbPlaylistRepository,
 };
 use sqlx::PgTransaction;
@@ -23,7 +23,7 @@ pub trait SyncUsecase {
     async fn register_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         track_sync: &mut TrackSync,
     ) -> Result<()>;
 }
@@ -57,7 +57,7 @@ where
     async fn register_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         track_sync: &mut TrackSync,
     ) -> Result<()> {
         //曲名が空なら、ファイル名から取得
@@ -99,7 +99,7 @@ impl SyncUsecase for MockSyncUsecase {
     async fn register_db<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         track_sync: &mut TrackSync,
     ) -> Result<()> {
         self.inner.register_db(track_path, track_sync)
@@ -109,7 +109,7 @@ mock! {
     pub SyncUsecaseInner {
         pub fn register_db(
             &self,
-            track_path: &LibTrackPath,
+            track_path: &LibraryTrackPath,
             track_sync: &mut TrackSync,
         ) -> Result<()>;
     }
@@ -126,7 +126,7 @@ mod tests {
     use super::super::MockDbTrackSyncRepository;
     use super::*;
     use crate::{
-        artwork::TrackArtwork, folder::MockDbFolderRepository, path::LibDirPath,
+        artwork::TrackArtwork, folder::MockDbFolderRepository, path::LibraryDirectoryPath,
         playlist::MockDbPlaylistRepository,
     };
 
@@ -180,8 +180,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_register_db_root_folder(pool: PgPool) -> anyhow::Result<()> {
-        fn track_path() -> LibTrackPath {
-            LibTrackPath::from_str("track.flac").unwrap()
+        fn track_path() -> LibraryTrackPath {
+            LibraryTrackPath::from_str("track.flac").unwrap()
         }
 
         let mut target = target();
@@ -222,8 +222,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_register_db_no_title(pool: PgPool) -> anyhow::Result<()> {
-        fn track_path() -> LibTrackPath {
-            LibTrackPath::from_str("test/hoge/fuga.mp3").unwrap()
+        fn track_path() -> LibraryTrackPath {
+            LibraryTrackPath::from_str("test/hoge/fuga.mp3").unwrap()
         }
 
         let mut target = target();
@@ -233,7 +233,10 @@ mod tests {
             .expect_register_not_exists()
             .times(1)
             .returning(|a_path| {
-                assert_eq!(a_path, &LibDirPath::from_str("test/hoge").unwrap());
+                assert_eq!(
+                    a_path,
+                    &LibraryDirectoryPath::from_str("test/hoge").unwrap()
+                );
                 Ok(15)
             });
 

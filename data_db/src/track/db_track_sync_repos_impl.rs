@@ -4,7 +4,7 @@ use murack_core_domain::{
     Error as DomainError,
     artwork::DbArtworkRepository,
     folder::FolderIdMayRoot,
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
 };
 use sqlx::PgTransaction;
@@ -34,7 +34,7 @@ where
     async fn get_by_path<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibTrackPath,
+        path: &LibraryTrackPath,
     ) -> Result<Option<DbTrackSync>> {
         //一旦trackテーブルから検索
         let track_row = match sqlx::query_as!(
@@ -85,7 +85,7 @@ where
     async fn register<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         track_sync: &TrackSync,
         folder_id: FolderIdMayRoot,
     ) -> Result<i32> {

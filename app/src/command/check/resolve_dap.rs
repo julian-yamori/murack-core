@@ -1,6 +1,6 @@
 use anyhow::Result;
 use mockall::automock;
-use murack_core_domain::path::LibTrackPath;
+use murack_core_domain::path::LibraryTrackPath;
 
 use super::messages;
 use crate::{
@@ -16,7 +16,7 @@ pub trait ResolveDap {
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    fn resolve_pc_dap_conflict(&self, track_path: &LibTrackPath) -> Result<bool>;
+    fn resolve_pc_dap_conflict(&self, track_path: &LibraryTrackPath) -> Result<bool>;
 }
 
 ///ResolveDapの実装
@@ -45,7 +45,7 @@ where
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    fn resolve_pc_dap_conflict(&self, track_path: &LibTrackPath) -> Result<bool> {
+    fn resolve_pc_dap_conflict(&self, track_path: &LibraryTrackPath) -> Result<bool> {
         //内容が一致する場合はスキップ
         if check_usecase::check_pc_dap_content(
             &self.config.pc_lib,

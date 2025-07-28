@@ -1,10 +1,10 @@
 //! パス関係の機能
 
-mod lib_dir_path;
-pub use lib_dir_path::LibDirPath;
+mod library_directry_path;
+pub use library_directry_path::LibraryDirectoryPath;
 
-mod lib_track_path;
-pub use lib_track_path::LibTrackPath;
+mod library_track_path;
+pub use library_track_path::LibraryTrackPath;
 
 mod path_error;
 pub use path_error::PathError;

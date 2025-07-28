@@ -4,7 +4,7 @@ use mockall::automock;
 use murack_core_domain::{
     Error as DomainError,
     artwork::{DbArtworkRepository, TrackArtwork},
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
     track::TrackItemKind,
 };
@@ -21,7 +21,7 @@ pub trait ResolveDataMatch {
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    async fn resolve(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<bool>;
+    async fn resolve(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<bool>;
 }
 
 /// ResolveDataMatchの実装
@@ -49,7 +49,7 @@ where
     ///
     /// # Returns
     /// 次の解決処理へ継続するか
-    async fn resolve(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<bool> {
+    async fn resolve(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<bool> {
         //データ読み込み
         let mut pc_data = murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path)?;
         let mut db_data = self.load_db_track(db_pool, track_path).await?;
@@ -396,7 +396,7 @@ where
     async fn load_db_track(
         &self,
         db_pool: &PgPool,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
     ) -> Result<DbTrackSync> {
         let mut tx = db_pool.begin().await?;
 
@@ -425,7 +425,7 @@ where
     /// PCのファイルの曲データを上書き
     fn overwrite_pc_track_file(
         &self,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
         pc_track: &TrackSync,
     ) -> Result<()> {
         murack_core_data_file::overwrite_track_sync(&self.config.pc_lib, track_path, pc_track)?;

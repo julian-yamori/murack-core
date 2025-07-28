@@ -5,7 +5,7 @@ use mockall::mock;
 use sqlx::PgTransaction;
 
 use super::{DbFolderRepository, FolderIdMayRoot};
-use crate::{Error, path::LibDirPath, track::DbTrackRepository};
+use crate::{Error, path::LibraryDirectoryPath, track::DbTrackRepository};
 
 /// ライブラリのフォルダ関係のUsecase
 #[async_trait]
@@ -17,7 +17,7 @@ pub trait FolderUsecase {
     async fn delete_db_if_empty<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        folder_path: &LibDirPath,
+        folder_path: &LibraryDirectoryPath,
     ) -> Result<()>;
 }
 
@@ -45,7 +45,7 @@ where
     async fn delete_db_if_empty<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        folder_path: &LibDirPath,
+        folder_path: &LibraryDirectoryPath,
     ) -> Result<()> {
         //IDを取得
         let folder_id = self
@@ -122,7 +122,7 @@ impl FolderUsecase for MockFolderUsecase {
     async fn delete_db_if_empty<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        folder_path: &LibDirPath,
+        folder_path: &LibraryDirectoryPath,
     ) -> Result<()> {
         self.inner.delete_db_if_empty(folder_path)
     }
@@ -131,7 +131,7 @@ mock! {
     pub FolderUsecaseInner {
         pub fn delete_db_if_empty(
             &self,
-            folder_path: &LibDirPath,
+            folder_path: &LibraryDirectoryPath,
         ) -> Result<()>;
     }
 }

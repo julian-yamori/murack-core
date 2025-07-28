@@ -1,6 +1,6 @@
 use anyhow::Result;
 use murack_core_domain::{
-    Error as DomainError, NonEmptyString, path::LibTrackPath, sync::SyncUsecase,
+    Error as DomainError, NonEmptyString, path::LibraryTrackPath, sync::SyncUsecase,
 };
 use sqlx::PgPool;
 
@@ -72,7 +72,7 @@ where
     /// # Arguments
     /// - track_path: 作業対象の曲のパス
     /// - entry_date: 登録日
-    async fn unit_add(&self, db_pool: &PgPool, track_path: &LibTrackPath) -> Result<()> {
+    async fn unit_add(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<()> {
         //PCファイル情報読み込み
         let mut pc_track = murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path)?;
 
@@ -103,7 +103,7 @@ where
         &self,
         current_idx: usize,
         all_count: usize,
-        track_path: &LibTrackPath,
+        track_path: &LibraryTrackPath,
     ) -> anyhow::Result<()> {
         cui_outln!(
             self.cui,

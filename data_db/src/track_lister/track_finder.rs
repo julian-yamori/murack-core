@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use murack_core_domain::{
     NonEmptyString,
     dap::TrackFinder,
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     playlist::{Playlist, PlaylistType, SortType},
 };
 use sqlx::PgTransaction;
@@ -39,7 +39,7 @@ where
         &self,
         tx: &mut PgTransaction<'c>,
         plist: &Playlist,
-    ) -> Result<Vec<LibTrackPath>> {
+    ) -> Result<Vec<LibraryTrackPath>> {
         //対象プレイリストのクエリ(from,join,where句)を取得
         let fjw_query = self.get_query_by_playlist(tx, plist).await?;
 
@@ -60,8 +60,8 @@ where
             get_order_query(plist.sort_type, plist.sort_desc)
         );
 
-        let list: Vec<LibTrackPath> = sqlx::query(&query)
-            .map(|row: PgRow| row.get::<LibTrackPath, _>(0))
+        let list: Vec<LibraryTrackPath> = sqlx::query(&query)
+            .map(|row: PgRow| row.get::<LibraryTrackPath, _>(0))
             .fetch_all(&mut **tx)
             .await?;
 

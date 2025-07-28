@@ -7,7 +7,7 @@ use async_recursion::async_recursion;
 use murack_core_domain::{
     NonEmptyString,
     dap::TrackFinder,
-    path::LibTrackPath,
+    path::LibraryTrackPath,
     playlist::{DbPlaylistRepository, Playlist},
 };
 use sqlx::{PgPool, PgTransaction};
@@ -254,7 +254,7 @@ fn playlist_to_file_name(plist: &Playlist, offset: u32, digit: u32) -> String {
 fn write_playlist_file(
     root_path: &Path,
     plist_file_name: &str,
-    track_path_list: &[LibTrackPath],
+    track_path_list: &[LibraryTrackPath],
 ) -> Result<()> {
     //プレイリストファイルに書き込むデータを作成
 
@@ -282,10 +282,10 @@ mod tests {
     #[test]
     fn test_write_playlist_file() -> anyhow::Result<()> {
         let track_path_list = vec![
-            LibTrackPath::from_str("test/hoge/track1.flac")?,
-            LibTrackPath::from_str("test/track3.m4a")?,
-            LibTrackPath::from_str("track4.m4a")?,
-            LibTrackPath::from_str("test/hoge/track2.mp3")?,
+            LibraryTrackPath::from_str("test/hoge/track1.flac")?,
+            LibraryTrackPath::from_str("test/track3.m4a")?,
+            LibraryTrackPath::from_str("track4.m4a")?,
+            LibraryTrackPath::from_str("test/hoge/track2.mp3")?,
         ];
         const FILE_NAME: &str = "playlist.m3u";
 
