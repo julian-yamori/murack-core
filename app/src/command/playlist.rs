@@ -1,18 +1,18 @@
 mod dap_playlist_repository;
+mod file_name;
 
-use std::{collections::HashSet, ops::Deref, path::Path};
+use std::{collections::HashSet, path::Path};
 
 use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
-    NonEmptyString,
     path::LibraryTrackPath,
     playlist::{DbPlaylistRepository, PlaylistTree},
     track_query::playlist_query,
 };
 use sqlx::{PgPool, PgTransaction};
 
-use crate::{Config, cui::Cui};
+use crate::{Config, command::playlist::file_name::FileNameContext, cui::Cui};
 
 /// playlistコマンド
 ///
@@ -70,8 +70,7 @@ where
             &plist_trees,
             &mut tx,
             dap_plist_path,
-            0,
-            save_count,
+            &mut FileNameContext::new(save_count),
             &mut existing_file_set,
         )
         .await?;
@@ -96,34 +95,22 @@ where
     /// # Arguments
     /// - plist_trees: 保存する全プレイリストツリー
     /// - root_path: プレイリストファイルの保存先ディレクトリのパス
-    /// - save_offset:  保存する何番目のプレイリストか
-    /// - save_count:  全体の保存数
     /// - existingFileSet:  DAPに既に存在するファイルパスのset
-    ///
-    /// # Returns
-    /// プレイリストをいくつ保存したか
     #[async_recursion]
-    async fn save_plists_recursive<'c>(
+    async fn save_plists_recursive<'c, 'p>(
         &self,
-        plist_trees: &[PlaylistTree],
+        plist_trees: &'p [PlaylistTree],
         tx: &mut PgTransaction<'c>,
         root_path: &Path,
-        save_offset: u32,
-        save_count: u32,
+        context: &mut FileNameContext<'p>,
         existing_file_set: &mut HashSet<String>,
-    ) -> Result<u32> {
-        let mut now_save_offset = save_offset;
-
-        let save_count_digit = get_digit(save_count);
-
+    ) -> Result<()> {
         for tree in plist_trees {
             //DAPに保存するプレイリストなら処理
             if tree.playlist.save_dap {
-                now_save_offset += 1;
-
                 //プレイリストのファイル名を作成
-                let plist_file_name =
-                    playlist_to_file_name(tree, now_save_offset, save_count_digit);
+                let plist_file_name = file_name::build_file_name(tree, context);
+                context.offset_of_whole += 1;
 
                 //プレイリスト内の曲パスを取得
                 let track_paths = playlist_query::get_track_path_list(tx, &tree.playlist).await?;
@@ -155,20 +142,17 @@ where
                     }
                 }
             }
+
+            context.parent_names.push(&tree.playlist.name);
+
             //子プレイリストの保存
-            now_save_offset += self
-                .save_plists_recursive(
-                    &tree.children,
-                    tx,
-                    root_path,
-                    now_save_offset,
-                    save_count,
-                    existing_file_set,
-                )
+            self.save_plists_recursive(&tree.children, tx, root_path, context, existing_file_set)
                 .await?;
+
+            context.parent_names.pop();
         }
 
-        Ok(now_save_offset - save_offset)
+        Ok(())
     }
 }
 
@@ -200,47 +184,6 @@ fn count_save_plists_recursive(trees: &[PlaylistTree]) -> u32 {
     count
 }
 
-/// 数値の桁数を数える
-fn get_digit(mut num: u32) -> u32 {
-    //保存する桁数を数える
-    let mut digit = 0;
-    while num > 0 {
-        num /= 10;
-        digit += 1;
-    }
-
-    digit
-}
-
-/// プレイリスト情報から、プレイリストのファイル名を取得
-/// # Arguments
-/// - tree: パスを取得する対象のプレイリストのノード
-/// - offset: このプレイリストが、全体で何番目か
-/// - digit: 保存するプレイリスト数の桁数
-fn playlist_to_file_name(tree: &PlaylistTree, offset: u32, digit: u32) -> String {
-    //番号を付ける
-    //TODO 書式つかってもっときれいに実装できそう
-    let mut buf = offset.to_string();
-    //総数の桁数に応じて0埋め
-    for _ in 0..(digit - buf.len() as u32) {
-        buf.insert(0, '0');
-    }
-
-    //親がいるなら追加
-    if !tree.parent_names.is_empty() {
-        let joined_names = tree
-            .parent_names
-            .iter()
-            .map(NonEmptyString::deref)
-            .collect::<Vec<_>>()
-            .join("-");
-
-        buf = format!("{buf}-{joined_names}");
-    }
-
-    format!("{}-{}.{}", buf, tree.playlist.name, PLAYLIST_EXT)
-}
-
 /// プレイリストに曲パスリストを書き込み
 /// # Arguments
 /// - path: プレイリストファイルの保存先パス
@@ -269,9 +212,6 @@ fn write_playlist_file(
 mod tests {
     use std::{fs, str::FromStr};
 
-    use murack_core_domain::playlist::{Playlist, PlaylistType, SortType};
-    use test_case::test_case;
-
     use super::*;
 
     #[test]
@@ -296,49 +236,5 @@ mod tests {
         );
 
         Ok(())
-    }
-
-    #[test_case(1, 1 ; "1")]
-    #[test_case(9, 1 ; "9")]
-    #[test_case(10, 2 ; "10")]
-    #[test_case(99, 2 ; "99")]
-    #[test_case(100, 3 ; "100")]
-    fn test_get_digit(input: u32, expect: u32) {
-        assert_eq!(get_digit(input), expect);
-    }
-
-    #[test_case("plist", &[], 3, 2, "03-plist.m3u" ; "root")]
-    #[test_case("plist", &["parent"], 3, 1, "3-parent-plist.m3u" ; "one_parent_one_digit")]
-    #[test_case("plist", &["parent", "2"], 45, 3, "045-parent-2-plist.m3u" ; "two_parents_three_digit")]
-    #[test_case("plist-pl", &["parent"], 5, 3, "005-parent-plist-pl.m3u" ; "hyphen_name")]
-    fn test_playlist_to_file_name(
-        name: &str,
-        parents: &[&str],
-        offset: u32,
-        digit: u32,
-        expect: &str,
-    ) {
-        let plist = PlaylistTree {
-            playlist: Playlist {
-                id: 3,
-                playlist_type: PlaylistType::Normal,
-                name: name.to_string().try_into().unwrap(),
-                parent_id: if parents.is_empty() { None } else { Some(34) },
-                in_folder_order: 99,
-                filter: None,
-                sort_type: SortType::Artist,
-                sort_desc: false,
-                save_dap: true,
-                listuped_flag: true,
-                dap_changed: true,
-            },
-            children: Vec::new(),
-
-            parent_names: parents
-                .iter()
-                .map(|s| (*s).to_string().try_into().unwrap())
-                .collect(),
-        };
-        assert_eq!(&playlist_to_file_name(&plist, offset, digit), expect);
     }
 }

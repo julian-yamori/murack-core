@@ -118,16 +118,7 @@ fn build_plist_children_recursive(
         let mut current_tree = PlaylistTree {
             playlist: Playlist::try_from(target)?,
             children: vec![],
-            parent_names: vec![],
         };
-
-        //親プレイリスト名を親から繋げる
-        if let Some(parent_tree) = parent {
-            current_tree.parent_names = parent_tree.parent_names.clone();
-            current_tree
-                .parent_names
-                .push(parent_tree.playlist.name.clone());
-        }
 
         //再帰実行して子プレイリスト一覧を取得
         let tuple = build_plist_children_recursive(Some(&current_tree), remain_pool)?;
