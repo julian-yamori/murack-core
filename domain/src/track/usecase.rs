@@ -6,10 +6,10 @@ use mockall::mock;
 
 use super::DbTrackRepository;
 use crate::{
-    Error,
+    Error, NonEmptyString,
     artwork::DbArtworkRepository,
     folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
-    path::{LibPathStr, LibTrackPath, RelativeTrackPath},
+    path::{LibDirPath, LibPathStr, LibTrackPath},
     playlist::{DbPlaylistRepository, DbPlaylistTrackRepository},
     tag::DbTrackTagRepository,
 };
@@ -113,10 +113,7 @@ where
                 .get_path_by_directory(tx, &src_as_dir)
                 .await?
             {
-                let relative_path =
-                    RelativeTrackPath::from_track_and_parent(&src_track, &src_as_dir)?;
-                let dest_track = relative_path.concat_lib_dir(&dest_as_dir);
-
+                let dest_track = src_child_path_to_dest(&src_track, &src_as_dir, &dest_as_dir)?;
                 self.move_track_db_unit(tx, &src_track, &dest_track).await?;
             }
         };
@@ -251,6 +248,33 @@ where
     }
 }
 
+/// move コマンドで指定された src_dir の子の src_track から、dest_dir の子として移動する先のパスを取得
+fn src_child_path_to_dest(
+    src_track: &LibTrackPath,
+    src_dir: &LibDirPath,
+    dest_dir: &LibDirPath,
+) -> anyhow::Result<LibTrackPath> {
+    let src_dir_str: &str = src_dir.as_ref();
+    let src_track_str: &str = src_track.as_ref();
+
+    // src_track が src_dir で始まっているか確認
+    if !src_track_str.starts_with(src_dir_str) {
+        return Err(Error::GetRelativePathFailed {
+            track: src_track.to_owned(),
+            parent: src_dir.to_owned(),
+        }
+        .into());
+    }
+
+    let relative_path = &src_track_str[src_dir_str.len()..];
+
+    // 文字列を取得して連結
+    let mut s = (dest_dir.as_ref() as &NonEmptyString).clone();
+    s.push_str(relative_path);
+
+    Ok(s.into())
+}
+
 #[derive(Default)]
 pub struct MockTrackUsecase {
     pub inner: MockTrackUsecaseInner,
@@ -312,6 +336,7 @@ mod tests {
     use std::str::FromStr;
 
     use sqlx::PgPool;
+    use test_case::test_case;
 
     use super::*;
     use crate::{
@@ -556,6 +581,27 @@ mod tests {
 
         checkpoint_all(&mut target);
 
+        Ok(())
+    }
+
+    #[test_case("parent/src/dir/file.flac", "parent/src", "parent", "parent/dir/file.flac"; "1階層上に移動")]
+    #[test_case("parent/dir/file.flac", "parent", "parent/dest", "parent/dest/dir/file.flac"; "親ディレクトリの1階層下に移動")]
+    #[test_case("src/dir/file.flac", "src", "parent/dest", "parent/dest/dir/file.flac"; "別ディレクトリの1階層下に移動")]
+    #[test_case("parent/src/file.flac", "parent/src", "parent/dest", "parent/dest/file.flac"; "子ディレクトリなし")]
+    #[test_case("src/dir/dir2/file.flac", "src", "dest", "dest/dir/dir2/file.flac"; "子ディレクトリが2階層")]
+    fn test_src_child_path_to_dest(
+        src_track: &str,
+        src_dir: &str,
+        dest_dir: &str,
+        expect_dest_track: &str,
+    ) -> anyhow::Result<()> {
+        let actual = src_child_path_to_dest(
+            &LibTrackPath::from_str(src_track)?,
+            &LibDirPath::from_str(src_dir)?,
+            &LibDirPath::from_str(dest_dir)?,
+        )?;
+
+        assert_eq!(actual.as_ref() as &str, expect_dest_track);
         Ok(())
     }
 }

@@ -11,6 +11,3 @@ pub use lib_track_path::LibTrackPath;
 
 mod path_error;
 pub use path_error::PathError;
-
-mod relative_track_path;
-pub use relative_track_path::RelativeTrackPath;
