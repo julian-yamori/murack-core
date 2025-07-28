@@ -2,13 +2,12 @@ use anyhow::Result;
 use async_trait::async_trait;
 use murack_core_domain::{
     NonEmptyString,
+    db_utils::like_esc,
     folder::FolderIdMayRoot,
     path::{LibraryDirectoryPath, LibraryTrackPath},
     track::DbTrackRepository,
 };
 use sqlx::PgTransaction;
-
-use crate::like_esc;
 
 use super::track_sqls;
 

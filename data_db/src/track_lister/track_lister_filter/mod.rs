@@ -3,14 +3,16 @@ mod tests;
 
 use anyhow::Result;
 use chrono::NaiveDate;
-use murack_core_domain::filter::{
-    ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,
-    IntFilterRange, RootFilter, StringFilterRange, TagsFilterRange,
+use murack_core_domain::{
+    db_utils::like_esc,
+    filter::{
+        ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,
+        IntFilterRange, RootFilter, StringFilterRange, TagsFilterRange,
+    },
 };
 use sqlx::PgTransaction;
 
 use super::esc::escs;
-use crate::like_esc;
 
 /// フィルタを使用して曲 ID を列挙
 /// # Arguments

@@ -5,6 +5,7 @@ pub use error::Error;
 
 pub mod artwork;
 pub mod dap;
+pub mod db_utils;
 pub mod filter;
 pub mod folder;
 
