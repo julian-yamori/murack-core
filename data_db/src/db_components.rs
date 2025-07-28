@@ -1,11 +1,11 @@
 use std::sync::{Arc, Mutex};
 
+use murack_core_domain::playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl};
 use once_cell::sync::Lazy;
 
 use crate::{
     artwork::{ArtworkCache, DbArtworkRepositoryImpl},
     folder::DbFolderRepositoryImpl,
-    playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
     tag::DbTrackTagRepositoryImpl,
     track::{DbTrackRepositoryImpl, DbTrackSyncRepositoryImpl},
     track_lister::TrackFinderImpl,

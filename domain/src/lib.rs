@@ -22,3 +22,6 @@ pub mod test_utils;
 
 #[macro_use]
 extern crate derive_new;
+
+#[cfg(test)]
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../migrations");

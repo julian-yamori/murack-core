@@ -1,8 +1,7 @@
 use anyhow::Result;
-use murack_core_domain::playlist::DbPlaylistRepository;
 use sqlx::PgPool;
 
-use crate::playlist::DbPlaylistRepositoryImpl;
+use crate::playlist::{DbPlaylistRepository, DbPlaylistRepositoryImpl};
 
 // get_playlist_tree 関数のテスト
 mod test_get_playlist_tree {

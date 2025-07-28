@@ -1,4 +1,4 @@
-use murack_core_domain::{
+use crate::{
     NonEmptyString,
     playlist::{Playlist, PlaylistType, SortType},
 };

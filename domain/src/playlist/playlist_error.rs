@@ -1,4 +1,4 @@
-use murack_core_domain::NonEmptyString;
+use crate::NonEmptyString;
 
 /// プレイリスト関連のエラー
 #[derive(thiserror::Error, Debug)]

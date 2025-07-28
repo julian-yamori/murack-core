@@ -1,12 +1,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use murack_core_domain::{
-    NonEmptyString,
-    playlist::{DbPlaylistTrackRepository, PlaylistType, SortType},
-};
 use sqlx::PgTransaction;
 
-use crate::playlist::playlist_row::PlaylistRow;
+use crate::{
+    NonEmptyString,
+    playlist::{DbPlaylistTrackRepository, PlaylistType, SortType, playlist_row::PlaylistRow},
+};
 
 use super::playlist_sqls;
 
