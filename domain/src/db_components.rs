@@ -9,7 +9,6 @@ use crate::{
     sync::DbTrackSyncRepositoryImpl,
     tag::DbTrackTagRepositoryImpl,
     track::DbTrackRepositoryImpl,
-    track_query::TrackFinderImpl,
 };
 
 /// data層DB機能のDIを解決するオブジェクト
@@ -22,10 +21,6 @@ impl DbComponents {
         Self {
             artwork_cache: Lazy::new(|| Arc::new(Mutex::new(ArtworkCache::new()))),
         }
-    }
-
-    pub fn track_finder(&self) -> TypeTrackFinder {
-        TrackFinderImpl::new()
     }
 
     pub fn db_artwork_repository(&self) -> TypeDbArtworkRepository {
@@ -63,7 +58,6 @@ impl Default for DbComponents {
     }
 }
 
-pub type TypeTrackFinder = TrackFinderImpl;
 pub type TypeDbArtworkRepository = DbArtworkRepositoryImpl;
 pub type TypeDbFolderRepository = DbFolderRepositoryImpl;
 pub type TypeDbPlaylistRepository = DbPlaylistRepositoryImpl;

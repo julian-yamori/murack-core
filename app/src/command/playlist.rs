@@ -8,7 +8,7 @@ use murack_core_domain::{
     NonEmptyString,
     path::LibraryTrackPath,
     playlist::{DbPlaylistRepository, Playlist},
-    track_query::TrackFinder,
+    track_query::playlist_query,
 };
 use sqlx::{PgPool, PgTransaction};
 
@@ -17,23 +17,20 @@ use crate::{Config, cui::Cui};
 /// playlistコマンド
 ///
 /// DAPのプレイリストを更新する
-pub struct CommandPlaylist<'config, 'cui, CUI, PR, SF>
+pub struct CommandPlaylist<'config, 'cui, CUI, PR>
 where
     CUI: Cui + Send + Sync,
     PR: DbPlaylistRepository + Sync + Send,
-    SF: TrackFinder + Sync + Send,
 {
     pub config: &'config Config,
     pub cui: &'cui CUI,
     pub db_playlist_repository: PR,
-    pub track_finder: SF,
 }
 
-impl<'config, 'cui, CUI, PR, SF> CommandPlaylist<'config, 'cui, CUI, PR, SF>
+impl<'config, 'cui, CUI, PR> CommandPlaylist<'config, 'cui, CUI, PR>
 where
     CUI: Cui + Send + Sync,
     PR: DbPlaylistRepository + Sync + Send,
-    SF: TrackFinder + Sync + Send,
 {
     /// このコマンドを実行
     pub async fn run(self, db_pool: &PgPool) -> Result<()> {
@@ -129,7 +126,7 @@ where
                     playlist_to_file_name(plist, now_save_offset, save_count_digit);
 
                 //プレイリスト内の曲パスを取得
-                let track_paths = self.track_finder.get_track_path_list(tx, plist).await?;
+                let track_paths = playlist_query::get_track_path_list(tx, plist).await?;
 
                 //プレイリストの曲データ取得後に、リストに変更があったか確認
                 let new_plist_data = self
