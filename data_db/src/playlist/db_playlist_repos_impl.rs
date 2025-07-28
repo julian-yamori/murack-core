@@ -6,8 +6,10 @@ use murack_core_domain::{
 };
 use sqlx::PgTransaction;
 
-use super::PlaylistRow;
-use crate::{Error, error::PlaylistNoParentsDetectedItem};
+use crate::playlist::{
+    PlaylistRow,
+    playlist_error::{PlaylistError, PlaylistNoParentsDetectedItem},
+};
 
 /// DbPlaylistRepositoryの本実装
 #[derive(new)]
@@ -51,7 +53,7 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
         let (root_list, remain_pool) = build_plist_children_recursive(None, remain_pool)?;
 
         if !remain_pool.is_empty() {
-            return Err(Error::PlaylistNoParentsDetected(
+            return Err(PlaylistError::PlaylistNoParentsDetected(
                 remain_pool
                     .into_iter()
                     .map(|row| PlaylistNoParentsDetectedItem {

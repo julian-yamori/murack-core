@@ -13,10 +13,7 @@ use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
 use super::{esc::esci, select_track_id_by_filter};
-use crate::{
-    Error,
-    playlist::{PlaylistRow, playlist_sqls},
-};
+use crate::playlist::{PlaylistRow, playlist_error::PlaylistError, playlist_sqls};
 
 /// TrackFinderの本実装
 #[derive(new)]
@@ -202,7 +199,7 @@ impl TrackFinderImpl {
         let filter = plist
             .filter
             .as_ref()
-            .ok_or(Error::FilterPlaylistHasNoFilter {
+            .ok_or(PlaylistError::FilterPlaylistHasNoFilter {
                 plist_id: plist.rowid,
             })?;
 

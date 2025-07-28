@@ -1,8 +1,8 @@
 use murack_core_domain::NonEmptyString;
 
-/// murack-core data_db 層のエラー
+/// プレイリスト関連のエラー
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum PlaylistError {
     #[error("親が見つからないプレイリストが検出されました: {}", diaplay_playlist_no_parents_detected(.0))]
     PlaylistNoParentsDetected(Vec<PlaylistNoParentsDetectedItem>),
 
