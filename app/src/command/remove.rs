@@ -1,5 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{Error as DomainError, path::LibPathStr, track::TrackUsecase};
+use murack_core_domain::{Error as DomainError, NonEmptyString, track::TrackUsecase};
 use sqlx::PgPool;
 
 use crate::{Config, Error, cui::Cui};
@@ -112,7 +112,7 @@ pub struct CommandRemoveArgs {
     /// 削除対象のパス
     ///
     /// ディレクトリ指定可
-    pub path: LibPathStr,
+    pub path: NonEmptyString,
 }
 
 impl CommandRemoveArgs {

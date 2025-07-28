@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display, ops::Deref, str::FromStr};
+use std::{error::Error, fmt::Display, ops::Deref, path::Path, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use sqlx::{
@@ -62,6 +62,12 @@ impl AsRef<String> for NonEmptyString {
 impl AsRef<str> for NonEmptyString {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+
+impl AsRef<Path> for NonEmptyString {
+    fn as_ref(&self) -> &Path {
+        self.0.as_ref()
     }
 }
 

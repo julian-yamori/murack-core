@@ -1,4 +1,7 @@
-use crate::path::{LibDirPath, LibPathStr, LibTrackPath};
+use crate::{
+    NonEmptyString,
+    path::{LibDirPath, LibTrackPath},
+};
 use std::path::PathBuf;
 
 /// murack-core domain層のエラー
@@ -16,7 +19,7 @@ pub enum Error {
     #[error("指定されたパスが存在しません: {path_str} (in {lib_root})")]
     FilePathStrNotFound {
         lib_root: PathBuf,
-        path_str: LibPathStr,
+        path_str: NonEmptyString,
     },
     #[error("曲ファイルが既に存在しています: {track_path} (in {lib_root})")]
     FileTrackAlreadyExists {
@@ -26,13 +29,13 @@ pub enum Error {
     #[error("指定されたパスが既に存在しています: {path_str} (in {lib_root})")]
     FilePathStrAlreadyExists {
         lib_root: PathBuf,
-        path_str: LibPathStr,
+        path_str: NonEmptyString,
     },
 
     #[error("曲データがDBに存在しません: {0}")]
     DbTrackNotFound(LibTrackPath),
     #[error("DBに指定されたパスが存在しません: {0}")]
-    DbPathStrNotFound(LibPathStr),
+    DbPathStrNotFound(NonEmptyString),
     #[error("曲データが既にDBに存在します: {0}")]
     DbTrackAlreadyExists(LibTrackPath),
     #[error("フォルダがDBに存在しません: {0}")]

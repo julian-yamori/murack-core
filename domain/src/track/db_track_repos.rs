@@ -4,8 +4,9 @@ use mockall::mock;
 use sqlx::PgTransaction;
 
 use crate::{
+    NonEmptyString,
     folder::FolderIdMayRoot,
-    path::{LibDirPath, LibPathStr, LibTrackPath},
+    path::{LibDirPath, LibTrackPath},
 };
 
 /// 曲データのDBリポジトリ
@@ -22,7 +23,7 @@ pub trait DbTrackRepository {
     async fn get_path_by_path_str<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibPathStr,
+        path: &NonEmptyString,
     ) -> Result<Vec<LibTrackPath>>;
 
     /// 全ての曲のパスを取得
@@ -99,7 +100,7 @@ impl DbTrackRepository for MockDbTrackRepository {
     async fn get_path_by_path_str<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        path: &LibPathStr,
+        path: &NonEmptyString,
     ) -> Result<Vec<LibTrackPath>> {
         self.inner.get_path_by_path_str(path)
     }
@@ -164,7 +165,7 @@ mock! {
 
         pub fn get_path_by_path_str(
             &self,
-            path: &LibPathStr,
+            path: &NonEmptyString,
         ) -> Result<Vec<LibTrackPath>>;
 
         pub fn get_all_path(&self) -> Result<Vec<LibTrackPath>> ;

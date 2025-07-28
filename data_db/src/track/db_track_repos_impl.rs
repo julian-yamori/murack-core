@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use murack_core_domain::{
     NonEmptyString,
     folder::FolderIdMayRoot,
-    path::{LibDirPath, LibPathStr, LibTrackPath},
+    path::{LibDirPath, LibTrackPath},
     track::DbTrackRepository,
 };
 use sqlx::PgTransaction;
@@ -38,14 +38,14 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
     async fn get_path_by_path_str<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path: &LibPathStr,
+        path: &NonEmptyString,
     ) -> Result<Vec<LibTrackPath>> {
         //ディレクトリ指定とみなして検索
-        let dir_path: LibDirPath = NonEmptyString::from(path.clone()).into();
+        let dir_path: LibDirPath = path.clone().into();
         let mut list = self.get_path_by_directory(tx, &dir_path).await?;
 
         //ファイル指定とみなしての検索でヒットしたら追加
-        let track_path: LibTrackPath = NonEmptyString::from(path.clone()).into();
+        let track_path: LibTrackPath = path.clone().into();
         if self.is_exist_path(tx, &track_path).await? {
             list.push(track_path);
         }

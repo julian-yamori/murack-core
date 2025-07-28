@@ -6,10 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use murack_core_domain::{
-    Error as DomainError,
-    path::{LibPathStr, LibTrackPath},
-};
+use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibTrackPath};
 
 use crate::utils;
 
@@ -30,8 +27,8 @@ pub fn search_all(lib_root: &Path) -> Result<Vec<LibTrackPath>> {
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - target: 検索対象のライブラリ内パス
-pub fn search_by_lib_path(lib_root: &Path, target: &LibPathStr) -> Result<Vec<LibTrackPath>> {
-    let target_abs = lib_root.join(target.as_ref());
+pub fn search_by_lib_path(lib_root: &Path, target: &NonEmptyString) -> Result<Vec<LibTrackPath>> {
+    let target_abs = lib_root.join(target);
 
     search_lib_path_from(lib_root, &target_abs)
 }

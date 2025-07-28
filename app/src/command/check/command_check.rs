@@ -289,7 +289,7 @@ mod tests {
     use std::str::FromStr;
 
     use murack_core_domain::{
-        path::LibPathStr, sync::MockDbTrackSyncRepository, test_utils::assert_eq_not_orderd,
+        NonEmptyString, sync::MockDbTrackSyncRepository, test_utils::assert_eq_not_orderd,
         track::MockDbTrackRepository,
     };
 
@@ -298,7 +298,7 @@ mod tests {
     use crate::cui::BufferCui;
 
     fn target<'config, 'cui>(
-        arg_path: Option<LibPathStr>,
+        arg_path: Option<NonEmptyString>,
         ignore_dap_content: bool,
         config: &'config Config,
         cui: &'cui BufferCui,
@@ -345,8 +345,8 @@ mod tests {
 
     #[sqlx::test]
     fn test_listup_track_path_green(db_pool: PgPool) -> anyhow::Result<()> {
-        fn search_path() -> LibPathStr {
-            LibPathStr::from_str("test/hoge").unwrap()
+        fn search_path() -> NonEmptyString {
+            NonEmptyString::from_str("test/hoge").unwrap()
         }
 
         // temp ディレクトリを作成
@@ -433,7 +433,7 @@ mod tests {
         config.dap_lib = dap_lib;
 
         let cui = BufferCui::new();
-        let arg_path = Some(LibPathStr::from_str("test/hoge")?);
+        let arg_path = Some(NonEmptyString::from_str("test/hoge")?);
         let mut target = target(arg_path, false, &config, &cui);
 
         // DB 側から返すパスリストを指定

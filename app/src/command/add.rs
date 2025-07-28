@@ -1,8 +1,6 @@
 use anyhow::Result;
 use murack_core_domain::{
-    Error as DomainError,
-    path::{LibPathStr, LibTrackPath},
-    sync::SyncUsecase,
+    Error as DomainError, NonEmptyString, path::LibTrackPath, sync::SyncUsecase,
 };
 use sqlx::PgPool;
 
@@ -120,7 +118,7 @@ where
 /// add コマンドの引数
 pub struct CommandAddArgs {
     /// 追加対象のパス
-    pub path: LibPathStr,
+    pub path: NonEmptyString,
 }
 
 impl CommandAddArgs {

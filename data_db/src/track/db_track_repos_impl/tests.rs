@@ -2,7 +2,8 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use murack_core_domain::{
-    path::{LibDirPath, LibPathStr, LibTrackPath},
+    NonEmptyString,
+    path::{LibDirPath, LibTrackPath},
     track::DbTrackRepository,
 };
 use sqlx::PgPool;
@@ -26,7 +27,7 @@ mod test_get_path_by_path_str {
         let mut tx = pool.begin().await?;
 
         let result = target
-            .get_path_by_path_str(&mut tx, &LibPathStr::from_str("test/hoge")?)
+            .get_path_by_path_str(&mut tx, &NonEmptyString::from_str("test/hoge")?)
             .await?;
 
         // 結果は3つの楽曲パスであるはず
@@ -50,7 +51,7 @@ mod test_get_path_by_path_str {
         let mut tx = pool.begin().await?;
 
         let result = target
-            .get_path_by_path_str(&mut tx, &LibPathStr::from_str("test/hoge")?)
+            .get_path_by_path_str(&mut tx, &NonEmptyString::from_str("test/hoge")?)
             .await?;
 
         // 結果は空であるはず
@@ -71,7 +72,7 @@ mod test_get_path_by_path_str {
         let mut tx = pool.begin().await?;
 
         let result = target
-            .get_path_by_path_str(&mut tx, &LibPathStr::from_str("test/hoge.flac")?)
+            .get_path_by_path_str(&mut tx, &NonEmptyString::from_str("test/hoge.flac")?)
             .await?;
 
         // 結果は指定した楽曲ファイル1つであるはず

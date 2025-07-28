@@ -8,7 +8,7 @@ use walk_base_2_domain::{
     FileLibraryRepository,
     db_wrapper::{ConnectionFactory, ConnectionWrapper},
     folder::{DbFolderRepository, FolderUsecase},
-    path::{LibPathStr, LibTrackPath},
+    path::LibTrackPath,
     playlist::DbPlaylistRepository,
     sync::DbTrackSyncRepository,
     track::DbTrackRepository,
@@ -347,7 +347,7 @@ pub struct Args {
     /// 差し替え先のパス
     ///
     /// ディレクトリ指定可(new_file_pathもディレクトリである必要あり)
-    pub dest_path: LibPathStr,
+    pub dest_path: NonEmptyString,
 
     /// 新規ファイルのパス
     ///
@@ -399,7 +399,7 @@ mod tests {
         Mocks::new(
             Args {
                 new_file_path: PathBuf::from(new_file_path),
-                dest_path: LibPathStr::from(dest_path.to_owned()),
+                dest_path: NonEmptyString::from(dest_path.to_owned()),
             },
             Rc::new(Config::dummy()),
             Rc::new(BufferCui::new()),

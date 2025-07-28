@@ -9,7 +9,7 @@ use crate::{
     Error, NonEmptyString,
     artwork::DbArtworkRepository,
     folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
-    path::{LibDirPath, LibPathStr, LibTrackPath},
+    path::{LibDirPath, LibTrackPath},
     playlist::{DbPlaylistRepository, DbPlaylistTrackRepository},
     tag::DbTrackTagRepository,
 };
@@ -22,8 +22,8 @@ pub trait TrackUsecase {
     async fn move_path_str_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        src: &LibPathStr,
-        dest: &LibPathStr,
+        src: &NonEmptyString,
+        dest: &NonEmptyString,
     ) -> Result<()>;
 
     /// DBから曲を削除
@@ -46,7 +46,7 @@ pub trait TrackUsecase {
     async fn delete_path_str_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path_str: &LibPathStr,
+        path_str: &NonEmptyString,
     ) -> Result<Vec<LibTrackPath>>;
 }
 
@@ -86,11 +86,11 @@ where
     async fn move_path_str_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        src: &LibPathStr,
-        dest: &LibPathStr,
+        src: &NonEmptyString,
+        dest: &NonEmptyString,
     ) -> Result<()> {
         // パス文字列がファイルかどうかを、完全一致するパスの曲が DB に存在するかどうかで判定
-        let src_as_track: LibTrackPath = NonEmptyString::from(src.clone()).into();
+        let src_as_track: LibTrackPath = src.clone().into();
         let track_exists = self
             .db_track_repository
             .is_exist_path(tx, &src_as_track)
@@ -99,15 +99,15 @@ where
         if track_exists {
             // 指定された 1 曲だけ処理
 
-            let dest_as_track: LibTrackPath = NonEmptyString::from(dest.clone()).into();
+            let dest_as_track: LibTrackPath = dest.clone().into();
 
             self.move_track_db_unit(tx, &src_as_track, &dest_as_track)
                 .await?;
         } else {
             // 指定ディレクトリ以下の全ての曲について、パスの変更を反映
 
-            let src_as_dir: LibDirPath = NonEmptyString::from(src.clone()).into();
-            let dest_as_dir: LibDirPath = NonEmptyString::from(dest.clone()).into();
+            let src_as_dir: LibDirPath = src.clone().into();
+            let dest_as_dir: LibDirPath = dest.clone().into();
 
             for src_track in self
                 .db_track_repository
@@ -177,7 +177,7 @@ where
     async fn delete_path_str_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        path_str: &LibPathStr,
+        path_str: &NonEmptyString,
     ) -> Result<Vec<LibTrackPath>> {
         let track_path_list = self
             .db_track_repository
@@ -285,8 +285,8 @@ impl TrackUsecase for MockTrackUsecase {
     async fn move_path_str_db<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        src: &LibPathStr,
-        dest: &LibPathStr,
+        src: &NonEmptyString,
+        dest: &NonEmptyString,
     ) -> Result<()> {
         self.inner.move_path_str_db(src, dest)
     }
@@ -302,7 +302,7 @@ impl TrackUsecase for MockTrackUsecase {
     async fn delete_path_str_db<'c>(
         &self,
         _db: &mut PgTransaction<'c>,
-        path_str: &LibPathStr,
+        path_str: &NonEmptyString,
     ) -> Result<Vec<LibTrackPath>> {
         self.inner.delete_path_str_db(path_str)
     }
@@ -311,8 +311,8 @@ mock! {
     pub TrackUsecaseInner {
         pub fn move_path_str_db(
             &self,
-            src: &LibPathStr,
-            dest: &LibPathStr,
+            src: &NonEmptyString,
+            dest: &NonEmptyString,
         ) -> Result<()>;
 
         pub fn delete_track_pc(&self, pc_lib: &Path, track_path: &LibTrackPath) -> Result<()>;
@@ -321,13 +321,13 @@ mock! {
 
         pub fn delete_track_db(&self, path: &LibTrackPath) -> Result<()>;
 
-        pub fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &LibPathStr) -> Result<()>;
+        pub fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &NonEmptyString) -> Result<()>;
 
-        pub fn delete_path_str_dap(&self, dap_lib: &Path, path_str: &LibPathStr) -> Result<()>;
+        pub fn delete_path_str_dap(&self, dap_lib: &Path, path_str: &NonEmptyString) -> Result<()>;
 
         pub fn delete_path_str_db(
             &self,
-            path_str: &LibPathStr,
+            path_str: &NonEmptyString,
         ) -> Result<Vec<LibTrackPath>>;
     }
 }

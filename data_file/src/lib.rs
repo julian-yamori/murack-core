@@ -30,7 +30,8 @@ mod utils;
 /// ファイル、もしくはフォルダが存在する場合true、どちらもなければfalse
 pub fn is_exist_path_str(
     lib_root: &std::path::Path,
-    path_str: &murack_core_domain::path::LibPathStr,
+    path_str: &murack_core_domain::NonEmptyString,
 ) -> anyhow::Result<bool> {
-    Ok(path_str.abs(lib_root).exists())
+    let abs_path = lib_root.join(path_str);
+    Ok(abs_path.exists())
 }

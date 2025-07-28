@@ -1,5 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::path::LibPathStr;
+use murack_core_domain::NonEmptyString;
 
 /// checkコマンドの引数
 #[derive(Debug, PartialEq, Clone)]
@@ -7,7 +7,7 @@ pub struct CommandCheckArgs {
     /// 確認対象のパス
     ///
     /// None の場合はライブラリ全体をチェックする。
-    pub path: Option<LibPathStr>,
+    pub path: Option<NonEmptyString>,
 
     /// DAPのファイル内容を無視するか
     ///
@@ -19,7 +19,7 @@ pub struct CommandCheckArgs {
 impl CommandCheckArgs {
     /// コマンドライン引数から解析
     pub fn parse(command_line: &[String]) -> Result<Self> {
-        let mut path: Option<LibPathStr> = None;
+        let mut path: Option<NonEmptyString> = None;
         let mut ignore_dap_content = false;
 
         for unit in command_line.iter() {
@@ -50,14 +50,14 @@ mod tests {
         assert_eq!(
             CommandCheckArgs::parse(&["tgt".to_owned()])?,
             CommandCheckArgs {
-                path: Some(LibPathStr::from_str("tgt")?),
+                path: Some(NonEmptyString::from_str("tgt")?),
                 ignore_dap_content: false,
             }
         );
         assert_eq!(
             CommandCheckArgs::parse(&["tgt/file".to_owned(), "-i".to_owned()])?,
             CommandCheckArgs {
-                path: Some(LibPathStr::from_str("tgt/file")?),
+                path: Some(NonEmptyString::from_str("tgt/file")?),
                 ignore_dap_content: true,
             }
         );
@@ -71,7 +71,7 @@ mod tests {
         assert_eq!(
             CommandCheckArgs::parse(&["-i".to_owned(), "tgt/file".to_owned()])?,
             CommandCheckArgs {
-                path: Some(LibPathStr::from_str("tgt/file")?),
+                path: Some(NonEmptyString::from_str("tgt/file")?),
                 ignore_dap_content: true,
             }
         );

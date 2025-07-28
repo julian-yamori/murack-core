@@ -4,10 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::Result;
-use murack_core_domain::{
-    Error as DomainError,
-    path::{LibPathStr, LibTrackPath},
-};
+use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibTrackPath};
 
 use crate::utils;
 
@@ -38,8 +35,8 @@ pub fn delete_track(lib_root: &Path, target: &LibTrackPath) -> Result<()> {
 ///
 /// # Errors
 /// - alk_base_2_domain::Error::PathStrNotFound: 指定されたパスが見つからなかった場合
-pub fn delete_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
-    let target_abs = lib_root.join(target.as_ref());
+pub fn delete_path_str(lib_root: &Path, target: &NonEmptyString) -> Result<()> {
+    let target_abs = lib_root.join(target);
 
     //ファイルが存在しない
     if !target_abs.exists() {
@@ -104,8 +101,8 @@ pub fn trash_track(lib_root: &Path, target: &LibTrackPath) -> Result<()> {
 ///
 /// # Errors
 /// - alk_base_2_domain::Error::PathStrNotFound: 指定されたパスが見つからなかった場合
-pub fn trash_path_str(lib_root: &Path, target: &LibPathStr) -> Result<()> {
-    let target_abs = lib_root.join(target.as_ref());
+pub fn trash_path_str(lib_root: &Path, target: &NonEmptyString) -> Result<()> {
+    let target_abs = lib_root.join(target);
 
     //ファイルが存在しない
     if !target_abs.exists() {

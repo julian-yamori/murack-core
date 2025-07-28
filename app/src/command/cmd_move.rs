@@ -2,7 +2,7 @@ use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError, NonEmptyString,
     folder::DbFolderRepository,
-    path::{LibDirPath, LibPathStr, LibTrackPath},
+    path::{LibDirPath, LibTrackPath},
     track::{DbTrackRepository, TrackUsecase},
 };
 use sqlx::PgPool;
@@ -109,8 +109,7 @@ where
         let mut tx = db_pool.begin().await?;
 
         // 曲が存在しないかチェック
-        let dest_track_path: LibTrackPath =
-            NonEmptyString::from(self.args.dest_path.clone()).into();
+        let dest_track_path: LibTrackPath = self.args.dest_path.clone().into();
         if self
             .db_track_repository
             .is_exist_path(&mut tx, &dest_track_path)
@@ -120,7 +119,7 @@ where
         }
 
         // フォルダが存在しないかチェック
-        let dest_dir_path: LibDirPath = NonEmptyString::from(self.args.dest_path.clone()).into();
+        let dest_dir_path: LibDirPath = self.args.dest_path.clone().into();
 
         if self
             .db_folder_repository
@@ -139,12 +138,12 @@ pub struct CommandMoveArgs {
     /// 移動元のパス
     ///
     /// ディレクトリ指定可(dest_pathもディレクトリである必要あり)
-    pub src_path: LibPathStr,
+    pub src_path: NonEmptyString,
 
     /// 移動先のパス
     ///
     /// ディレクトリ指定可(src_pathもディレクトリであること)
-    pub dest_path: LibPathStr,
+    pub dest_path: NonEmptyString,
 }
 
 impl CommandMoveArgs {
