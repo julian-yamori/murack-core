@@ -8,7 +8,7 @@ use super::{PlaylistType, SortType};
 #[derive(Debug, PartialEq)]
 pub struct Playlist {
     /// プレイリストID
-    pub rowid: i32,
+    pub id: i32,
 
     /// プレイリストの種類
     pub playlist_type: PlaylistType,

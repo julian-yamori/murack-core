@@ -52,7 +52,7 @@ impl TryFrom<PlaylistRow> for Playlist {
 
     fn try_from(row: PlaylistRow) -> anyhow::Result<Self> {
         Ok(Self {
-            rowid: row.id,
+            id: row.id,
             playlist_type: row.playlist_type,
             name: row.name,
             parent_id: row.parent_id,

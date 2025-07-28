@@ -66,7 +66,7 @@ async fn get_query_by_playlist<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist)
 
     Ok(format!(
         " FROM playlist_trakcs JOIN tracks ON playlist_tracks.track_id = tracks.id WHERE playlist_tracks.playlist_id = {}",
-        esci(Some(plist.rowid))
+        esci(Some(plist.id))
     ))
 }
 
@@ -77,11 +77,10 @@ async fn listup_tracks<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Resu
     //通常プレイリストなら、リストアップ済みフラグを立てるのみ
     if plist.playlist_type != PlaylistType::Normal {
         //元々保存されていた曲リストを取得
-        let old_id_list: BTreeSet<_> =
-            playlist_sqls::select_track_id_by_playlist_id(tx, plist.rowid)
-                .await?
-                .into_iter()
-                .collect();
+        let old_id_list: BTreeSet<_> = playlist_sqls::select_track_id_by_playlist_id(tx, plist.id)
+            .await?
+            .into_iter()
+            .collect();
 
         let new_id_list = match plist.playlist_type {
             PlaylistType::Filter => search_plist_tracks_filter(tx, plist).await?,
@@ -90,9 +89,9 @@ async fn listup_tracks<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Resu
         };
 
         //PlaylistTrackテーブルを更新
-        playlist_sqls::delete_by_playlist_id(tx, plist.rowid).await?;
+        playlist_sqls::delete_by_playlist_id(tx, plist.id).await?;
         for (idx, track_id) in new_id_list.iter().enumerate() {
-            playlist_sqls::insert_playlist_track(tx, plist.rowid, *track_id, idx as i32).await?;
+            playlist_sqls::insert_playlist_track(tx, plist.id, *track_id, idx as i32).await?;
         }
 
         //古いリストから変更があったか確認
@@ -112,7 +111,7 @@ async fn listup_tracks<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Resu
         if changed {
             sqlx::query!(
                 "UPDATE playlists SET dap_changed = true WHERE id = $1",
-                plist.rowid,
+                plist.id,
             )
             .execute(&mut **tx)
             .await?;
@@ -123,7 +122,7 @@ async fn listup_tracks<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Resu
     sqlx::query!(
         "UPDATE playlists SET listuped_flag = $1 WHERE id = $2",
         true,
-        plist.rowid,
+        plist.id,
     )
     .execute(&mut **tx)
     .await?;
@@ -142,7 +141,7 @@ async fn search_plist_tracks_folder<'c>(
     let children = sqlx::query_as!(
             PlaylistRow,
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE parent_id IS NOT DISTINCT FROM $1 ORDER BY in_folder_order"#,
-            Some(plist.rowid)
+            Some(plist.id)
         )
             .map(Playlist::try_from)
             .fetch_all(&mut **tx)
@@ -182,9 +181,7 @@ async fn search_plist_tracks_filter<'c>(
     let filter = plist
         .filter
         .as_ref()
-        .ok_or(PlaylistError::FilterPlaylistHasNoFilter {
-            plist_id: plist.rowid,
-        })?;
+        .ok_or(PlaylistError::FilterPlaylistHasNoFilter { plist_id: plist.id })?;
 
     filter_query::get_track_ids(tx, filter).await
 }

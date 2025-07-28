@@ -11,12 +11,10 @@ use super::Playlist;
 #[async_trait]
 pub trait DbPlaylistRepository {
     /// IDを指定してプレイリストを検索
-    /// # Arguments
-    /// id: playlist.rowid
     async fn get_playlist<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        id: i32,
+        playlist_id: i32,
     ) -> Result<Option<Playlist>>;
 
     /// プレイリストのツリー構造を取得

@@ -131,7 +131,7 @@ where
                 //プレイリストの曲データ取得後に、リストに変更があったか確認
                 let new_plist_data = self
                     .db_playlist_repository
-                    .get_playlist(tx, tree.playlist.rowid)
+                    .get_playlist(tx, tree.playlist.id)
                     .await?
                     .expect("playlist not found");
 
@@ -320,7 +320,7 @@ mod tests {
     ) {
         let plist = PlaylistTree {
             playlist: Playlist {
-                rowid: 3,
+                id: 3,
                 playlist_type: PlaylistType::Normal,
                 name: name.to_string().try_into().unwrap(),
                 parent_id: if parents.is_empty() { None } else { Some(34) },

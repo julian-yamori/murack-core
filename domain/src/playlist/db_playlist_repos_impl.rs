@@ -17,17 +17,15 @@ pub struct DbPlaylistRepositoryImpl {}
 #[async_trait]
 impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
     /// IDを指定してプレイリストを検索
-    /// # Arguments
-    /// id: playlist.rowid
     async fn get_playlist<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
-        id: i32,
+        playlist_id: i32,
     ) -> Result<Option<Playlist>> {
         let opt = sqlx::query_as!(
             PlaylistRow,
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
-            id
+            playlist_id
         )
         .fetch_optional(&mut **tx)
         .await?;
@@ -112,7 +110,7 @@ fn build_plist_children_recursive(
     //親プレイリストが対象のものと、それ以外を分ける
     let (targets, mut remain_pool): (Vec<PlaylistRow>, Vec<PlaylistRow>) = remain_pool
         .into_iter()
-        .partition(|row| row.parent_id == parent.map(|p| p.playlist.rowid));
+        .partition(|row| row.parent_id == parent.map(|p| p.playlist.id));
 
     let mut result_list = Vec::new();
 
