@@ -1,6 +1,12 @@
+use std::error::Error;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+use sqlx::Postgres;
+use sqlx::encode::IsNull;
+use sqlx::postgres::{PgArgumentBuffer, PgTypeInfo, PgValueRef};
 
 use crate::NonEmptyString;
 use crate::path::PathError;
@@ -20,13 +26,6 @@ pub struct LibDirPath(
 );
 
 impl LibDirPath {
-    /// パスを文字列で取得
-    ///
-    /// `/` で終わる形の文字列を返す。
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
     /// ディレクトリの絶対パスを取得
     ///
     /// # Arguments
@@ -57,7 +56,7 @@ impl LibDirPath {
             Some(slash_pos) => {
                 let parent_str = &self.0[..slash_pos + 1];
                 let non_empty = NonEmptyString::from_str(parent_str).unwrap();
-                Some(Self(non_empty))
+                Some(Self::from(non_empty))
             }
             None => None,
         }
@@ -100,6 +99,12 @@ impl From<NonEmptyString> for LibDirPath {
     }
 }
 
+impl From<LibDirPath> for PathBuf {
+    fn from(value: LibDirPath) -> Self {
+        PathBuf::from(String::from(value.0))
+    }
+}
+
 impl FromStr for LibDirPath {
     type Err = PathError;
 
@@ -108,9 +113,78 @@ impl FromStr for LibDirPath {
     }
 }
 
+impl AsRef<String> for LibDirPath {
+    fn as_ref(&self) -> &String {
+        self.0.as_ref()
+    }
+}
+
+impl AsRef<str> for LibDirPath {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl AsRef<Path> for LibDirPath {
+    fn as_ref(&self) -> &Path {
+        Path::new(<Self as AsRef<str>>::as_ref(self))
+    }
+}
+
+impl AsRef<NonEmptyString> for LibDirPath {
+    fn as_ref(&self) -> &NonEmptyString {
+        &self.0
+    }
+}
+
 impl fmt::Display for LibDirPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
+        self.0.fmt(f)
+    }
+}
+
+impl Serialize for LibDirPath {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for LibDirPath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = NonEmptyString::deserialize(deserializer)?;
+        Ok(Self::from(s))
+    }
+}
+
+impl sqlx::Type<Postgres> for LibDirPath {
+    fn type_info() -> PgTypeInfo {
+        NonEmptyString::type_info()
+    }
+
+    fn compatible(ty: &<Postgres as sqlx::Database>::TypeInfo) -> bool {
+        NonEmptyString::compatible(ty)
+    }
+}
+
+impl<'r> sqlx::Decode<'r, Postgres> for LibDirPath {
+    fn decode(value: PgValueRef<'r>) -> Result<Self, sqlx::error::BoxDynError> {
+        let s = NonEmptyString::decode(value)?;
+        Ok(Self::from(s))
+    }
+}
+
+impl<'q> sqlx::Encode<'q, Postgres> for LibDirPath {
+    fn encode_by_ref(
+        &self,
+        buf: &mut PgArgumentBuffer,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        self.0.encode_by_ref(buf)
     }
 }
 

@@ -21,9 +21,12 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
         tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Option<i32>> {
-        let row = sqlx::query!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
-            .fetch_optional(&mut **tx)
-            .await?;
+        let row = sqlx::query!(
+            "SELECT id FROM folder_paths WHERE path = $1",
+            path.as_ref() as &str
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
         Ok(row.map(|r| r.id))
     }
 
@@ -51,7 +54,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
     ) -> Result<bool> {
         let count = sqlx::query_scalar!(
             r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE path = $1"#,
-            path.as_str()
+            path.as_ref() as &str
         )
         .fetch_one(&mut **tx)
         .await?;
@@ -90,10 +93,12 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
         path: &LibDirPath,
     ) -> Result<i32> {
         //同一パスのデータを検索し、そのIDを取得
-        let existing_id =
-            sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", path.as_str())
-                .fetch_optional(&mut **tx)
-                .await?;
+        let existing_id = sqlx::query_scalar!(
+            "SELECT id FROM folder_paths WHERE path = $1",
+            path.as_ref() as &str
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
 
         //見つかった場合はこのIDを返す
         if let Some(i) = existing_id {
@@ -111,7 +116,7 @@ impl DbFolderRepository for DbFolderRepositoryImpl {
 
         let new_id = sqlx::query_scalar!(
             "INSERT INTO folder_paths (path, name, parent_id) VALUES ($1, $2, $3) RETURNING id",
-            path.as_str(),
+            path.as_ref() as &str,
             path.dir_name(),
             parent_id.into_db()
         )

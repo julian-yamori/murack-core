@@ -76,7 +76,7 @@ impl DbTrackRepository for DbTrackRepositoryImpl {
         tx: &mut PgTransaction<'c>,
         path: &LibDirPath,
     ) -> Result<Vec<LibTrackPath>> {
-        let path_str = path.as_str();
+        let path_str: &str = path.as_ref();
 
         //LIKE文エスケープ
         let cmp_value_buff;

@@ -17,7 +17,7 @@ impl RelativeTrackPath {
     /// # Returns
     /// parentからみたtrackの相対パス
     pub fn from_track_and_parent(track: &LibTrackPath, parent: &LibDirPath) -> Result<Self> {
-        let parent_str = parent.as_str();
+        let parent_str: &str = parent.as_ref();
         let track_str: &str = track.as_ref();
 
         //targetがparentで始まっているか確認
@@ -35,7 +35,7 @@ impl RelativeTrackPath {
     /// LibDirPathと連結し、LibTrackPathを生成
     pub fn concat_lib_dir(&self, parent: &LibDirPath) -> LibTrackPath {
         // 文字列を取得して連結
-        let mut s = parent.as_str().to_owned();
+        let mut s = (parent.as_ref() as &str).to_owned();
         s.push_str(&self.0);
 
         // LibTrackPath に変換
