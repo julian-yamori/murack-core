@@ -1,5 +1,4 @@
 use crate::{
-    artwork::DbArtworkRepositoryImpl,
     folder::DbFolderRepositoryImpl,
     playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
     sync::DbTrackSyncRepositoryImpl,
@@ -13,10 +12,6 @@ pub struct DbComponents {}
 impl DbComponents {
     pub fn new() -> Self {
         Self {}
-    }
-
-    pub fn db_artwork_repository(&self) -> TypeDbArtworkRepository {
-        DbArtworkRepositoryImpl::new()
     }
 
     pub fn db_folder_repository(&self) -> TypeDbFolderRepository {
@@ -36,7 +31,7 @@ impl DbComponents {
     }
 
     pub fn db_track_sync_repository(&self) -> TypeDbTrackSyncRepository {
-        DbTrackSyncRepositoryImpl::new(self.db_artwork_repository())
+        DbTrackSyncRepositoryImpl::new()
     }
 
     pub fn db_track_tag_repository(&self) -> TypeDbTrackTagRepository {
@@ -50,10 +45,9 @@ impl Default for DbComponents {
     }
 }
 
-pub type TypeDbArtworkRepository = DbArtworkRepositoryImpl;
 pub type TypeDbFolderRepository = DbFolderRepositoryImpl;
 pub type TypeDbPlaylistRepository = DbPlaylistRepositoryImpl;
 pub type TypeDbPlaylistTrackRepository = DbPlaylistTrackRepositoryImpl;
 pub type TypeDbTrackRepository = DbTrackRepositoryImpl;
-pub type TypeDbTrackSyncRepository = DbTrackSyncRepositoryImpl<TypeDbArtworkRepository>;
+pub type TypeDbTrackSyncRepository = DbTrackSyncRepositoryImpl;
 pub type TypeDbTrackTagRepository = DbTrackTagRepositoryImpl;

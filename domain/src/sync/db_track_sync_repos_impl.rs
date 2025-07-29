@@ -4,7 +4,7 @@ use sqlx::PgTransaction;
 
 use crate::{
     Error as DomainError,
-    artwork::DbArtworkRepository,
+    artwork::artwork_repository,
     folder::FolderIdMayRoot,
     path::LibraryTrackPath,
     sync::{DbTrackSync, DbTrackSyncRepository, TrackSync, TrackSyncRow},
@@ -13,18 +13,10 @@ use crate::{
 
 /// DbTrackSyncRepositoryの本実装
 #[derive(new)]
-pub struct DbTrackSyncRepositoryImpl<DAR>
-where
-    DAR: DbArtworkRepository + Sync + Send,
-{
-    db_artwork_repository: DAR,
-}
+pub struct DbTrackSyncRepositoryImpl {}
 
 #[async_trait]
-impl<DAR> DbTrackSyncRepository for DbTrackSyncRepositoryImpl<DAR>
-where
-    DAR: DbArtworkRepository + Sync + Send,
-{
+impl DbTrackSyncRepository for DbTrackSyncRepositoryImpl {
     /// パスを指定して曲情報を取得
     ///
     /// # Arguments
@@ -65,10 +57,7 @@ where
                 memo: track_row.memo,
                 lyrics: track_row.lyrics,
                 //アートワーク情報を検索して紐づけ
-                artworks: self
-                    .db_artwork_repository
-                    .get_track_artworks(tx, track_row.id)
-                    .await?,
+                artworks: artwork_repository::get_track_artworks(tx, track_row.id).await?,
             },
         }))
     }
@@ -126,9 +115,7 @@ where
         ).fetch_one(&mut **tx).await?;
 
         //アートワークを登録
-        self.db_artwork_repository
-            .register_track_artworks(tx, track_id, &track_sync.artworks)
-            .await?;
+        artwork_repository::register_track_artworks(tx, track_id, &track_sync.artworks).await?;
 
         Ok(track_id)
     }

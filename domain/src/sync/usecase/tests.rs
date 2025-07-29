@@ -6,19 +6,16 @@ use sqlx::PgPool;
 
 use super::*;
 use crate::{
-    artwork::DbArtworkRepositoryImpl, folder::DbFolderRepositoryImpl,
-    playlist::DbPlaylistRepositoryImpl, sync::DbTrackSyncRepositoryImpl,
+    folder::DbFolderRepositoryImpl, playlist::DbPlaylistRepositoryImpl,
+    sync::DbTrackSyncRepositoryImpl,
 };
 
-fn target() -> SyncUsecaseImpl<
-    DbFolderRepositoryImpl,
-    DbPlaylistRepositoryImpl,
-    DbTrackSyncRepositoryImpl<DbArtworkRepositoryImpl>,
-> {
+fn target()
+-> SyncUsecaseImpl<DbFolderRepositoryImpl, DbPlaylistRepositoryImpl, DbTrackSyncRepositoryImpl> {
     SyncUsecaseImpl::new(
         DbFolderRepositoryImpl::new(),
         DbPlaylistRepositoryImpl::new(),
-        DbTrackSyncRepositoryImpl::new(DbArtworkRepositoryImpl::new()),
+        DbTrackSyncRepositoryImpl::new(),
     )
 }
 

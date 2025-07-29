@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use mockall::automock;
 use murack_core_domain::{
     Error as DomainError,
-    artwork::{DbArtworkRepository, TrackArtwork},
+    artwork::{TrackArtwork, artwork_repository},
     path::LibraryTrackPath,
     sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
     track::TrackItemKind,
@@ -25,24 +25,20 @@ pub trait ResolveDataMatch {
 }
 
 /// ResolveDataMatchの実装
-pub struct ResolveDataMatchImpl<'config, 'cui, CUI, AR, SSR>
+pub struct ResolveDataMatchImpl<'config, 'cui, CUI, SSR>
 where
     CUI: Cui + Send + Sync,
-    AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
-    db_artwork_repository: AR,
     db_track_sync_repository: SSR,
 }
 
 #[async_trait]
-impl<'config, 'cui, CUI, AR, SSR> ResolveDataMatch
-    for ResolveDataMatchImpl<'config, 'cui, CUI, AR, SSR>
+impl<'config, 'cui, CUI, SSR> ResolveDataMatch for ResolveDataMatchImpl<'config, 'cui, CUI, SSR>
 where
     CUI: Cui + Send + Sync,
-    AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
     /// データ内容同一性についての解決処理
@@ -79,22 +75,15 @@ where
     }
 }
 
-impl<'config, 'cui, CUI, AR, SSR> ResolveDataMatchImpl<'config, 'cui, CUI, AR, SSR>
+impl<'config, 'cui, CUI, SSR> ResolveDataMatchImpl<'config, 'cui, CUI, SSR>
 where
     CUI: Cui + Send + Sync,
-    AR: DbArtworkRepository + Send + Sync,
     SSR: DbTrackSyncRepository + Send + Sync,
 {
-    pub fn new(
-        config: &'config Config,
-        cui: &'cui CUI,
-        db_artwork_repository: AR,
-        db_track_sync_repository: SSR,
-    ) -> Self {
+    pub fn new(config: &'config Config, cui: &'cui CUI, db_track_sync_repository: SSR) -> Self {
         Self {
             config,
             cui,
-            db_artwork_repository,
             db_track_sync_repository,
         }
     }
@@ -303,15 +292,12 @@ where
                 //DBに上書き保存
                 let track_id = db_track.id;
 
-                self.db_artwork_repository
-                    .register_track_artworks(&mut tx, track_id, &pc_track.artworks)
+                artwork_repository::register_track_artworks(&mut tx, track_id, &pc_track.artworks)
                     .await?;
 
                 //念の為、保存した値で変数値を上書きしておく
-                db_track.track_sync.artworks = self
-                    .db_artwork_repository
-                    .get_track_artworks(&mut tx, track_id)
-                    .await?;
+                db_track.track_sync.artworks =
+                    artwork_repository::get_track_artworks(&mut tx, track_id).await?;
 
                 tx.commit().await?;
                 Ok(true)

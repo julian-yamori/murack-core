@@ -1,7 +1,6 @@
 use std::fs;
 use std::str::FromStr;
 
-use murack_core_domain::artwork::DbArtworkRepositoryImpl;
 use murack_core_domain::sync::DbTrackSyncRepositoryImpl;
 use murack_core_domain::track::DbTrackRepositoryImpl;
 use murack_core_domain::{NonEmptyString, test_utils::assert_eq_not_orderd};
@@ -23,7 +22,7 @@ fn target<'config, 'cui>(
     MockResolveDataMatch,
     MockResolveDap,
     DbTrackRepositoryImpl,
-    DbTrackSyncRepositoryImpl<DbArtworkRepositoryImpl>,
+    DbTrackSyncRepositoryImpl,
 > {
     CommandCheck {
         args: CommandCheckArgs {
@@ -36,7 +35,7 @@ fn target<'config, 'cui>(
         resolve_data_match: MockResolveDataMatch::default(),
         resolve_dap: MockResolveDap::default(),
         db_track_repository: DbTrackRepositoryImpl::new(),
-        db_track_sync_repository: DbTrackSyncRepositoryImpl::new(DbArtworkRepositoryImpl::new()),
+        db_track_sync_repository: DbTrackSyncRepositoryImpl::new(),
     }
 }
 

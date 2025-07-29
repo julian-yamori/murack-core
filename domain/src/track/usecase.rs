@@ -7,7 +7,7 @@ use mockall::mock;
 use super::DbTrackRepository;
 use crate::{
     Error, NonEmptyString,
-    artwork::DbArtworkRepository,
+    artwork::artwork_repository,
     folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{DbPlaylistRepository, DbPlaylistTrackRepository},
@@ -52,9 +52,8 @@ pub trait TrackUsecase {
 
 /// TrackUsecaseの本実装
 #[derive(new)]
-pub struct TrackUsecaseImpl<AR, FR, PR, PSR, SR, STR, FU>
+pub struct TrackUsecaseImpl<FR, PR, PSR, SR, STR, FU>
 where
-    AR: DbArtworkRepository + Sync + Send,
     FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
@@ -62,7 +61,6 @@ where
     STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
-    db_artwork_repository: AR,
     db_folder_repository: FR,
     db_playlist_repository: PR,
     db_playlist_track_repository: PSR,
@@ -72,9 +70,8 @@ where
 }
 
 #[async_trait]
-impl<AR, FR, PR, PSR, SR, STR, FU> TrackUsecase for TrackUsecaseImpl<AR, FR, PR, PSR, SR, STR, FU>
+impl<FR, PR, PSR, SR, STR, FU> TrackUsecase for TrackUsecaseImpl<FR, PR, PSR, SR, STR, FU>
 where
-    AR: DbArtworkRepository + Sync + Send,
     FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
@@ -153,9 +150,7 @@ where
             .await?;
 
         //他に使用する曲がなければ、アートワークを削除
-        self.db_artwork_repository
-            .unregister_track_artworks(tx, track_id)
-            .await?;
+        artwork_repository::unregister_track_artworks(tx, track_id).await?;
 
         //他に使用する曲がなければ、親フォルダを削除
         if let Some(parent) = path.parent() {
@@ -192,9 +187,8 @@ where
     }
 }
 
-impl<AR, FR, PR, PSR, SR, STR, FU> TrackUsecaseImpl<AR, FR, PR, PSR, SR, STR, FU>
+impl<FR, PR, PSR, SR, STR, FU> TrackUsecaseImpl<FR, PR, PSR, SR, STR, FU>
 where
-    AR: DbArtworkRepository + Sync + Send,
     FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
