@@ -1,10 +1,11 @@
 use std::fs;
 use std::str::FromStr;
+use std::sync::Arc;
 
-use murack_core_domain::{
-    NonEmptyString, sync::MockDbTrackSyncRepository, test_utils::assert_eq_not_orderd,
-    track::MockDbTrackRepository,
-};
+use murack_core_domain::artwork::DbArtworkRepositoryImpl;
+use murack_core_domain::sync::DbTrackSyncRepositoryImpl;
+use murack_core_domain::track::DbTrackRepositoryImpl;
+use murack_core_domain::{NonEmptyString, test_utils::assert_eq_not_orderd};
 
 use super::super::{MockResolveDap, MockResolveDataMatch, MockResolveExistance};
 use super::*;
@@ -22,8 +23,8 @@ fn target<'config, 'cui>(
     MockResolveExistance,
     MockResolveDataMatch,
     MockResolveDap,
-    MockDbTrackRepository,
-    MockDbTrackSyncRepository,
+    DbTrackRepositoryImpl,
+    DbTrackSyncRepositoryImpl<DbArtworkRepositoryImpl>,
 > {
     CommandCheck {
         args: CommandCheckArgs {
@@ -35,28 +36,14 @@ fn target<'config, 'cui>(
         resolve_existance: MockResolveExistance::default(),
         resolve_data_match: MockResolveDataMatch::default(),
         resolve_dap: MockResolveDap::default(),
-        db_track_repository: MockDbTrackRepository::default(),
-        db_track_sync_repository: MockDbTrackSyncRepository::default(),
+        db_track_repository: DbTrackRepositoryImpl::new(),
+        db_track_sync_repository: DbTrackSyncRepositoryImpl::new(DbArtworkRepositoryImpl::new(
+            Arc::default(),
+        )),
     }
 }
 
-fn checkpoint_all(
-    target: &mut CommandCheck<
-        BufferCui,
-        MockResolveExistance,
-        MockResolveDataMatch,
-        MockResolveDap,
-        MockDbTrackRepository,
-        MockDbTrackSyncRepository,
-    >,
-) {
-    target.resolve_existance.checkpoint();
-    target.resolve_data_match.checkpoint();
-    target.resolve_dap.checkpoint();
-    target.db_track_sync_repository.inner.checkpoint();
-}
-
-#[sqlx::test]
+#[sqlx::test(migrator = "crate::MIGRATOR", fixtures("listup_track_path_green"))]
 fn test_listup_track_path_green(db_pool: PgPool) -> anyhow::Result<()> {
     fn search_path() -> NonEmptyString {
         NonEmptyString::from_str("test/hoge").unwrap()
@@ -87,24 +74,7 @@ fn test_listup_track_path_green(db_pool: PgPool) -> anyhow::Result<()> {
     config.dap_lib = dap_lib;
 
     let cui = BufferCui::new();
-    let mut target = target(Some(search_path()), false, &config, &cui);
-
-    // DB 側から返すパスリストを指定
-    target
-        .db_track_repository
-        .inner
-        .expect_get_path_by_path_str()
-        .times(1)
-        .returning(|search| {
-            assert_eq!(search, &search_path());
-            //なんとなく逆順
-            Ok(vec![
-                LibraryTrackPath::from_str("test/hoge/track2.flac")?,
-                LibraryTrackPath::from_str("test/hoge/track1.flac")?,
-                LibraryTrackPath::from_str("test/hoge/child/track4.flac")?,
-                LibraryTrackPath::from_str("test/hoge/child/track3.flac")?,
-            ])
-        });
+    let target = target(Some(search_path()), false, &config, &cui);
 
     assert_eq_not_orderd(
         &target.listup_track_path(&db_pool).await?,
@@ -116,11 +86,10 @@ fn test_listup_track_path_green(db_pool: PgPool) -> anyhow::Result<()> {
         ],
     );
 
-    checkpoint_all(&mut target);
     Ok(())
 }
 
-#[sqlx::test]
+#[sqlx::test(migrator = "crate::MIGRATOR", fixtures("listup_track_path_conflict"))]
 fn test_listup_track_path_conflict(db_pool: PgPool) -> anyhow::Result<()> {
     // temp ディレクトリを作成
     let temp_dir = tempfile::tempdir()?;
@@ -147,20 +116,7 @@ fn test_listup_track_path_conflict(db_pool: PgPool) -> anyhow::Result<()> {
 
     let cui = BufferCui::new();
     let arg_path = Some(NonEmptyString::from_str("test/hoge")?);
-    let mut target = target(arg_path, false, &config, &cui);
-
-    // DB 側から返すパスリストを指定
-    target
-        .db_track_repository
-        .inner
-        .expect_get_path_by_path_str()
-        .returning(|_| {
-            Ok(vec![
-                LibraryTrackPath::from_str("test/hoge/child/track1.flac")?,
-                LibraryTrackPath::from_str("test/hoge/track2.flac")?,
-                LibraryTrackPath::from_str("test/hoge/db1.flac")?,
-            ])
-        });
+    let target = target(arg_path, false, &config, &cui);
 
     assert_eq!(
         target.listup_track_path(&db_pool).await?,
@@ -174,6 +130,5 @@ fn test_listup_track_path_conflict(db_pool: PgPool) -> anyhow::Result<()> {
         ]
     );
 
-    checkpoint_all(&mut target);
     Ok(())
 }

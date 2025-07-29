@@ -13,3 +13,6 @@ pub use config::Config;
 
 pub mod command;
 pub mod db_common;
+
+#[cfg(test)]
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../migrations");
