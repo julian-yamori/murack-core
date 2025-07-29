@@ -3,7 +3,7 @@ use anyhow::Result;
 use crate::{
     Error, NonEmptyString,
     artwork::artwork_repository,
-    folder::{FolderIdMayRoot, folder_repository, usecase as folder_usecase},
+    folder::{FolderIdMayRoot, folder_repository},
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{playlist_repository, playlist_track_repository},
     tag::track_tag_repository,
@@ -69,7 +69,7 @@ pub async fn delete_track_db<'c>(
 
     //他に使用する曲がなければ、親フォルダを削除
     if let Some(parent) = path.parent() {
-        folder_usecase::delete_db_if_empty(tx, &parent).await?;
+        folder_repository::delete_db_if_empty(tx, &parent).await?;
     };
 
     playlist_repository::reset_listuped_flag(tx).await?;
@@ -122,7 +122,7 @@ async fn move_track_db_unit<'c>(
 
     //子要素がなくなった親フォルダを削除
     if let Some(parent) = src.parent() {
-        folder_usecase::delete_db_if_empty(tx, &parent).await?;
+        folder_repository::delete_db_if_empty(tx, &parent).await?;
     }
 
     //パスを使用したフィルタがあるかもしれないので、

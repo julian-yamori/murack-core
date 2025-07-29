@@ -4,5 +4,3 @@ mod folder_id;
 pub use folder_id::FolderIdMayRoot;
 
 pub mod folder_repository;
-
-pub mod usecase;
