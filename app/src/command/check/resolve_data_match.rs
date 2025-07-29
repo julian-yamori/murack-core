@@ -5,13 +5,18 @@ use murack_core_domain::{
     Error as DomainError,
     artwork::{TrackArtwork, artwork_repository},
     path::LibraryTrackPath,
-    sync::{DbTrackSync, TrackSync, track_sync_repository},
     track::TrackItemKind,
 };
 use sqlx::PgPool;
 
 use super::{TrackItemConflict, messages};
-use crate::{Config, command::check::domain::check_usecase, cui::Cui, data_file};
+use crate::{
+    Config,
+    command::check::domain::check_usecase,
+    cui::Cui,
+    data_file,
+    track_sync::{DbTrackSync, TrackSync, track_sync_repository},
+};
 
 /// データ内容同一性についての解決処理
 #[automock]

@@ -2,17 +2,17 @@
 mod tests;
 
 use anyhow::Result;
-use sqlx::PgTransaction;
-
-use crate::{
+use murack_core_domain::{
     Error as DomainError,
     artwork::artwork_repository,
     folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
     playlist::playlist_repository,
-    sync::{DbTrackSync, TrackSync, TrackSyncRow},
     track::track_sqls,
 };
+use sqlx::PgTransaction;
+
+use crate::track_sync::{DbTrackSync, TrackSync, TrackSyncRow};
 
 /// パスを指定して曲情報を取得
 ///

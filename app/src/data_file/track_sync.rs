@@ -7,12 +7,10 @@ use std::{
 };
 
 use anyhow::Result;
-use murack_core_domain::{
-    Error as DomainError, artwork::TrackArtwork, path::LibraryTrackPath, sync::TrackSync,
-};
+use murack_core_domain::{Error as DomainError, artwork::TrackArtwork, path::LibraryTrackPath};
 use murack_core_media::audio_meta::{AudioMetaData, FormatType, formats};
 
-use crate::data_file::utils;
+use crate::{data_file::utils, track_sync::TrackSync};
 
 /// 曲のオーディオメタデータを読み込み
 ///

@@ -1,10 +1,9 @@
 //! DB 操作の共通関数 (未整理)
 
-use murack_core_domain::{
-    path::LibraryTrackPath,
-    sync::{TrackSync, track_sync_repository},
-};
+use murack_core_domain::path::LibraryTrackPath;
 use sqlx::PgPool;
+
+use crate::track_sync::{TrackSync, track_sync_repository};
 
 /// 曲を DB に新規登録
 pub async fn add_track_to_db(

@@ -1,5 +1,6 @@
+use murack_core_domain::path::LibraryTrackPath;
+
 use super::TrackSync;
-use crate::path::LibraryTrackPath;
 
 /// DBに保存されている、PC・DB間で同期するべき曲の情報
 #[derive(Debug, PartialEq)]

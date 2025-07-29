@@ -1,4 +1,6 @@
-use murack_core_domain::{sync::TrackSync, track::TrackItemKind};
+use murack_core_domain::track::TrackItemKind;
+
+use crate::track_sync::TrackSync;
 
 /// 曲の項目一つの競合についての機能
 pub struct TrackItemConflict {
