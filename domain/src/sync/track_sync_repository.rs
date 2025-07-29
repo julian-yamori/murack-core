@@ -79,36 +79,13 @@ pub async fn register_db<'c>(
         }
     };
 
-    //DBに書き込み
-    register(tx, track_path, track_sync, folder_id).await?;
-
-    //プレイリストのリストアップ済みフラグを解除
-    playlist_repository::reset_listuped_flag(tx).await?;
-
-    Ok(())
-}
-
-/// 曲を新規登録
-///
-/// # Arguments
-/// - track_path: 追加する曲のパス
-/// - track_sync: 登録する曲のデータ
-/// - folder_id: 追加先のライブラリフォルダのID
-///
-/// # Return
-/// 追加した曲のID
-async fn register<'c>(
-    tx: &mut PgTransaction<'c>,
-    track_path: &LibraryTrackPath,
-    track_sync: &TrackSync,
-    folder_id: FolderIdMayRoot,
-) -> Result<i32> {
     //DBに既に存在しないか確認
     //TODO unique keyにする
     if track_sqls::exists_path(tx, track_path).await? {
         return Err(DomainError::DbTrackAlreadyExists(track_path.clone()).into());
     }
 
+    // tracks テーブルに書き込み
     let track_id = sqlx::query_scalar!(
         "INSERT INTO tracks (duration, path, folder_id, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, rating, original_track, suggest_target, memo, memo_manage, lyrics, title_order, artist_order, album_order, album_artist_order, composer_order, genre_order) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id",
         i32::try_from(track_sync.duration)?,
@@ -142,7 +119,10 @@ async fn register<'c>(
     //アートワークを登録
     artwork_repository::register_track_artworks(tx, track_id, &track_sync.artworks).await?;
 
-    Ok(track_id)
+    //プレイリストのリストアップ済みフラグを解除
+    playlist_repository::reset_listuped_flag(tx).await?;
+
+    Ok(())
 }
 
 /// 曲の連携情報をDBに保存(アートワーク以外)
