@@ -1,6 +1,5 @@
 use std::fs;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use murack_core_domain::artwork::DbArtworkRepositoryImpl;
 use murack_core_domain::sync::DbTrackSyncRepositoryImpl;
@@ -37,9 +36,7 @@ fn target<'config, 'cui>(
         resolve_data_match: MockResolveDataMatch::default(),
         resolve_dap: MockResolveDap::default(),
         db_track_repository: DbTrackRepositoryImpl::new(),
-        db_track_sync_repository: DbTrackSyncRepositoryImpl::new(DbArtworkRepositoryImpl::new(
-            Arc::default(),
-        )),
+        db_track_sync_repository: DbTrackSyncRepositoryImpl::new(DbArtworkRepositoryImpl::new()),
     }
 }
 

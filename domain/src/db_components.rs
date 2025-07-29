@@ -1,9 +1,5 @@
-use std::sync::{Arc, Mutex};
-
-use once_cell::sync::Lazy;
-
 use crate::{
-    artwork::{ArtworkCache, DbArtworkRepositoryImpl},
+    artwork::DbArtworkRepositoryImpl,
     folder::DbFolderRepositoryImpl,
     playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
     sync::DbTrackSyncRepositoryImpl,
@@ -12,19 +8,15 @@ use crate::{
 };
 
 /// data層DB機能のDIを解決するオブジェクト
-pub struct DbComponents {
-    artwork_cache: Lazy<Arc<Mutex<ArtworkCache>>>,
-}
+pub struct DbComponents {}
 
 impl DbComponents {
     pub fn new() -> Self {
-        Self {
-            artwork_cache: Lazy::new(|| Arc::new(Mutex::new(ArtworkCache::new()))),
-        }
+        Self {}
     }
 
     pub fn db_artwork_repository(&self) -> TypeDbArtworkRepository {
-        DbArtworkRepositoryImpl::new(self.artwork_cache.clone())
+        DbArtworkRepositoryImpl::new()
     }
 
     pub fn db_folder_repository(&self) -> TypeDbFolderRepository {

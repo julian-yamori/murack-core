@@ -1,6 +1,4 @@
-// This module is used to reference .sql fixture files for tests
-// The actual fixture files are located in the same directory as this file
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 use anyhow::Result;
 use chrono::NaiveDate;
@@ -8,10 +6,8 @@ use sqlx::PgPool;
 
 use super::*;
 use crate::{
-    artwork::{ArtworkCache, DbArtworkRepositoryImpl},
-    folder::DbFolderRepositoryImpl,
-    playlist::DbPlaylistRepositoryImpl,
-    sync::DbTrackSyncRepositoryImpl,
+    artwork::DbArtworkRepositoryImpl, folder::DbFolderRepositoryImpl,
+    playlist::DbPlaylistRepositoryImpl, sync::DbTrackSyncRepositoryImpl,
 };
 
 fn target() -> SyncUsecaseImpl<
@@ -22,9 +18,7 @@ fn target() -> SyncUsecaseImpl<
     SyncUsecaseImpl::new(
         DbFolderRepositoryImpl::new(),
         DbPlaylistRepositoryImpl::new(),
-        DbTrackSyncRepositoryImpl::new(DbArtworkRepositoryImpl::new(Arc::new(
-            std::sync::Mutex::new(ArtworkCache::default()),
-        ))),
+        DbTrackSyncRepositoryImpl::new(DbArtworkRepositoryImpl::new()),
     )
 }
 

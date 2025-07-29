@@ -3,17 +3,18 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use murack_core_media::picture::Picture;
+use once_cell::sync::Lazy;
 use sqlx::PgTransaction;
 
 use crate::artwork::{
     ArtworkCache, ArtworkCachedData, ArtworkImageRow, DbArtworkRepository, TrackArtwork,
 };
 
+static ARTWORK_CACHE: Lazy<Arc<Mutex<ArtworkCache>>> =
+    Lazy::new(|| Arc::new(Mutex::new(ArtworkCache::new())));
 /// DbArtworkRepositoryの本実装
 #[derive(new)]
-pub struct DbArtworkRepositoryImpl {
-    artwork_cache: Arc<Mutex<ArtworkCache>>,
-}
+pub struct DbArtworkRepositoryImpl {}
 
 impl DbArtworkRepositoryImpl {
     /// アートワークを新規登録する
@@ -83,7 +84,7 @@ impl DbArtworkRepositoryImpl {
     }
 
     fn lock_cache(&self) -> Result<MutexGuard<ArtworkCache>> {
-        self.artwork_cache
+        ARTWORK_CACHE
             .lock()
             .map_err(|_| anyhow!("artwork cache lock error"))
     }
