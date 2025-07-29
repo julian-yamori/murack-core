@@ -8,7 +8,7 @@ use super::DbTrackRepository;
 use crate::{
     Error, NonEmptyString,
     artwork::artwork_repository,
-    folder::{DbFolderRepository, FolderIdMayRoot, FolderUsecase},
+    folder::{FolderIdMayRoot, FolderUsecase, folder_repository},
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{DbPlaylistRepository, DbPlaylistTrackRepository},
     tag::DbTrackTagRepository,
@@ -52,16 +52,14 @@ pub trait TrackUsecase {
 
 /// TrackUsecaseの本実装
 #[derive(new)]
-pub struct TrackUsecaseImpl<FR, PR, PSR, SR, STR, FU>
+pub struct TrackUsecaseImpl<PR, PSR, SR, STR, FU>
 where
-    FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
     STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
-    db_folder_repository: FR,
     db_playlist_repository: PR,
     db_playlist_track_repository: PSR,
     db_track_repository: SR,
@@ -70,9 +68,8 @@ where
 }
 
 #[async_trait]
-impl<FR, PR, PSR, SR, STR, FU> TrackUsecase for TrackUsecaseImpl<FR, PR, PSR, SR, STR, FU>
+impl<PR, PSR, SR, STR, FU> TrackUsecase for TrackUsecaseImpl<PR, PSR, SR, STR, FU>
 where
-    FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
@@ -187,9 +184,8 @@ where
     }
 }
 
-impl<FR, PR, PSR, SR, STR, FU> TrackUsecaseImpl<FR, PR, PSR, SR, STR, FU>
+impl<PR, PSR, SR, STR, FU> TrackUsecaseImpl<PR, PSR, SR, STR, FU>
 where
-    FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
@@ -212,10 +208,7 @@ where
         let new_folder_id = match dest_parent_opt {
             None => FolderIdMayRoot::Root,
             Some(dest_parent) => {
-                let id = self
-                    .db_folder_repository
-                    .register_not_exists(tx, &dest_parent)
-                    .await?;
+                let id = folder_repository::register_not_exists(tx, &dest_parent).await?;
                 FolderIdMayRoot::Folder(id)
             }
         };

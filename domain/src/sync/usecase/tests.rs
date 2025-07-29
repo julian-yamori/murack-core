@@ -5,15 +5,10 @@ use chrono::NaiveDate;
 use sqlx::PgPool;
 
 use super::*;
-use crate::{
-    folder::DbFolderRepositoryImpl, playlist::DbPlaylistRepositoryImpl,
-    sync::DbTrackSyncRepositoryImpl,
-};
+use crate::{playlist::DbPlaylistRepositoryImpl, sync::DbTrackSyncRepositoryImpl};
 
-fn target()
--> SyncUsecaseImpl<DbFolderRepositoryImpl, DbPlaylistRepositoryImpl, DbTrackSyncRepositoryImpl> {
+fn target() -> SyncUsecaseImpl<DbPlaylistRepositoryImpl, DbTrackSyncRepositoryImpl> {
     SyncUsecaseImpl::new(
-        DbFolderRepositoryImpl::new(),
         DbPlaylistRepositoryImpl::new(),
         DbTrackSyncRepositoryImpl::new(),
     )

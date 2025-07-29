@@ -1,10 +1,7 @@
 use anyhow::Result;
 use sqlx::PgPool;
 
-use crate::{
-    folder::{DbFolderRepository, DbFolderRepositoryImpl},
-    path::LibraryDirectoryPath,
-};
+use crate::path::LibraryDirectoryPath;
 
 // register_not_exists 関数のテスト
 mod test_register_not_exists {
@@ -21,11 +18,9 @@ mod test_register_not_exists {
     async fn 存在しない2階層を作成(pool: PgPool) -> Result<()> {
         let lib_dir_path = LibraryDirectoryPath::from_str("test/hoge/fuga")?;
 
-        let target = DbFolderRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
-        target.register_not_exists(&mut tx, &lib_dir_path).await?;
+        super::super::register_not_exists(&mut tx, &lib_dir_path).await?;
 
         // 対象フォルダが実際に作成されたことを確認
         let exists = sqlx::query_scalar!(
@@ -64,11 +59,9 @@ mod test_register_not_exists {
     async fn ルート直下に作成(pool: PgPool) -> Result<()> {
         let lib_dir_path = LibraryDirectoryPath::from_str("test")?;
 
-        let target = DbFolderRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
-        target.register_not_exists(&mut tx, &lib_dir_path).await?;
+        super::super::register_not_exists(&mut tx, &lib_dir_path).await?;
 
         // 対象フォルダが実際に作成されたことを確認
         let exists =
@@ -98,12 +91,10 @@ mod test_register_not_exists {
     async fn 既に存在する場合(pool: PgPool) -> Result<()> {
         let lib_dir_path = LibraryDirectoryPath::from_str("test/hoge/fuga")?;
 
-        let target = DbFolderRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
         assert_eq!(
-            target.register_not_exists(&mut tx, &lib_dir_path).await?,
+            super::super::register_not_exists(&mut tx, &lib_dir_path).await?,
             // 結果は既存のフォルダID (12) を返すはず
             12
         );

@@ -4,14 +4,14 @@ mod tests;
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
+use sqlx::PgTransaction;
 
 use super::{DbTrackSyncRepository, TrackSync};
 use crate::{
-    folder::{DbFolderRepository, FolderIdMayRoot},
+    folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
     playlist::DbPlaylistRepository,
 };
-use sqlx::PgTransaction;
 
 /// DB・PC連携のUseCase
 #[async_trait]
@@ -32,20 +32,17 @@ pub trait SyncUsecase {
 
 /// SyncUsecaseの本実装
 #[derive(new)]
-pub struct SyncUsecaseImpl<FR, PR, SSR>
+pub struct SyncUsecaseImpl<PR, SSR>
 where
-    FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     SSR: DbTrackSyncRepository + Sync + Send,
 {
-    db_folder_repository: FR,
     db_playlist_repository: PR,
     db_track_sync_repository: SSR,
 }
 #[async_trait]
-impl<FR, PR, SSR> SyncUsecase for SyncUsecaseImpl<FR, PR, SSR>
+impl<PR, SSR> SyncUsecase for SyncUsecaseImpl<PR, SSR>
 where
-    FR: DbFolderRepository + Sync + Send,
     PR: DbPlaylistRepository + Sync + Send,
     SSR: DbTrackSyncRepository + Sync + Send,
 {
@@ -66,10 +63,7 @@ where
         let folder_id = match parent_path_opt {
             None => FolderIdMayRoot::Root,
             Some(parent_path) => {
-                let id = self
-                    .db_folder_repository
-                    .register_not_exists(tx, &parent_path)
-                    .await?;
+                let id = folder_repository::register_not_exists(tx, &parent_path).await?;
                 FolderIdMayRoot::Folder(id)
             }
         };

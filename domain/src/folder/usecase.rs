@@ -7,8 +7,10 @@ use async_trait::async_trait;
 use mockall::mock;
 use sqlx::PgTransaction;
 
-use super::{DbFolderRepository, FolderIdMayRoot};
-use crate::{Error, path::LibraryDirectoryPath, track::DbTrackRepository};
+use super::FolderIdMayRoot;
+use crate::{
+    Error, folder::folder_repository, path::LibraryDirectoryPath, track::DbTrackRepository,
+};
 
 /// ライブラリのフォルダ関係のUsecase
 #[async_trait]
@@ -26,19 +28,16 @@ pub trait FolderUsecase {
 
 /// FolderUsecaseの本実装
 #[derive(new)]
-pub struct FolderUsecaseImpl<FR, SR>
+pub struct FolderUsecaseImpl<SR>
 where
-    FR: DbFolderRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
 {
-    db_folder_repository: FR,
     db_track_repository: SR,
 }
 
 #[async_trait]
-impl<FR, SR> FolderUsecase for FolderUsecaseImpl<FR, SR>
+impl<SR> FolderUsecase for FolderUsecaseImpl<SR>
 where
-    FR: DbFolderRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
 {
     /// フォルダに曲が含まれてない場合、削除する
@@ -51,9 +50,7 @@ where
         folder_path: &LibraryDirectoryPath,
     ) -> Result<()> {
         //IDを取得
-        let folder_id = self
-            .db_folder_repository
-            .get_id_by_path(tx, folder_path)
+        let folder_id = folder_repository::get_id_by_path(tx, folder_path)
             .await?
             .ok_or_else(|| Error::DbFolderPathNotFound(folder_path.to_owned()))?;
 
@@ -61,9 +58,8 @@ where
     }
 }
 
-impl<FR, SR> FolderUsecaseImpl<FR, SR>
+impl<SR> FolderUsecaseImpl<SR>
 where
-    FR: DbFolderRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
 {
     /// フォルダに曲が含まれてない場合、削除する(再帰実行用のID指定版)
@@ -86,23 +82,19 @@ where
         }
 
         let parent_id_mr = {
-            let db_folder_repository = &self.db_folder_repository;
             //他のフォルダが含まれる場合、削除せずに終了
-            if db_folder_repository
-                .is_exist_in_folder(tx, FolderIdMayRoot::Folder(folder_id))
-                .await?
+            if folder_repository::is_exist_in_folder(tx, FolderIdMayRoot::Folder(folder_id)).await?
             {
                 return Ok(());
             }
 
             //削除するフォルダ情報を取得
-            let parent_id_mr = db_folder_repository
-                .get_parent(tx, folder_id)
+            let parent_id_mr = folder_repository::get_parent(tx, folder_id)
                 .await?
                 .ok_or(Error::DbFolderIdNotFound(folder_id))?;
 
             //削除を実行
-            db_folder_repository.delete(tx, folder_id).await?;
+            folder_repository::delete(tx, folder_id).await?;
 
             parent_id_mr
         };

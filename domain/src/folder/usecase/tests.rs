@@ -2,10 +2,10 @@ use anyhow::Result;
 use sqlx::PgPool;
 
 use super::*;
-use crate::{folder::DbFolderRepositoryImpl, track::DbTrackRepositoryImpl};
+use crate::track::DbTrackRepositoryImpl;
 
-fn target() -> FolderUsecaseImpl<DbFolderRepositoryImpl, DbTrackRepositoryImpl> {
-    FolderUsecaseImpl::new(DbFolderRepositoryImpl::new(), DbTrackRepositoryImpl::new())
+fn target() -> FolderUsecaseImpl<DbTrackRepositoryImpl> {
+    FolderUsecaseImpl::new(DbTrackRepositoryImpl::new())
 }
 
 // delete_db_if_empty 関数のテスト

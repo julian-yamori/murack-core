@@ -1,7 +1,7 @@
 use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError, NonEmptyString,
-    folder::DbFolderRepository,
+    folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
     track::{DbTrackRepository, TrackUsecase},
 };
@@ -12,37 +12,32 @@ use crate::{Config, Error};
 /// moveコマンド
 ///
 /// ライブラリ内で曲パスを移動
-pub struct CommandMove<'config, DSR, DFR, SS>
+pub struct CommandMove<'config, DSR, SS>
 where
     DSR: DbTrackRepository,
-    DFR: DbFolderRepository,
     SS: TrackUsecase,
 {
     args: CommandMoveArgs,
 
     config: &'config Config,
     db_track_repository: DSR,
-    db_folder_repository: DFR,
     track_usecase: SS,
 }
 
-impl<'config, DSR, DFR, SS> CommandMove<'config, DSR, DFR, SS>
+impl<'config, DSR, SS> CommandMove<'config, DSR, SS>
 where
     DSR: DbTrackRepository,
-    DFR: DbFolderRepository,
     SS: TrackUsecase,
 {
     pub fn new(
         args: CommandMoveArgs,
         config: &'config Config,
         db_track_repository: DSR,
-        db_folder_repository: DFR,
         track_usecase: SS,
     ) -> Self {
         Self {
             args,
             config,
-            db_folder_repository,
             db_track_repository,
             track_usecase,
         }
@@ -121,11 +116,7 @@ where
         // フォルダが存在しないかチェック
         let dest_dir_path: LibraryDirectoryPath = self.args.dest_path.clone().into();
 
-        if self
-            .db_folder_repository
-            .is_exist_path(&mut tx, &dest_dir_path)
-            .await?
-        {
+        if folder_repository::is_exist_path(&mut tx, &dest_dir_path).await? {
             return Err(DomainError::DbFolderAlreadyExists(dest_dir_path).into());
         }
 

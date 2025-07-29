@@ -1,5 +1,4 @@
 use crate::{
-    folder::DbFolderRepositoryImpl,
     playlist::{DbPlaylistRepositoryImpl, DbPlaylistTrackRepositoryImpl},
     sync::DbTrackSyncRepositoryImpl,
     tag::DbTrackTagRepositoryImpl,
@@ -12,10 +11,6 @@ pub struct DbComponents {}
 impl DbComponents {
     pub fn new() -> Self {
         Self {}
-    }
-
-    pub fn db_folder_repository(&self) -> TypeDbFolderRepository {
-        DbFolderRepositoryImpl::new()
     }
 
     pub fn db_playlist_repository(&self) -> TypeDbPlaylistRepository {
@@ -45,7 +40,6 @@ impl Default for DbComponents {
     }
 }
 
-pub type TypeDbFolderRepository = DbFolderRepositoryImpl;
 pub type TypeDbPlaylistRepository = DbPlaylistRepositoryImpl;
 pub type TypeDbPlaylistTrackRepository = DbPlaylistTrackRepositoryImpl;
 pub type TypeDbTrackRepository = DbTrackRepositoryImpl;
