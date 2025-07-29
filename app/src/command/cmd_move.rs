@@ -1,9 +1,11 @@
+mod move_usecase;
+
 use anyhow::Result;
 use murack_core_domain::{
     Error as DomainError, NonEmptyString,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    track::{track_repository, usecase as track_usecase},
+    track::track_repository,
 };
 use sqlx::PgPool;
 
@@ -40,7 +42,7 @@ impl<'config> CommandMove<'config> {
 
         //DB内で移動
         let mut tx = db_pool.begin().await?;
-        track_usecase::move_path_str_db(&mut tx, src_path_str, dest_path_str).await?;
+        move_usecase::move_path_str_db(&mut tx, src_path_str, dest_path_str).await?;
         tx.commit().await?;
 
         Ok(())
