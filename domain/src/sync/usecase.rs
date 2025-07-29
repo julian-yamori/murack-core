@@ -19,12 +19,11 @@ pub trait SyncUsecase {
     /// - db: DB接続
     /// - track_path: 登録する曲のライブラリ内パス
     /// - track_sync: 登録する曲のデータ
-    /// - entry_date: 登録日
     async fn register_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
         track_path: &LibraryTrackPath,
-        track_sync: &mut TrackSync,
+        track_sync: &TrackSync,
     ) -> Result<()>;
 }
 
@@ -53,18 +52,12 @@ where
     /// - db: DB接続
     /// - track_path: 登録する曲のライブラリ内パス
     /// - track_sync: 登録する曲のデータ
-    /// - entry_date: 登録日
     async fn register_db<'c>(
         &self,
         tx: &mut PgTransaction<'c>,
         track_path: &LibraryTrackPath,
-        track_sync: &mut TrackSync,
+        track_sync: &TrackSync,
     ) -> Result<()> {
-        //曲名が空なら、ファイル名から取得
-        if track_sync.title.is_empty() {
-            track_sync.title = track_path.file_stem().to_owned();
-        };
-
         //親ディレクトリを登録してIDを取得
         let parent_path_opt = track_path.parent();
         let folder_id = match parent_path_opt {
@@ -100,7 +93,7 @@ impl SyncUsecase for MockSyncUsecase {
         &self,
         _db: &mut PgTransaction<'c>,
         track_path: &LibraryTrackPath,
-        track_sync: &mut TrackSync,
+        track_sync: &TrackSync,
     ) -> Result<()> {
         self.inner.register_db(track_path, track_sync)
     }
@@ -110,7 +103,7 @@ mock! {
         pub fn register_db(
             &self,
             track_path: &LibraryTrackPath,
-            track_sync: &mut TrackSync,
+            track_sync: &TrackSync,
         ) -> Result<()>;
     }
 }
@@ -196,9 +189,8 @@ mod tests {
             .inner
             .expect_register()
             .times(1)
-            .returning(|_, a_track_sync, a_folder_id| {
+            .returning(|_, _, a_folder_id| {
                 assert_eq!(a_folder_id, FolderIdMayRoot::Root);
-                assert_eq!(&a_track_sync.title, "曲名");
                 Ok(5)
             });
 
@@ -211,17 +203,15 @@ mod tests {
 
         let mut tx = pool.begin().await?;
 
-        let mut s = track_sync();
-        target.register_db(&mut tx, &track_path(), &mut s).await?;
-
-        assert_eq!(&s.title, "曲名");
+        let s = track_sync();
+        target.register_db(&mut tx, &track_path(), &s).await?;
 
         checkpoint_all(&mut target);
         Ok(())
     }
 
     #[sqlx::test]
-    async fn test_register_db_no_title(pool: PgPool) -> anyhow::Result<()> {
+    async fn test_register_db_in_folder(pool: PgPool) -> anyhow::Result<()> {
         fn track_path() -> LibraryTrackPath {
             LibraryTrackPath::from_str("test/hoge/fuga.mp3").unwrap()
         }
@@ -245,9 +235,8 @@ mod tests {
             .inner
             .expect_register()
             .times(1)
-            .returning(|_, a_track_sync, a_folder_id| {
+            .returning(|_, _, a_folder_id| {
                 assert_eq!(a_folder_id, FolderIdMayRoot::Folder(15));
-                assert_eq!(&a_track_sync.title, "fuga");
                 Ok(5)
             });
 
@@ -260,12 +249,9 @@ mod tests {
 
         let mut tx = pool.begin().await?;
 
-        let mut s = track_sync();
-        s.title = String::default();
+        let s = track_sync();
 
-        target.register_db(&mut tx, &track_path(), &mut s).await?;
-
-        assert_eq!(&s.title, "fuga");
+        target.register_db(&mut tx, &track_path(), &s).await?;
 
         checkpoint_all(&mut target);
         Ok(())

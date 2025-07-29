@@ -4,7 +4,7 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
-use crate::{Config, Error, cui::Cui};
+use crate::{Config, Error, cui::Cui, db_common};
 
 /// addコマンド
 ///
@@ -12,7 +12,7 @@ use crate::{Config, Error, cui::Cui};
 pub struct CommandAdd<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
-    SS: SyncUsecase,
+    SS: SyncUsecase + Send + Sync,
 {
     args: CommandAddArgs,
 
@@ -24,7 +24,7 @@ where
 impl<'config, 'cui, CUI, SS> CommandAdd<'config, 'cui, CUI, SS>
 where
     CUI: Cui,
-    SS: SyncUsecase,
+    SS: SyncUsecase + Send + Sync,
 {
     pub fn new(
         args: CommandAddArgs,
@@ -77,11 +77,7 @@ where
         let mut pc_track = murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path)?;
 
         //DBに登録
-        let mut tx = db_pool.begin().await?;
-        self.sync_usecase
-            .register_db(&mut tx, track_path, &mut pc_track)
-            .await?;
-        tx.commit().await?;
+        db_common::add_track_to_db(db_pool, &self.sync_usecase, track_path, &mut pc_track).await?;
 
         //PCからDAPにコピー
         murack_core_data_file::copy_track_over_lib(

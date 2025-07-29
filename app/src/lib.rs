@@ -12,3 +12,4 @@ mod config;
 pub use config::Config;
 
 pub mod command;
+pub mod db_common;

@@ -10,7 +10,7 @@ use murack_core_domain::{
 use sqlx::PgPool;
 
 use super::{ResolveFileExistanceResult, messages};
-use crate::{Config, command::check::domain::CheckIssueSummary, cui::Cui};
+use crate::{Config, command::check::domain::CheckIssueSummary, cui::Cui, db_common};
 
 /// データ存在系の解決処理
 #[automock]
@@ -233,7 +233,7 @@ where
         match input {
             //DBに曲を追加
             '1' => {
-                self.add_track_db_from_pc(db_pool, track_path, pc_track)
+                db_common::add_track_to_db(db_pool, &self.sync_usecase, track_path, pc_track)
                     .await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
@@ -276,7 +276,7 @@ where
         match input {
             //DBに曲を追加し、DAPにもコピー
             '1' => {
-                self.add_track_db_from_pc(db_pool, track_path, pc_track)
+                db_common::add_track_to_db(db_pool, &self.sync_usecase, track_path, pc_track)
                     .await?;
 
                 murack_core_data_file::copy_track_over_lib(
@@ -422,7 +422,7 @@ where
                     };
 
                 //DBに追加
-                self.add_track_db_from_pc(db_pool, track_path, &mut pc_track)
+                db_common::add_track_to_db(db_pool, &self.sync_usecase, track_path, &mut pc_track)
                     .await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
@@ -435,23 +435,6 @@ where
             '-' => Ok(ResolveFileExistanceResult::Terminated),
             _ => unreachable!(),
         }
-    }
-
-    /// PCのファイルデータを元にDBに曲を追加
-    async fn add_track_db_from_pc(
-        &self,
-        db_pool: &PgPool,
-        track_path: &LibraryTrackPath,
-        pc_track: &mut TrackSync,
-    ) -> Result<()> {
-        let mut tx = db_pool.begin().await?;
-
-        self.sync_usecase
-            .register_db(&mut tx, track_path, pc_track)
-            .await?;
-
-        tx.commit().await?;
-        Ok(())
     }
 
     /// DBから曲を削除
