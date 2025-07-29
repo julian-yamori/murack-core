@@ -4,7 +4,7 @@ use mockall::automock;
 use murack_core_domain::{
     Error as DomainError,
     path::LibraryTrackPath,
-    sync::{SyncUsecase, TrackSync, track_sync_repository},
+    sync::{TrackSync, track_sync_repository},
     track::TrackUsecase,
 };
 use sqlx::PgPool;
@@ -31,25 +31,21 @@ pub trait ResolveExistance {
 }
 
 /// ResolveExistanceの実装
-pub struct ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS>
+pub struct ResolveExistanceImpl<'config, 'cui, CUI, SOS>
 where
     CUI: Cui + Send + Sync,
     SOS: TrackUsecase + Send + Sync,
-    SYS: SyncUsecase + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
     track_usecase: SOS,
-    sync_usecase: SYS,
 }
 
 #[async_trait]
-impl<'config, 'cui, CUI, SOS, SYS> ResolveExistance
-    for ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS>
+impl<'config, 'cui, CUI, SOS> ResolveExistance for ResolveExistanceImpl<'config, 'cui, CUI, SOS>
 where
     CUI: Cui + Send + Sync,
     SOS: TrackUsecase + Send + Sync,
-    SYS: SyncUsecase + Send + Sync,
 {
     /// データ存在系の解決処理
     ///
@@ -119,23 +115,16 @@ where
     }
 }
 
-impl<'config, 'cui, CUI, SOS, SYS> ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS>
+impl<'config, 'cui, CUI, SOS> ResolveExistanceImpl<'config, 'cui, CUI, SOS>
 where
     CUI: Cui + Send + Sync,
     SOS: TrackUsecase + Send + Sync,
-    SYS: SyncUsecase + Send + Sync,
 {
-    pub fn new(
-        config: &'config Config,
-        cui: &'cui CUI,
-        track_usecase: SOS,
-        sync_usecase: SYS,
-    ) -> Self {
+    pub fn new(config: &'config Config, cui: &'cui CUI, track_usecase: SOS) -> Self {
         Self {
             config,
             cui,
             track_usecase,
-            sync_usecase,
         }
     }
 
@@ -225,8 +214,7 @@ where
         match input {
             //DBに曲を追加
             '1' => {
-                db_common::add_track_to_db(db_pool, &self.sync_usecase, track_path, pc_track)
-                    .await?;
+                db_common::add_track_to_db(db_pool, track_path, pc_track).await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //PCとDAPからファイルを削除
@@ -268,8 +256,7 @@ where
         match input {
             //DBに曲を追加し、DAPにもコピー
             '1' => {
-                db_common::add_track_to_db(db_pool, &self.sync_usecase, track_path, pc_track)
-                    .await?;
+                db_common::add_track_to_db(db_pool, track_path, pc_track).await?;
 
                 murack_core_data_file::copy_track_over_lib(
                     &self.config.pc_lib,
@@ -414,8 +401,7 @@ where
                     };
 
                 //DBに追加
-                db_common::add_track_to_db(db_pool, &self.sync_usecase, track_path, &mut pc_track)
-                    .await?;
+                db_common::add_track_to_db(db_pool, track_path, &mut pc_track).await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //DAPからファイルを削除

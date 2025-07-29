@@ -1,7 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{
-    Error as DomainError, NonEmptyString, path::LibraryTrackPath, sync::SyncUsecase,
-};
+use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
 use sqlx::PgPool;
 
 use crate::{Config, Error, cui::Cui, db_common};
@@ -9,35 +7,22 @@ use crate::{Config, Error, cui::Cui, db_common};
 /// addコマンド
 ///
 /// 曲をライブラリに追加する
-pub struct CommandAdd<'config, 'cui, CUI, SS>
+pub struct CommandAdd<'config, 'cui, CUI>
 where
     CUI: Cui,
-    SS: SyncUsecase + Send + Sync,
 {
     args: CommandAddArgs,
 
     config: &'config Config,
     cui: &'cui CUI,
-    sync_usecase: SS,
 }
 
-impl<'config, 'cui, CUI, SS> CommandAdd<'config, 'cui, CUI, SS>
+impl<'config, 'cui, CUI> CommandAdd<'config, 'cui, CUI>
 where
     CUI: Cui,
-    SS: SyncUsecase + Send + Sync,
 {
-    pub fn new(
-        args: CommandAddArgs,
-        config: &'config Config,
-        cui: &'cui CUI,
-        sync_usecase: SS,
-    ) -> Self {
-        Self {
-            args,
-            config,
-            cui,
-            sync_usecase,
-        }
+    pub fn new(args: CommandAddArgs, config: &'config Config, cui: &'cui CUI) -> Self {
+        Self { args, config, cui }
     }
 
     /// このコマンドを実行
@@ -77,7 +62,7 @@ where
         let mut pc_track = murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path)?;
 
         //DBに登録
-        db_common::add_track_to_db(db_pool, &self.sync_usecase, track_path, &mut pc_track).await?;
+        db_common::add_track_to_db(db_pool, track_path, &mut pc_track).await?;
 
         //PCからDAPにコピー
         murack_core_data_file::copy_track_over_lib(

@@ -6,10 +6,6 @@ use sqlx::PgPool;
 
 use super::*;
 
-fn target() -> SyncUsecaseImpl {
-    SyncUsecaseImpl::new()
-}
-
 // register_db 関数のテスト
 mod test_register_db {
     use super::*;
@@ -51,11 +47,10 @@ mod test_register_db {
             LibraryTrackPath::from_str("track.flac").unwrap()
         }
 
-        let target = target();
         let mut tx = pool.begin().await?;
 
         let s = track_sync();
-        target.register_db(&mut tx, &track_path(), &s).await?;
+        super::register_db(&mut tx, &track_path(), &s).await?;
 
         // 曲がRoot直下（folder_id = NULL）に登録されたことを確認
         let track_count = sqlx::query_scalar!(
@@ -107,11 +102,10 @@ mod test_register_db {
             LibraryTrackPath::from_str("test/hoge/fuga.mp3").unwrap()
         }
 
-        let target = target();
         let mut tx = pool.begin().await?;
 
         let s = track_sync();
-        target.register_db(&mut tx, &track_path(), &s).await?;
+        super::register_db(&mut tx, &track_path(), &s).await?;
 
         // フォルダが作成されたことを確認
         let test_folder_id =

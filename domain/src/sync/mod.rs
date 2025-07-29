@@ -11,5 +11,4 @@ pub mod track_sync_repository;
 mod track_sync_row;
 pub use track_sync_row::TrackSyncRow;
 
-mod usecase;
-pub use usecase::{MockSyncUsecase, SyncUsecase, SyncUsecaseImpl};
+pub mod usecase;
