@@ -1,11 +1,15 @@
+#[cfg(test)]
+mod tests;
+
 use anyhow::Result;
 use sqlx::PgTransaction;
 
 use crate::{
     Error as DomainError,
     artwork::artwork_repository,
-    folder::FolderIdMayRoot,
+    folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
+    playlist::playlist_repository,
     sync::{DbTrackSync, TrackSync, TrackSyncRow},
     track::track_sqls,
 };
@@ -54,6 +58,36 @@ pub async fn get_by_path<'c>(
     }))
 }
 
+/// DBに曲データを新規登録する
+///
+/// # Arguments
+/// - db: DB接続
+/// - track_path: 登録する曲のライブラリ内パス
+/// - track_sync: 登録する曲のデータ
+pub async fn register_db<'c>(
+    tx: &mut PgTransaction<'c>,
+    track_path: &LibraryTrackPath,
+    track_sync: &TrackSync,
+) -> Result<()> {
+    //親ディレクトリを登録してIDを取得
+    let parent_path_opt = track_path.parent();
+    let folder_id = match parent_path_opt {
+        None => FolderIdMayRoot::Root,
+        Some(parent_path) => {
+            let id = folder_repository::register_not_exists(tx, &parent_path).await?;
+            FolderIdMayRoot::Folder(id)
+        }
+    };
+
+    //DBに書き込み
+    register(tx, track_path, track_sync, folder_id).await?;
+
+    //プレイリストのリストアップ済みフラグを解除
+    playlist_repository::reset_listuped_flag(tx).await?;
+
+    Ok(())
+}
+
 /// 曲を新規登録
 ///
 /// # Arguments
@@ -63,7 +97,7 @@ pub async fn get_by_path<'c>(
 ///
 /// # Return
 /// 追加した曲のID
-pub async fn register<'c>(
+async fn register<'c>(
     tx: &mut PgTransaction<'c>,
     track_path: &LibraryTrackPath,
     track_sync: &TrackSync,

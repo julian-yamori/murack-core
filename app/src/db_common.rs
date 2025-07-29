@@ -2,7 +2,7 @@
 
 use murack_core_domain::{
     path::LibraryTrackPath,
-    sync::{TrackSync, usecase as sync_usecase},
+    sync::{TrackSync, track_sync_repository},
 };
 use sqlx::PgPool;
 
@@ -19,7 +19,7 @@ pub async fn add_track_to_db(
 
     let mut tx = db_pool.begin().await?;
 
-    sync_usecase::register_db(&mut tx, track_path, track_sync).await?;
+    track_sync_repository::register_db(&mut tx, track_path, track_sync).await?;
 
     tx.commit().await?;
     Ok(())
