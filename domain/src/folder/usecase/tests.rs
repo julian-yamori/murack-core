@@ -2,10 +2,9 @@ use anyhow::Result;
 use sqlx::PgPool;
 
 use super::*;
-use crate::track::DbTrackRepositoryImpl;
 
-fn target() -> FolderUsecaseImpl<DbTrackRepositoryImpl> {
-    FolderUsecaseImpl::new(DbTrackRepositoryImpl::new())
+fn target() -> FolderUsecaseImpl {
+    FolderUsecaseImpl::new()
 }
 
 // delete_db_if_empty 関数のテスト
@@ -91,7 +90,9 @@ mod delete_db_if_empty {
         let mut tx = pool.begin().await?;
 
         // "music/" フォルダを削除実行
-        target.delete_db_if_empty_by_id(&mut tx, 15).await?;
+        target
+            .delete_db_if_empty(&mut tx, &"music/".to_string().try_into()?)
+            .await?;
 
         // "music/" フォルダが削除されたことを確認
         let target_id =

@@ -8,7 +8,7 @@ mod tests;
 use std::collections::BTreeSet;
 
 use anyhow::Result;
-use murack_core_domain::{path::LibraryTrackPath, track::DbTrackRepository};
+use murack_core_domain::{path::LibraryTrackPath, track::track_repository};
 use sqlx::PgPool;
 
 use super::{
@@ -20,13 +20,12 @@ use crate::{
     cui::Cui,
 };
 
-pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, SR>
+pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
     RDM: ResolveDataMatch,
     RDP: ResolveDap,
-    SR: DbTrackRepository,
 {
     args: CommandCheckArgs,
 
@@ -36,16 +35,14 @@ where
 
     config: &'config Config,
     cui: &'cui CUI,
-    db_track_repository: SR,
 }
 
-impl<'config, 'cui, CUI, REX, RDM, RDP, SR> CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, SR>
+impl<'config, 'cui, CUI, REX, RDM, RDP> CommandCheck<'config, 'cui, CUI, REX, RDM, RDP>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
     RDM: ResolveDataMatch,
     RDP: ResolveDap,
-    SR: DbTrackRepository,
 {
     pub fn new(
         args: CommandCheckArgs,
@@ -55,7 +52,6 @@ where
         resolve_data_match: RDM,
         resolve_dap: RDP,
         cui: &'cui CUI,
-        db_track_repository: SR,
     ) -> Self {
         Self {
             args,
@@ -64,7 +60,6 @@ where
             resolve_dap,
             config,
             cui,
-            db_track_repository,
         }
     }
 
@@ -128,12 +123,8 @@ where
         let mut tx = db_pool.begin().await?;
 
         let db_list = match &self.args.path {
-            Some(path_str) => {
-                self.db_track_repository
-                    .get_path_by_path_str(&mut tx, path_str)
-                    .await?
-            }
-            None => self.db_track_repository.get_all_path(&mut tx).await?,
+            Some(path_str) => track_repository::get_path_by_path_str(&mut tx, path_str).await?,
+            None => track_repository::get_all_path(&mut tx).await?,
         };
         for path in db_list {
             set.insert(path);

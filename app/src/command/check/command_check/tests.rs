@@ -1,7 +1,6 @@
 use std::fs;
 use std::str::FromStr;
 
-use murack_core_domain::track::DbTrackRepositoryImpl;
 use murack_core_domain::{NonEmptyString, test_utils::assert_eq_not_orderd};
 
 use super::super::{MockResolveDap, MockResolveDataMatch, MockResolveExistance};
@@ -20,7 +19,6 @@ fn target<'config, 'cui>(
     MockResolveExistance,
     MockResolveDataMatch,
     MockResolveDap,
-    DbTrackRepositoryImpl,
 > {
     CommandCheck {
         args: CommandCheckArgs {
@@ -32,7 +30,6 @@ fn target<'config, 'cui>(
         resolve_existance: MockResolveExistance::default(),
         resolve_data_match: MockResolveDataMatch::default(),
         resolve_dap: MockResolveDap::default(),
-        db_track_repository: DbTrackRepositoryImpl::new(),
     }
 }
 

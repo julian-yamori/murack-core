@@ -4,7 +4,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
 
-use super::DbTrackRepository;
 use crate::{
     Error, NonEmptyString,
     artwork::artwork_repository,
@@ -12,6 +11,7 @@ use crate::{
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{playlist_repository, playlist_track_repository},
     tag::track_tag_repository,
+    track::track_repository,
 };
 use sqlx::PgTransaction;
 
@@ -52,19 +52,16 @@ pub trait TrackUsecase {
 
 /// TrackUsecaseの本実装
 #[derive(new)]
-pub struct TrackUsecaseImpl<SR, FU>
+pub struct TrackUsecaseImpl<FU>
 where
-    SR: DbTrackRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
-    db_track_repository: SR,
     folder_usecase: FU,
 }
 
 #[async_trait]
-impl<SR, FU> TrackUsecase for TrackUsecaseImpl<SR, FU>
+impl<FU> TrackUsecase for TrackUsecaseImpl<FU>
 where
-    SR: DbTrackRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
     /// パス文字列を指定してDBの曲パスを移動
@@ -76,10 +73,7 @@ where
     ) -> Result<()> {
         // パス文字列がファイルかどうかを、完全一致するパスの曲が DB に存在するかどうかで判定
         let src_as_track: LibraryTrackPath = src.clone().into();
-        let track_exists = self
-            .db_track_repository
-            .is_exist_path(tx, &src_as_track)
-            .await?;
+        let track_exists = track_repository::is_exist_path(tx, &src_as_track).await?;
 
         if track_exists {
             // 指定された 1 曲だけ処理
@@ -94,11 +88,7 @@ where
             let src_as_dir: LibraryDirectoryPath = src.clone().into();
             let dest_as_dir: LibraryDirectoryPath = dest.clone().into();
 
-            for src_track in self
-                .db_track_repository
-                .get_path_by_directory(tx, &src_as_dir)
-                .await?
-            {
+            for src_track in track_repository::get_path_by_directory(tx, &src_as_dir).await? {
                 let dest_track = src_child_path_to_dest(&src_track, &src_as_dir, &dest_as_dir)?;
                 self.move_track_db_unit(tx, &src_track, &dest_track).await?;
             }
@@ -116,16 +106,13 @@ where
         tx: &mut PgTransaction<'c>,
         path: &LibraryTrackPath,
     ) -> Result<()> {
-        let db_track_repository = &self.db_track_repository;
-
         //ID情報を取得
-        let track_id = db_track_repository
-            .get_id_by_path(tx, path)
+        let track_id = track_repository::get_id_by_path(tx, path)
             .await?
             .ok_or_else(|| Error::DbTrackNotFound(path.clone()))?;
 
         //曲の削除
-        db_track_repository.delete(tx, track_id).await?;
+        track_repository::delete(tx, track_id).await?;
 
         //プレイリストからこの曲を削除
         playlist_track_repository::delete_track_from_all_playlists(tx, track_id).await?;
@@ -158,10 +145,7 @@ where
         tx: &mut PgTransaction<'c>,
         path_str: &NonEmptyString,
     ) -> Result<Vec<LibraryTrackPath>> {
-        let track_path_list = self
-            .db_track_repository
-            .get_path_by_path_str(tx, path_str)
-            .await?;
+        let track_path_list = track_repository::get_path_by_path_str(tx, path_str).await?;
 
         for path in &track_path_list {
             self.delete_track_db(tx, path).await?;
@@ -171,9 +155,8 @@ where
     }
 }
 
-impl<SR, FU> TrackUsecaseImpl<SR, FU>
+impl<FU> TrackUsecaseImpl<FU>
 where
-    SR: DbTrackRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
     /// 曲一つのDB内パス移動処理
@@ -183,7 +166,7 @@ where
         src: &LibraryTrackPath,
         dest: &LibraryTrackPath,
     ) -> Result<()> {
-        if self.db_track_repository.is_exist_path(tx, dest).await? {
+        if track_repository::is_exist_path(tx, dest).await? {
             return Err(Error::DbTrackAlreadyExists(dest.to_owned()).into());
         }
 
@@ -198,9 +181,7 @@ where
         };
 
         //曲のパス情報を変更
-        self.db_track_repository
-            .update_path(tx, src, dest, new_folder_id)
-            .await?;
+        track_repository::update_path(tx, src, dest, new_folder_id).await?;
 
         //子要素がなくなった親フォルダを削除
         if let Some(parent) = src.parent() {

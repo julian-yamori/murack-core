@@ -3,7 +3,7 @@ use murack_core_domain::{
     Error as DomainError, NonEmptyString,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    track::{DbTrackRepository, TrackUsecase},
+    track::{TrackUsecase, track_repository},
 };
 use sqlx::PgPool;
 
@@ -12,33 +12,24 @@ use crate::{Config, Error};
 /// moveコマンド
 ///
 /// ライブラリ内で曲パスを移動
-pub struct CommandMove<'config, DSR, SS>
+pub struct CommandMove<'config, SS>
 where
-    DSR: DbTrackRepository,
     SS: TrackUsecase,
 {
     args: CommandMoveArgs,
 
     config: &'config Config,
-    db_track_repository: DSR,
     track_usecase: SS,
 }
 
-impl<'config, DSR, SS> CommandMove<'config, DSR, SS>
+impl<'config, SS> CommandMove<'config, SS>
 where
-    DSR: DbTrackRepository,
     SS: TrackUsecase,
 {
-    pub fn new(
-        args: CommandMoveArgs,
-        config: &'config Config,
-        db_track_repository: DSR,
-        track_usecase: SS,
-    ) -> Self {
+    pub fn new(args: CommandMoveArgs, config: &'config Config, track_usecase: SS) -> Self {
         Self {
             args,
             config,
-            db_track_repository,
             track_usecase,
         }
     }
@@ -105,11 +96,7 @@ where
 
         // 曲が存在しないかチェック
         let dest_track_path: LibraryTrackPath = self.args.dest_path.clone().into();
-        if self
-            .db_track_repository
-            .is_exist_path(&mut tx, &dest_track_path)
-            .await?
-        {
+        if track_repository::is_exist_path(&mut tx, &dest_track_path).await? {
             return Err(DomainError::DbTrackAlreadyExists(dest_track_path).into());
         }
 

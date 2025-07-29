@@ -6,7 +6,6 @@ use sqlx::PgPool;
 use crate::{
     NonEmptyString,
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    track::{DbTrackRepository, DbTrackRepositoryImpl},
 };
 
 // get_path_by_path_str 関数のテスト
@@ -21,13 +20,11 @@ mod test_get_path_by_path_str {
         fixtures("test_get_path_by_path_str_directory")
     )]
     async fn ディレクトリ指定(pool: PgPool) -> Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
-        let result = target
-            .get_path_by_path_str(&mut tx, &NonEmptyString::from_str("test/hoge")?)
-            .await?;
+        let result =
+            super::super::get_path_by_path_str(&mut tx, &NonEmptyString::from_str("test/hoge")?)
+                .await?;
 
         // 結果は3つの楽曲パスであるはず
         assert_eq!(result.len(), 3);
@@ -45,13 +42,11 @@ mod test_get_path_by_path_str {
         fixtures("test_get_path_by_path_str_not_found")
     )]
     async fn 見つからない場合(pool: PgPool) -> Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
-        let result = target
-            .get_path_by_path_str(&mut tx, &NonEmptyString::from_str("test/hoge")?)
-            .await?;
+        let result =
+            super::super::get_path_by_path_str(&mut tx, &NonEmptyString::from_str("test/hoge")?)
+                .await?;
 
         // 結果は空であるはず
         assert_eq!(result, vec![]);
@@ -66,13 +61,13 @@ mod test_get_path_by_path_str {
         fixtures("test_get_path_by_path_str_track")
     )]
     async fn 楽曲ファイル指定(pool: PgPool) -> Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
-        let result = target
-            .get_path_by_path_str(&mut tx, &NonEmptyString::from_str("test/hoge.flac")?)
-            .await?;
+        let result = super::super::get_path_by_path_str(
+            &mut tx,
+            &NonEmptyString::from_str("test/hoge.flac")?,
+        )
+        .await?;
 
         // 結果は指定した楽曲ファイル1つであるはず
         assert_eq!(result, vec![LibraryTrackPath::from_str("test/hoge.flac")?]);
@@ -99,13 +94,10 @@ mod test_get_path_by_directory {
         fixtures("fixtures/test_get_path_by_directory/normal_chars.sql")
     )]
     fn 浅いディレクトリを指定(pool: PgPool) -> anyhow::Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
         assert_eq!(
-            target
-                .get_path_by_directory(&mut tx, &LibraryDirectoryPath::from_str("test")?)
+            super::super::get_path_by_directory(&mut tx, &LibraryDirectoryPath::from_str("test")?)
                 .await?,
             vec![
                 LibraryTrackPath::from_str("test/hoge.flac")?,
@@ -122,14 +114,14 @@ mod test_get_path_by_directory {
         fixtures("fixtures/test_get_path_by_directory/normal_chars.sql")
     )]
     fn 少し深いディレクトリを指定(pool: PgPool) -> anyhow::Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
         assert_eq!(
-            target
-                .get_path_by_directory(&mut tx, &LibraryDirectoryPath::from_str("test/dir")?)
-                .await?,
+            super::super::get_path_by_directory(
+                &mut tx,
+                &LibraryDirectoryPath::from_str("test/dir")?
+            )
+            .await?,
             vec![LibraryTrackPath::from_str("test/dir/hoge3.flac")?]
         );
 
@@ -141,14 +133,14 @@ mod test_get_path_by_directory {
         fixtures("fixtures/test_get_path_by_directory/special_chars.sql")
     )]
     fn 特殊文字を挟むパスでの検索(pool: PgPool) -> anyhow::Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
         assert_eq!(
-            target
-                .get_path_by_directory(&mut tx, &LibraryDirectoryPath::from_str("test/d%i_r$")?)
-                .await?,
+            super::super::get_path_by_directory(
+                &mut tx,
+                &LibraryDirectoryPath::from_str("test/d%i_r$")?
+            )
+            .await?,
             vec![LibraryTrackPath::from_str("test/d%i_r$/hoge.flac")?]
         );
 
@@ -162,36 +154,30 @@ mod test_is_exist_in_folder {
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
     async fn フォルダに2曲存在する場合(pool: PgPool) -> anyhow::Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
         // フォルダID 11 には2曲存在するため true
-        assert!(target.is_exist_in_folder(&mut tx, 11).await?);
+        assert!(super::super::is_exist_in_folder(&mut tx, 11).await?);
 
         Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
     async fn フォルダに1曲だけ存在する場合(pool: PgPool) -> anyhow::Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
         // フォルダID 22 には1曲存在するため true
-        assert!(target.is_exist_in_folder(&mut tx, 22).await?);
+        assert!(super::super::is_exist_in_folder(&mut tx, 22).await?);
 
         Ok(())
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_is_exist_in_folder"))]
     async fn フォルダに曲が存在しない場合(pool: PgPool) -> anyhow::Result<()> {
-        let target = DbTrackRepositoryImpl::new();
-
         let mut tx = pool.begin().await?;
 
         // フォルダID 99 には曲が存在しないため false
-        assert!(!target.is_exist_in_folder(&mut tx, 99).await?);
+        assert!(!super::super::is_exist_in_folder(&mut tx, 99).await?);
 
         Ok(())
     }
