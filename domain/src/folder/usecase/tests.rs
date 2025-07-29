@@ -1,12 +1,6 @@
 use anyhow::Result;
 use sqlx::PgPool;
 
-use super::*;
-
-fn target() -> FolderUsecaseImpl {
-    FolderUsecaseImpl::new()
-}
-
 // delete_db_if_empty 関数のテスト
 mod delete_db_if_empty {
     use super::*;
@@ -16,13 +10,10 @@ mod delete_db_if_empty {
         fixtures("delete_empty_with_parent_has_tracks")
     )]
     async fn parent_has_tracks(pool: PgPool) -> Result<()> {
-        let target = target();
         let mut tx = pool.begin().await?;
 
         // "music/empty/" フォルダを削除実行
-        target
-            .delete_db_if_empty(&mut tx, &"music/empty/".to_string().try_into()?)
-            .await?;
+        super::super::delete_db_if_empty(&mut tx, &"music/empty/".to_string().try_into()?).await?;
 
         // "music/empty/" フォルダが削除されたことを確認
         let target_id = sqlx::query_scalar!(
@@ -54,13 +45,10 @@ mod delete_db_if_empty {
         fixtures("delete_folder_with_subfolders")
     )]
     async fn with_subfolders(pool: PgPool) -> Result<()> {
-        let target = target();
         let mut tx = pool.begin().await?;
 
         // "music/" フォルダを削除実行（サブフォルダがあるので削除されないはず）
-        target
-            .delete_db_if_empty(&mut tx, &"music/".to_string().try_into()?)
-            .await?;
+        super::super::delete_db_if_empty(&mut tx, &"music/".to_string().try_into()?).await?;
 
         // "music/" フォルダが削除されていないことを確認
         let target_id =
@@ -86,13 +74,10 @@ mod delete_db_if_empty {
         fixtures("delete_empty_folder_under_root")
     )]
     async fn delete_under_root(pool: PgPool) -> Result<()> {
-        let target = target();
         let mut tx = pool.begin().await?;
 
         // "music/" フォルダを削除実行
-        target
-            .delete_db_if_empty(&mut tx, &"music/".to_string().try_into()?)
-            .await?;
+        super::super::delete_db_if_empty(&mut tx, &"music/".to_string().try_into()?).await?;
 
         // "music/" フォルダが削除されたことを確認
         let target_id =

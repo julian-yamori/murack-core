@@ -7,7 +7,7 @@ use mockall::mock;
 use crate::{
     Error, NonEmptyString,
     artwork::artwork_repository,
-    folder::{FolderIdMayRoot, FolderUsecase, folder_repository},
+    folder::{FolderIdMayRoot, folder_repository, usecase as folder_usecase},
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{playlist_repository, playlist_track_repository},
     tag::track_tag_repository,
@@ -52,18 +52,10 @@ pub trait TrackUsecase {
 
 /// TrackUsecaseの本実装
 #[derive(new)]
-pub struct TrackUsecaseImpl<FU>
-where
-    FU: FolderUsecase + Sync + Send,
-{
-    folder_usecase: FU,
-}
+pub struct TrackUsecaseImpl {}
 
 #[async_trait]
-impl<FU> TrackUsecase for TrackUsecaseImpl<FU>
-where
-    FU: FolderUsecase + Sync + Send,
-{
+impl TrackUsecase for TrackUsecaseImpl {
     /// パス文字列を指定してDBの曲パスを移動
     async fn move_path_str_db<'c>(
         &self,
@@ -125,7 +117,7 @@ where
 
         //他に使用する曲がなければ、親フォルダを削除
         if let Some(parent) = path.parent() {
-            self.folder_usecase.delete_db_if_empty(tx, &parent).await?;
+            folder_usecase::delete_db_if_empty(tx, &parent).await?;
         };
 
         playlist_repository::reset_listuped_flag(tx).await?;
@@ -155,10 +147,7 @@ where
     }
 }
 
-impl<FU> TrackUsecaseImpl<FU>
-where
-    FU: FolderUsecase + Sync + Send,
-{
+impl TrackUsecaseImpl {
     /// 曲一つのDB内パス移動処理
     async fn move_track_db_unit<'c>(
         &self,
@@ -185,7 +174,7 @@ where
 
         //子要素がなくなった親フォルダを削除
         if let Some(parent) = src.parent() {
-            self.folder_usecase.delete_db_if_empty(tx, &parent).await?;
+            folder_usecase::delete_db_if_empty(tx, &parent).await?;
         }
 
         //パスを使用したフィルタがあるかもしれないので、
