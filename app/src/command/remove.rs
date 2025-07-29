@@ -1,6 +1,8 @@
 use anyhow::Result;
-use murack_core_domain::{Error as DomainError, NonEmptyString, track::usecase as track_usecase};
-use sqlx::PgPool;
+use murack_core_domain::{
+    Error as DomainError, NonEmptyString, path::LibraryTrackPath, track::track_repository,
+};
+use sqlx::{PgPool, PgTransaction};
 
 use crate::{Config, Error, cui::Cui};
 
@@ -36,7 +38,7 @@ where
     /// DBから削除
     pub async fn remove_db(&self, db_pool: &PgPool) -> Result<()> {
         let mut tx = db_pool.begin().await?;
-        let track_path_list = track_usecase::delete_path_str_db(&mut tx, &self.args.path).await?;
+        let track_path_list = delete_path_str_db(&mut tx, &self.args.path).await?;
         tx.commit().await?;
 
         if track_path_list.is_empty() {
@@ -89,6 +91,26 @@ where
             },
         }
     }
+}
+
+/// パス文字列を指定してDBから削除
+///
+/// # Arguments
+/// - path: 削除する曲のパス
+///
+/// # Returns
+/// 削除した曲のパスリスト
+async fn delete_path_str_db<'c>(
+    tx: &mut PgTransaction<'c>,
+    path_str: &NonEmptyString,
+) -> Result<Vec<LibraryTrackPath>> {
+    let track_path_list = track_repository::get_path_by_path_str(tx, path_str).await?;
+
+    for path in &track_path_list {
+        track_repository::delete_track_db(tx, path).await?;
+    }
+
+    Ok(track_path_list)
 }
 
 /// コマンドの引数
