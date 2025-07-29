@@ -1,6 +1,5 @@
 use crate::{
-    playlist::DbPlaylistTrackRepositoryImpl, sync::DbTrackSyncRepositoryImpl,
-    tag::DbTrackTagRepositoryImpl, track::DbTrackRepositoryImpl,
+    sync::DbTrackSyncRepositoryImpl, tag::DbTrackTagRepositoryImpl, track::DbTrackRepositoryImpl,
 };
 
 /// data層DB機能のDIを解決するオブジェクト
@@ -9,10 +8,6 @@ pub struct DbComponents {}
 impl DbComponents {
     pub fn new() -> Self {
         Self {}
-    }
-
-    pub fn db_playlist_track_repository(&self) -> TypeDbPlaylistTrackRepository {
-        DbPlaylistTrackRepositoryImpl::new()
     }
 
     pub fn db_track_repository(&self) -> TypeDbTrackRepository {
@@ -34,7 +29,6 @@ impl Default for DbComponents {
     }
 }
 
-pub type TypeDbPlaylistTrackRepository = DbPlaylistTrackRepositoryImpl;
 pub type TypeDbTrackRepository = DbTrackRepositoryImpl;
 pub type TypeDbTrackSyncRepository = DbTrackSyncRepositoryImpl;
 pub type TypeDbTrackTagRepository = DbTrackTagRepositoryImpl;

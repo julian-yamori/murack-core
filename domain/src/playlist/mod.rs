@@ -1,10 +1,5 @@
 //! プレイリスト関係のDB機能
 
-mod db_playlist_track_repos;
-pub use db_playlist_track_repos::{DbPlaylistTrackRepository, MockDbPlaylistTrackRepository};
-mod db_playlist_track_repos_impl;
-pub use db_playlist_track_repos_impl::DbPlaylistTrackRepositoryImpl;
-
 mod model;
 pub use model::Playlist;
 
@@ -16,6 +11,8 @@ mod playlist_row;
 pub use playlist_row::PlaylistRow;
 
 pub mod playlist_sqls;
+
+pub mod playlist_track_repository;
 
 mod playlist_tree;
 pub use playlist_tree::PlaylistTree;

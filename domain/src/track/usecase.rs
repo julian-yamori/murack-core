@@ -10,7 +10,7 @@ use crate::{
     artwork::artwork_repository,
     folder::{FolderIdMayRoot, FolderUsecase, folder_repository},
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    playlist::{DbPlaylistTrackRepository, playlist_repository},
+    playlist::{playlist_repository, playlist_track_repository},
     tag::DbTrackTagRepository,
 };
 use sqlx::PgTransaction;
@@ -52,23 +52,20 @@ pub trait TrackUsecase {
 
 /// TrackUsecaseの本実装
 #[derive(new)]
-pub struct TrackUsecaseImpl<PSR, SR, STR, FU>
+pub struct TrackUsecaseImpl<SR, STR, FU>
 where
-    PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
     STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
-    db_playlist_track_repository: PSR,
     db_track_repository: SR,
     db_track_tag_repository: STR,
     folder_usecase: FU,
 }
 
 #[async_trait]
-impl<PSR, SR, STR, FU> TrackUsecase for TrackUsecaseImpl<PSR, SR, STR, FU>
+impl<SR, STR, FU> TrackUsecase for TrackUsecaseImpl<SR, STR, FU>
 where
-    PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
     STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
@@ -134,9 +131,7 @@ where
         db_track_repository.delete(tx, track_id).await?;
 
         //プレイリストからこの曲を削除
-        self.db_playlist_track_repository
-            .delete_track_from_all_playlists(tx, track_id)
-            .await?;
+        playlist_track_repository::delete_track_from_all_playlists(tx, track_id).await?;
 
         //タグと曲の紐付けを削除
         self.db_track_tag_repository
@@ -181,9 +176,8 @@ where
     }
 }
 
-impl<PSR, SR, STR, FU> TrackUsecaseImpl<PSR, SR, STR, FU>
+impl<SR, STR, FU> TrackUsecaseImpl<SR, STR, FU>
 where
-    PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
     STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
