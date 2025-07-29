@@ -10,35 +10,6 @@ use crate::{
     track::track_repository,
 };
 
-/// 指定されたフォルダのIDを取得
-async fn get_id_by_path<'c>(
-    tx: &mut PgTransaction<'c>,
-    path: &LibraryDirectoryPath,
-) -> Result<Option<i32>> {
-    let row = sqlx::query!(
-        "SELECT id FROM folder_paths WHERE path = $1",
-        path.as_ref() as &str
-    )
-    .fetch_optional(&mut **tx)
-    .await?;
-    Ok(row.map(|r| r.id))
-}
-
-/// 指定されたフォルダの、親フォルダのIDを取得
-async fn get_parent<'c>(
-    tx: &mut PgTransaction<'c>,
-    folder_id: i32,
-) -> Result<Option<FolderIdMayRoot>> {
-    let opt_opt_i = sqlx::query_scalar!(
-        "SELECT parent_id FROM folder_paths WHERE id = $1",
-        folder_id
-    )
-    .fetch_optional(&mut **tx)
-    .await?;
-
-    Ok(opt_opt_i.map(FolderIdMayRoot::from))
-}
-
 /// 指定されたパスのフォルダが存在するか確認
 pub async fn is_exist_path<'c>(
     tx: &mut PgTransaction<'c>,
@@ -51,23 +22,6 @@ pub async fn is_exist_path<'c>(
     .fetch_one(&mut **tx)
     .await?;
     Ok(count > 0)
-}
-
-/// 指定されたフォルダに、子フォルダが存在するか確認
-///
-/// folder_idにRootを指定した場合、
-/// ルート直下に子フォルダがあるかを調べる
-async fn is_exist_in_folder<'c>(
-    tx: &mut PgTransaction<'c>,
-    folder_id: FolderIdMayRoot,
-) -> Result<bool> {
-    let folder_count = sqlx::query_scalar!(
-        r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE parent_id IS NOT DISTINCT FROM $1"#,
-        folder_id.into_db()
-    )
-    .fetch_one(&mut **tx)
-    .await?;
-    Ok(folder_count > 0)
 }
 
 /// フォルダのパス情報を登録
@@ -117,17 +71,6 @@ pub async fn register_not_exists<'c>(
     Ok(new_id)
 }
 
-/// フォルダを削除
-///
-/// # Arguments
-/// - folder_id: 削除対象のフォルダID
-async fn delete<'c>(tx: &mut PgTransaction<'c>, folder_id: i32) -> Result<()> {
-    sqlx::query!("DELETE FROM folder_paths WHERE id = $1", folder_id)
-        .execute(&mut **tx)
-        .await?;
-    Ok(())
-}
-
 /// フォルダに曲が含まれてない場合、削除する
 ///
 /// # Arguments
@@ -136,10 +79,16 @@ pub async fn delete_db_if_empty<'c>(
     tx: &mut PgTransaction<'c>,
     folder_path: &LibraryDirectoryPath,
 ) -> Result<()> {
+    let folder_id_opt = sqlx::query_scalar!(
+        "SELECT id FROM folder_paths WHERE path = $1",
+        folder_path.as_ref() as &str
+    )
+    .fetch_optional(&mut **tx)
+    .await?;
+
     //IDを取得
-    let folder_id = get_id_by_path(tx, folder_path)
-        .await?
-        .ok_or_else(|| DomainError::DbFolderPathNotFound(folder_path.to_owned()))?;
+    let folder_id =
+        folder_id_opt.ok_or_else(|| DomainError::DbFolderPathNotFound(folder_path.to_owned()))?;
 
     delete_db_if_empty_by_id(tx, folder_id).await
 }
@@ -157,17 +106,30 @@ async fn delete_db_if_empty_by_id<'c>(tx: &mut PgTransaction<'c>, folder_id: i32
 
     let parent_id_mr = {
         //他のフォルダが含まれる場合、削除せずに終了
-        if is_exist_in_folder(tx, FolderIdMayRoot::Folder(folder_id)).await? {
+        let other_folder_count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE parent_id = $1"#,
+            folder_id
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+        if other_folder_count > 0 {
             return Ok(());
         }
 
         //削除するフォルダ情報を取得
-        let parent_id_mr = get_parent(tx, folder_id)
-            .await?
-            .ok_or(DomainError::DbFolderIdNotFound(folder_id))?;
+        let opt_mr = sqlx::query_scalar!(
+            "SELECT parent_id FROM folder_paths WHERE id = $1",
+            folder_id
+        )
+        .fetch_optional(&mut **tx)
+        .await?
+        .map(FolderIdMayRoot::from);
+        let parent_id_mr = opt_mr.ok_or(DomainError::DbFolderIdNotFound(folder_id))?;
 
         //削除を実行
-        delete(tx, folder_id).await?;
+        sqlx::query!("DELETE FROM folder_paths WHERE id = $1", folder_id)
+            .execute(&mut **tx)
+            .await?;
 
         parent_id_mr
     };
