@@ -5,7 +5,7 @@ use murack_core_domain::{
     Error as DomainError,
     path::LibraryTrackPath,
     sync::{TrackSync, track_sync_repository},
-    track::usecase as track_usecase,
+    track::track_repository,
 };
 use sqlx::PgPool;
 
@@ -411,7 +411,7 @@ where
     async fn delete_track_db(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<()> {
         let mut tx = db_pool.begin().await?;
 
-        track_usecase::delete_track_db(&mut tx, track_path).await?;
+        track_repository::delete_track_db(&mut tx, track_path).await?;
 
         tx.commit().await?;
         Ok(())
