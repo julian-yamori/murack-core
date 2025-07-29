@@ -5,7 +5,7 @@ use murack_core_domain::{
     Error as DomainError,
     path::LibraryTrackPath,
     sync::{TrackSync, track_sync_repository},
-    track::TrackUsecase,
+    track::usecase as track_usecase,
 };
 use sqlx::PgPool;
 
@@ -31,21 +31,18 @@ pub trait ResolveExistance {
 }
 
 /// ResolveExistanceの実装
-pub struct ResolveExistanceImpl<'config, 'cui, CUI, SOS>
+pub struct ResolveExistanceImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    SOS: TrackUsecase + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
-    track_usecase: SOS,
 }
 
 #[async_trait]
-impl<'config, 'cui, CUI, SOS> ResolveExistance for ResolveExistanceImpl<'config, 'cui, CUI, SOS>
+impl<'config, 'cui, CUI> ResolveExistance for ResolveExistanceImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    SOS: TrackUsecase + Send + Sync,
 {
     /// データ存在系の解決処理
     ///
@@ -115,17 +112,12 @@ where
     }
 }
 
-impl<'config, 'cui, CUI, SOS> ResolveExistanceImpl<'config, 'cui, CUI, SOS>
+impl<'config, 'cui, CUI> ResolveExistanceImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    SOS: TrackUsecase + Send + Sync,
 {
-    pub fn new(config: &'config Config, cui: &'cui CUI, track_usecase: SOS) -> Self {
-        Self {
-            config,
-            cui,
-            track_usecase,
-        }
+    pub fn new(config: &'config Config, cui: &'cui CUI) -> Self {
+        Self { config, cui }
     }
 
     /// PCから読み込めない状態の解決
@@ -419,9 +411,7 @@ where
     async fn delete_track_db(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<()> {
         let mut tx = db_pool.begin().await?;
 
-        self.track_usecase
-            .delete_track_db(&mut tx, track_path)
-            .await?;
+        track_usecase::delete_track_db(&mut tx, track_path).await?;
 
         tx.commit().await?;
         Ok(())

@@ -3,7 +3,7 @@ use murack_core_domain::{
     Error as DomainError, NonEmptyString,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    track::{TrackUsecase, track_repository},
+    track::{track_repository, usecase as track_usecase},
 };
 use sqlx::PgPool;
 
@@ -12,26 +12,15 @@ use crate::{Config, Error};
 /// moveコマンド
 ///
 /// ライブラリ内で曲パスを移動
-pub struct CommandMove<'config, SS>
-where
-    SS: TrackUsecase,
-{
+pub struct CommandMove<'config> {
     args: CommandMoveArgs,
 
     config: &'config Config,
-    track_usecase: SS,
 }
 
-impl<'config, SS> CommandMove<'config, SS>
-where
-    SS: TrackUsecase,
-{
-    pub fn new(args: CommandMoveArgs, config: &'config Config, track_usecase: SS) -> Self {
-        Self {
-            args,
-            config,
-            track_usecase,
-        }
+impl<'config> CommandMove<'config> {
+    pub fn new(args: CommandMoveArgs, config: &'config Config) -> Self {
+        Self { args, config }
     }
 
     /// このコマンドを実行
@@ -51,9 +40,7 @@ where
 
         //DB内で移動
         let mut tx = db_pool.begin().await?;
-        self.track_usecase
-            .move_path_str_db(&mut tx, src_path_str, dest_path_str)
-            .await?;
+        track_usecase::move_path_str_db(&mut tx, src_path_str, dest_path_str).await?;
         tx.commit().await?;
 
         Ok(())

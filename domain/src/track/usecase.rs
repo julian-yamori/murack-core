@@ -1,8 +1,4 @@
-use std::path::Path;
-
 use anyhow::Result;
-use async_trait::async_trait;
-use mockall::mock;
 
 use crate::{
     Error, NonEmptyString,
@@ -15,177 +11,128 @@ use crate::{
 };
 use sqlx::PgTransaction;
 
-/// 曲関係のUsecase
-#[async_trait]
-pub trait TrackUsecase {
-    /// パス文字列を指定してDBの曲パスを移動
-    async fn move_path_str_db<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        src: &NonEmptyString,
-        dest: &NonEmptyString,
-    ) -> Result<()>;
+/// パス文字列を指定してDBの曲パスを移動
+pub async fn move_path_str_db<'c>(
+    tx: &mut PgTransaction<'c>,
+    src: &NonEmptyString,
+    dest: &NonEmptyString,
+) -> Result<()> {
+    // パス文字列がファイルかどうかを、完全一致するパスの曲が DB に存在するかどうかで判定
+    let src_as_track: LibraryTrackPath = src.clone().into();
+    let track_exists = track_repository::is_exist_path(tx, &src_as_track).await?;
 
-    /// DBから曲を削除
-    ///
-    /// # Arguments
-    /// - path: 削除する曲のパス
-    async fn delete_track_db<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        path: &LibraryTrackPath,
-    ) -> Result<()>;
+    if track_exists {
+        // 指定された 1 曲だけ処理
 
-    /// パス文字列を指定してDBから削除
-    ///
-    /// # Arguments
-    /// - path: 削除する曲のパス
-    ///
-    /// # Returns
-    /// 削除した曲のパスリスト
-    async fn delete_path_str_db<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        path_str: &NonEmptyString,
-    ) -> Result<Vec<LibraryTrackPath>>;
+        let dest_as_track: LibraryTrackPath = dest.clone().into();
+
+        move_track_db_unit(tx, &src_as_track, &dest_as_track).await?;
+    } else {
+        // 指定ディレクトリ以下の全ての曲について、パスの変更を反映
+
+        let src_as_dir: LibraryDirectoryPath = src.clone().into();
+        let dest_as_dir: LibraryDirectoryPath = dest.clone().into();
+
+        for src_track in track_repository::get_path_by_directory(tx, &src_as_dir).await? {
+            let dest_track = src_child_path_to_dest(&src_track, &src_as_dir, &dest_as_dir)?;
+            move_track_db_unit(tx, &src_track, &dest_track).await?;
+        }
+    };
+
+    Ok(())
 }
 
-/// TrackUsecaseの本実装
-#[derive(new)]
-pub struct TrackUsecaseImpl {}
+/// DBから曲を削除
+///
+/// # Arguments
+/// - path: 削除する曲のパス
+pub async fn delete_track_db<'c>(
+    tx: &mut PgTransaction<'c>,
+    path: &LibraryTrackPath,
+) -> Result<()> {
+    //ID情報を取得
+    let track_id = track_repository::get_id_by_path(tx, path)
+        .await?
+        .ok_or_else(|| Error::DbTrackNotFound(path.clone()))?;
 
-#[async_trait]
-impl TrackUsecase for TrackUsecaseImpl {
-    /// パス文字列を指定してDBの曲パスを移動
-    async fn move_path_str_db<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        src: &NonEmptyString,
-        dest: &NonEmptyString,
-    ) -> Result<()> {
-        // パス文字列がファイルかどうかを、完全一致するパスの曲が DB に存在するかどうかで判定
-        let src_as_track: LibraryTrackPath = src.clone().into();
-        let track_exists = track_repository::is_exist_path(tx, &src_as_track).await?;
+    //曲の削除
+    track_repository::delete(tx, track_id).await?;
 
-        if track_exists {
-            // 指定された 1 曲だけ処理
+    //プレイリストからこの曲を削除
+    playlist_track_repository::delete_track_from_all_playlists(tx, track_id).await?;
 
-            let dest_as_track: LibraryTrackPath = dest.clone().into();
+    //タグと曲の紐付けを削除
+    track_tag_repository::delete_all_tags_from_track(tx, track_id).await?;
 
-            self.move_track_db_unit(tx, &src_as_track, &dest_as_track)
-                .await?;
-        } else {
-            // 指定ディレクトリ以下の全ての曲について、パスの変更を反映
+    //他に使用する曲がなければ、アートワークを削除
+    artwork_repository::unregister_track_artworks(tx, track_id).await?;
 
-            let src_as_dir: LibraryDirectoryPath = src.clone().into();
-            let dest_as_dir: LibraryDirectoryPath = dest.clone().into();
+    //他に使用する曲がなければ、親フォルダを削除
+    if let Some(parent) = path.parent() {
+        folder_usecase::delete_db_if_empty(tx, &parent).await?;
+    };
 
-            for src_track in track_repository::get_path_by_directory(tx, &src_as_dir).await? {
-                let dest_track = src_child_path_to_dest(&src_track, &src_as_dir, &dest_as_dir)?;
-                self.move_track_db_unit(tx, &src_track, &dest_track).await?;
-            }
-        };
+    playlist_repository::reset_listuped_flag(tx).await?;
 
-        Ok(())
-    }
-
-    /// DBから曲を削除
-    ///
-    /// # Arguments
-    /// - path: 削除する曲のパス
-    async fn delete_track_db<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        path: &LibraryTrackPath,
-    ) -> Result<()> {
-        //ID情報を取得
-        let track_id = track_repository::get_id_by_path(tx, path)
-            .await?
-            .ok_or_else(|| Error::DbTrackNotFound(path.clone()))?;
-
-        //曲の削除
-        track_repository::delete(tx, track_id).await?;
-
-        //プレイリストからこの曲を削除
-        playlist_track_repository::delete_track_from_all_playlists(tx, track_id).await?;
-
-        //タグと曲の紐付けを削除
-        track_tag_repository::delete_all_tags_from_track(tx, track_id).await?;
-
-        //他に使用する曲がなければ、アートワークを削除
-        artwork_repository::unregister_track_artworks(tx, track_id).await?;
-
-        //他に使用する曲がなければ、親フォルダを削除
-        if let Some(parent) = path.parent() {
-            folder_usecase::delete_db_if_empty(tx, &parent).await?;
-        };
-
-        playlist_repository::reset_listuped_flag(tx).await?;
-
-        Ok(())
-    }
-
-    /// パス文字列を指定してDBから削除
-    ///
-    /// # Arguments
-    /// - path: 削除する曲のパス
-    ///
-    /// # Returns
-    /// 削除した曲のパスリスト
-    async fn delete_path_str_db<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        path_str: &NonEmptyString,
-    ) -> Result<Vec<LibraryTrackPath>> {
-        let track_path_list = track_repository::get_path_by_path_str(tx, path_str).await?;
-
-        for path in &track_path_list {
-            self.delete_track_db(tx, path).await?;
-        }
-
-        Ok(track_path_list)
-    }
+    Ok(())
 }
 
-impl TrackUsecaseImpl {
-    /// 曲一つのDB内パス移動処理
-    async fn move_track_db_unit<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        src: &LibraryTrackPath,
-        dest: &LibraryTrackPath,
-    ) -> Result<()> {
-        if track_repository::is_exist_path(tx, dest).await? {
-            return Err(Error::DbTrackAlreadyExists(dest.to_owned()).into());
-        }
+/// パス文字列を指定してDBから削除
+///
+/// # Arguments
+/// - path: 削除する曲のパス
+///
+/// # Returns
+/// 削除した曲のパスリスト
+pub async fn delete_path_str_db<'c>(
+    tx: &mut PgTransaction<'c>,
+    path_str: &NonEmptyString,
+) -> Result<Vec<LibraryTrackPath>> {
+    let track_path_list = track_repository::get_path_by_path_str(tx, path_str).await?;
 
-        //移動先の親フォルダを登録してIDを取得
-        let dest_parent_opt = dest.parent();
-        let new_folder_id = match dest_parent_opt {
-            None => FolderIdMayRoot::Root,
-            Some(dest_parent) => {
-                let id = folder_repository::register_not_exists(tx, &dest_parent).await?;
-                FolderIdMayRoot::Folder(id)
-            }
-        };
-
-        //曲のパス情報を変更
-        track_repository::update_path(tx, src, dest, new_folder_id).await?;
-
-        //子要素がなくなった親フォルダを削除
-        if let Some(parent) = src.parent() {
-            folder_usecase::delete_db_if_empty(tx, &parent).await?;
-        }
-
-        //パスを使用したフィルタがあるかもしれないので、
-        //プレイリストのリストアップ済みフラグを解除
-        playlist_repository::reset_listuped_flag(tx).await?;
-        //プレイリストファイル内のパスだけ変わるので、
-        //DAP変更フラグを立てる
-        playlist_repository::set_dap_change_flag_all(tx, true).await?;
-
-        Ok(())
+    for path in &track_path_list {
+        delete_track_db(tx, path).await?;
     }
+
+    Ok(track_path_list)
+}
+
+/// 曲一つのDB内パス移動処理
+async fn move_track_db_unit<'c>(
+    tx: &mut PgTransaction<'c>,
+    src: &LibraryTrackPath,
+    dest: &LibraryTrackPath,
+) -> Result<()> {
+    if track_repository::is_exist_path(tx, dest).await? {
+        return Err(Error::DbTrackAlreadyExists(dest.to_owned()).into());
+    }
+
+    //移動先の親フォルダを登録してIDを取得
+    let dest_parent_opt = dest.parent();
+    let new_folder_id = match dest_parent_opt {
+        None => FolderIdMayRoot::Root,
+        Some(dest_parent) => {
+            let id = folder_repository::register_not_exists(tx, &dest_parent).await?;
+            FolderIdMayRoot::Folder(id)
+        }
+    };
+
+    //曲のパス情報を変更
+    track_repository::update_path(tx, src, dest, new_folder_id).await?;
+
+    //子要素がなくなった親フォルダを削除
+    if let Some(parent) = src.parent() {
+        folder_usecase::delete_db_if_empty(tx, &parent).await?;
+    }
+
+    //パスを使用したフィルタがあるかもしれないので、
+    //プレイリストのリストアップ済みフラグを解除
+    playlist_repository::reset_listuped_flag(tx).await?;
+    //プレイリストファイル内のパスだけ変わるので、
+    //DAP変更フラグを立てる
+    playlist_repository::set_dap_change_flag_all(tx, true).await?;
+
+    Ok(())
 }
 
 /// move コマンドで指定された src_dir の子の src_track から、dest_dir の子として移動する先のパスを取得
@@ -213,62 +160,6 @@ fn src_child_path_to_dest(
     s.push_str(relative_path);
 
     Ok(s.into())
-}
-
-#[derive(Default)]
-pub struct MockTrackUsecase {
-    pub inner: MockTrackUsecaseInner,
-}
-#[async_trait]
-impl TrackUsecase for MockTrackUsecase {
-    async fn move_path_str_db<'c>(
-        &self,
-        _db: &mut PgTransaction<'c>,
-        src: &NonEmptyString,
-        dest: &NonEmptyString,
-    ) -> Result<()> {
-        self.inner.move_path_str_db(src, dest)
-    }
-
-    async fn delete_track_db<'c>(
-        &self,
-        _db: &mut PgTransaction<'c>,
-        path: &LibraryTrackPath,
-    ) -> Result<()> {
-        self.inner.delete_track_db(path)
-    }
-
-    async fn delete_path_str_db<'c>(
-        &self,
-        _db: &mut PgTransaction<'c>,
-        path_str: &NonEmptyString,
-    ) -> Result<Vec<LibraryTrackPath>> {
-        self.inner.delete_path_str_db(path_str)
-    }
-}
-mock! {
-    pub TrackUsecaseInner {
-        pub fn move_path_str_db(
-            &self,
-            src: &NonEmptyString,
-            dest: &NonEmptyString,
-        ) -> Result<()>;
-
-        pub fn delete_track_pc(&self, pc_lib: &Path, track_path: &LibraryTrackPath) -> Result<()>;
-
-        pub fn delete_track_dap(&self, dap_lib: &Path, track_path: &LibraryTrackPath) -> Result<()>;
-
-        pub fn delete_track_db(&self, path: &LibraryTrackPath) -> Result<()>;
-
-        pub fn delete_path_str_pc(&self, pc_lib: &Path, path_str: &NonEmptyString) -> Result<()>;
-
-        pub fn delete_path_str_dap(&self, dap_lib: &Path, path_str: &NonEmptyString) -> Result<()>;
-
-        pub fn delete_path_str_db(
-            &self,
-            path_str: &NonEmptyString,
-        ) -> Result<Vec<LibraryTrackPath>>;
-    }
 }
 
 #[cfg(test)]

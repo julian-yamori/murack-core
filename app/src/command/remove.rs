@@ -1,5 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{Error as DomainError, NonEmptyString, track::TrackUsecase};
+use murack_core_domain::{Error as DomainError, NonEmptyString, track::usecase as track_usecase};
 use sqlx::PgPool;
 
 use crate::{Config, Error, cui::Cui};
@@ -7,34 +7,21 @@ use crate::{Config, Error, cui::Cui};
 /// removeコマンド
 ///
 /// ライブラリから曲を削除
-pub struct CommandRemove<'config, 'cui, CUI, SS>
+pub struct CommandRemove<'config, 'cui, CUI>
 where
     CUI: Cui,
-    SS: TrackUsecase,
 {
     args: CommandRemoveArgs,
     config: &'config Config,
     cui: &'cui CUI,
-    track_usecase: SS,
 }
 
-impl<'config, 'cui, CUI, SS> CommandRemove<'config, 'cui, CUI, SS>
+impl<'config, 'cui, CUI> CommandRemove<'config, 'cui, CUI>
 where
     CUI: Cui,
-    SS: TrackUsecase,
 {
-    pub fn new(
-        args: CommandRemoveArgs,
-        config: &'config Config,
-        cui: &'cui CUI,
-        track_usecase: SS,
-    ) -> Self {
-        Self {
-            args,
-            config,
-            cui,
-            track_usecase,
-        }
+    pub fn new(args: CommandRemoveArgs, config: &'config Config, cui: &'cui CUI) -> Self {
+        Self { args, config, cui }
     }
 
     /// このコマンドを実行
@@ -49,10 +36,7 @@ where
     /// DBから削除
     pub async fn remove_db(&self, db_pool: &PgPool) -> Result<()> {
         let mut tx = db_pool.begin().await?;
-        let track_path_list = self
-            .track_usecase
-            .delete_path_str_db(&mut tx, &self.args.path)
-            .await?;
+        let track_path_list = track_usecase::delete_path_str_db(&mut tx, &self.args.path).await?;
         tx.commit().await?;
 
         if track_path_list.is_empty() {
