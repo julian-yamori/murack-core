@@ -8,8 +8,8 @@ fn target() -> FolderUsecaseImpl<DbFolderRepositoryImpl, DbTrackRepositoryImpl> 
     FolderUsecaseImpl::new(DbFolderRepositoryImpl::new(), DbTrackRepositoryImpl::new())
 }
 
-// delete_db_if_empty_by_id 関数のテスト
-mod test_delete_db_if_empty_by_id {
+// delete_db_if_empty 関数のテスト
+mod delete_db_if_empty {
     use super::*;
 
     #[sqlx::test(
@@ -20,34 +20,31 @@ mod test_delete_db_if_empty_by_id {
         let target = target();
         let mut tx = pool.begin().await?;
 
-        // フォルダ15を削除実行
-        target.delete_db_if_empty_by_id(&mut tx, 15).await?;
+        // "music/empty/" フォルダを削除実行
+        target
+            .delete_db_if_empty(&mut tx, &"music/empty/".to_string().try_into()?)
+            .await?;
 
-        // フォルダ15が削除されたことを確認
-        let folder_15_count = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE id = $1"#,
-            15
+        // "music/empty/" フォルダが削除されたことを確認
+        let target_id = sqlx::query_scalar!(
+            "SELECT id FROM folder_paths WHERE path = $1",
+            "music/empty/"
         )
-        .fetch_one(&mut *tx)
+        .fetch_optional(&mut *tx)
         .await?;
-        assert_eq!(folder_15_count, 0);
+        assert!(target_id.is_none());
 
-        // フォルダ4は削除されていないことを確認（曲があるため）
-        let folder_4_count = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE id = $1"#,
-            4
-        )
-        .fetch_one(&mut *tx)
-        .await?;
-        assert_eq!(folder_4_count, 1);
+        // "music/" フォルダは削除されていないことを確認（曲があるため）
+        let parent_id =
+            sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", "music/")
+                .fetch_optional(&mut *tx)
+                .await?;
+        assert!(parent_id.is_some());
 
         // 曲は残っていることを確認
-        let track_count = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id = $1"#,
-            4
-        )
-        .fetch_one(&mut *tx)
-        .await?;
+        let track_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM tracks"#,)
+            .fetch_one(&mut *tx)
+            .await?;
         assert_eq!(track_count, 2);
 
         Ok(())
@@ -61,26 +58,26 @@ mod test_delete_db_if_empty_by_id {
         let target = target();
         let mut tx = pool.begin().await?;
 
-        // フォルダ15を削除実行（サブフォルダがあるので削除されないはず）
-        target.delete_db_if_empty_by_id(&mut tx, 15).await?;
+        // "music/" フォルダを削除実行（サブフォルダがあるので削除されないはず）
+        target
+            .delete_db_if_empty(&mut tx, &"music/".to_string().try_into()?)
+            .await?;
 
-        // フォルダ15が削除されていないことを確認
-        let folder_15_count = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE id = $1"#,
-            15
-        )
-        .fetch_one(&mut *tx)
-        .await?;
-        assert_eq!(folder_15_count, 1);
+        // "music/" フォルダが削除されていないことを確認
+        let target_id =
+            sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", "music/")
+                .fetch_optional(&mut *tx)
+                .await?;
+        assert!(target_id.is_some());
 
         // サブフォルダも残っていることを確認
-        let subfolder_count = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE id = $1"#,
-            20
+        let child_id = sqlx::query_scalar!(
+            "SELECT id FROM folder_paths WHERE path = $1",
+            "music/subfolder/"
         )
-        .fetch_one(&mut *tx)
+        .fetch_optional(&mut *tx)
         .await?;
-        assert_eq!(subfolder_count, 1);
+        assert!(child_id.is_some());
 
         Ok(())
     }
@@ -93,23 +90,23 @@ mod test_delete_db_if_empty_by_id {
         let target = target();
         let mut tx = pool.begin().await?;
 
-        // フォルダ15を削除実行
+        // "music/" フォルダを削除実行
         target.delete_db_if_empty_by_id(&mut tx, 15).await?;
 
-        // フォルダ15が削除されたことを確認
-        let folder_15_count = sqlx::query_scalar!(
-            r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE id = $1"#,
-            15
-        )
-        .fetch_one(&mut *tx)
-        .await?;
-        assert_eq!(folder_15_count, 0);
-
-        // 無関係なフォルダは残っていることを確認
-        let remain_id =
-            sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = 'otherfolder/'")
+        // "music/" フォルダが削除されたことを確認
+        let target_id =
+            sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = $1", "music/")
                 .fetch_optional(&mut *tx)
                 .await?;
+        assert!(target_id.is_none());
+
+        // 無関係なフォルダは残っていることを確認
+        let remain_id = sqlx::query_scalar!(
+            "SELECT id FROM folder_paths WHERE path = $1",
+            "otherfolder/"
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
         assert!(remain_id.is_some());
 
         Ok(())
