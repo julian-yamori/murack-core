@@ -18,6 +18,7 @@ use crate::{
     Config,
     command::check::domain::{CheckIssueSummary, check_usecase},
     cui::Cui,
+    data_file,
 };
 
 pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP>
@@ -96,10 +97,8 @@ where
         //PCからリストアップ
         cui_outln!(cui, "PCの検索中...")?;
         let pc_list = match &self.args.path {
-            Some(path_str) => {
-                murack_core_data_file::search_by_lib_path(&self.config.pc_lib, path_str)?
-            }
-            None => murack_core_data_file::search_all(&self.config.pc_lib)?,
+            Some(path_str) => data_file::search_by_lib_path(&self.config.pc_lib, path_str)?,
+            None => data_file::search_all(&self.config.pc_lib)?,
         };
         for path in pc_list {
             set.insert(path);
@@ -108,10 +107,8 @@ where
         //DAPからリストアップ
         cui_outln!(cui, "DAPの検索中...")?;
         let dap_list = match &self.args.path {
-            Some(path_str) => {
-                murack_core_data_file::search_by_lib_path(&self.config.dap_lib, path_str)?
-            }
-            None => murack_core_data_file::search_all(&self.config.dap_lib)?,
+            Some(path_str) => data_file::search_by_lib_path(&self.config.dap_lib, path_str)?,
+            None => data_file::search_all(&self.config.dap_lib)?,
         };
         for path in dap_list {
             set.insert(path);

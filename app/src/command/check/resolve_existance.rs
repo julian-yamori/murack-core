@@ -10,7 +10,7 @@ use murack_core_domain::{
 use sqlx::PgPool;
 
 use super::{ResolveFileExistanceResult, messages};
-use crate::{Config, command::check::domain::CheckIssueSummary, cui::Cui, db_common};
+use crate::{Config, command::check::domain::CheckIssueSummary, cui::Cui, data_file, db_common};
 
 /// データ存在系の解決処理
 #[automock]
@@ -57,8 +57,7 @@ where
         track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         //PCデータ読み込み
-        let pc_read_result =
-            murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path);
+        let pc_read_result = data_file::read_track_sync(&self.config.pc_lib, track_path);
         let pc_data_opt = match pc_read_result {
             Ok(d) => Some(d),
             Err(e) => match e.downcast_ref() {
@@ -167,7 +166,7 @@ where
         match input {
             //PCからDAPへコピー
             '1' => {
-                murack_core_data_file::copy_track_over_lib(
+                data_file::copy_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,
@@ -211,8 +210,8 @@ where
             }
             //PCとDAPからファイルを削除
             '2' => {
-                murack_core_data_file::trash_track(&self.config.pc_lib, track_path)?;
-                murack_core_data_file::delete_track(&self.config.dap_lib, track_path)?;
+                data_file::trash_track(&self.config.pc_lib, track_path)?;
+                data_file::delete_track(&self.config.dap_lib, track_path)?;
                 Ok(ResolveFileExistanceResult::Deleted)
             }
             '0' => Ok(ResolveFileExistanceResult::UnResolved),
@@ -250,7 +249,7 @@ where
             '1' => {
                 db_common::add_track_to_db(db_pool, track_path, pc_track).await?;
 
-                murack_core_data_file::copy_track_over_lib(
+                data_file::copy_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,
@@ -260,7 +259,7 @@ where
             }
             //PCからファイルを削除
             '2' => {
-                murack_core_data_file::trash_track(&self.config.pc_lib, track_path)?;
+                data_file::trash_track(&self.config.pc_lib, track_path)?;
 
                 Ok(ResolveFileExistanceResult::Deleted)
             }
@@ -295,7 +294,7 @@ where
         match input {
             //DAPからPCにファイルをコピー
             '1' => {
-                murack_core_data_file::copy_track_over_lib(
+                data_file::copy_track_over_lib(
                     &self.config.dap_lib,
                     &self.config.pc_lib,
                     track_path,
@@ -307,7 +306,7 @@ where
             '2' => {
                 self.delete_track_db(db_pool, track_path).await?;
 
-                murack_core_data_file::delete_track(&self.config.dap_lib, track_path)?;
+                data_file::delete_track(&self.config.dap_lib, track_path)?;
 
                 Ok(ResolveFileExistanceResult::Deleted)
             }
@@ -376,21 +375,21 @@ where
             //DAPからPCにファイルをコピーし、DBにも追加
             '1' => {
                 //DAPからPCにコピー
-                murack_core_data_file::copy_track_over_lib(
+                data_file::copy_track_over_lib(
                     &self.config.dap_lib,
                     &self.config.pc_lib,
                     track_path,
                 )?;
 
                 //DAPからコピーしたPCデータを読み込む
-                let mut pc_track =
-                    match murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path) {
-                        Ok(d) => d,
-                        Err(e) => {
-                            cui_outln!(cui, "曲ファイルのデータの読み込みに失敗しました。\n{}", e)?;
-                            return Ok(ResolveFileExistanceResult::UnResolved);
-                        }
-                    };
+                let mut pc_track = match data_file::read_track_sync(&self.config.pc_lib, track_path)
+                {
+                    Ok(d) => d,
+                    Err(e) => {
+                        cui_outln!(cui, "曲ファイルのデータの読み込みに失敗しました。\n{}", e)?;
+                        return Ok(ResolveFileExistanceResult::UnResolved);
+                    }
+                };
 
                 //DBに追加
                 db_common::add_track_to_db(db_pool, track_path, &mut pc_track).await?;
@@ -398,7 +397,7 @@ where
             }
             //DAPからファイルを削除
             '2' => {
-                murack_core_data_file::delete_track(&self.config.dap_lib, track_path)?;
+                data_file::delete_track(&self.config.dap_lib, track_path)?;
                 Ok(ResolveFileExistanceResult::Deleted)
             }
             '0' => Ok(ResolveFileExistanceResult::UnResolved),

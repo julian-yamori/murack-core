@@ -7,6 +7,7 @@ use crate::{
     Config,
     command::check::domain::{CheckIssueSummary, check_usecase},
     cui::Cui,
+    data_file,
 };
 
 /// PC・DAP間の齟齬の解決処理
@@ -70,7 +71,7 @@ where
         match input {
             //PCからDAPへ上書き
             '1' => {
-                murack_core_data_file::overwrite_track_over_lib(
+                data_file::overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,

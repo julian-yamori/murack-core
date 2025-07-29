@@ -12,6 +12,7 @@ mod config;
 pub use config::Config;
 
 pub mod command;
+pub mod data_file;
 pub mod db_common;
 
 #[cfg(test)]

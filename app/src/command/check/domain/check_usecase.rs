@@ -13,6 +13,8 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
+use crate::data_file;
+
 use super::CheckIssueSummary;
 
 /// 曲のチェックを行い、問題の簡易情報リストを取得
@@ -33,7 +35,7 @@ pub async fn listup_issue_summary(
     let mut issue_list = Vec::new();
 
     //PCデータ読み込み
-    let pc_data_opt = match murack_core_data_file::read_track_sync(pc_lib, track_path) {
+    let pc_data_opt = match data_file::read_track_sync(pc_lib, track_path) {
         Ok(d) => Some(d),
         Err(e) => match e.downcast_ref() {
             Some(Error::FileTrackNotFound { .. }) => {

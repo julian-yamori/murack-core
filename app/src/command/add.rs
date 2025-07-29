@@ -2,7 +2,7 @@ use anyhow::Result;
 use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
 use sqlx::PgPool;
 
-use crate::{Config, Error, cui::Cui, db_common};
+use crate::{Config, Error, cui::Cui, data_file, db_common};
 
 /// addコマンド
 ///
@@ -28,8 +28,7 @@ where
     /// このコマンドを実行
     pub async fn run(&self, db_pool: &PgPool) -> Result<()> {
         //指定されたパスから音声ファイルを検索
-        let path_list =
-            murack_core_data_file::search_by_lib_path(&self.config.pc_lib, &self.args.path)?;
+        let path_list = data_file::search_by_lib_path(&self.config.pc_lib, &self.args.path)?;
 
         let file_count = path_list.len();
         if file_count == 0 {
@@ -59,17 +58,13 @@ where
     /// - entry_date: 登録日
     async fn unit_add(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<()> {
         //PCファイル情報読み込み
-        let mut pc_track = murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path)?;
+        let mut pc_track = data_file::read_track_sync(&self.config.pc_lib, track_path)?;
 
         //DBに登録
         db_common::add_track_to_db(db_pool, track_path, &mut pc_track).await?;
 
         //PCからDAPにコピー
-        murack_core_data_file::copy_track_over_lib(
-            &self.config.pc_lib,
-            &self.config.dap_lib,
-            track_path,
-        )?;
+        data_file::copy_track_over_lib(&self.config.pc_lib, &self.config.dap_lib, track_path)?;
 
         Ok(())
     }

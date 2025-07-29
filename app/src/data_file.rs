@@ -1,4 +1,5 @@
 //! ファイルシステムのライブラリフォルダ内の曲データ取扱
+//! (旧 murack-core-data-file クレート)
 
 mod error;
 pub use error::Error;

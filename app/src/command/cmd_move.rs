@@ -9,7 +9,7 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
-use crate::{Config, Error};
+use crate::{Config, Error, data_file};
 
 /// moveコマンド
 ///
@@ -35,10 +35,10 @@ impl<'config> CommandMove<'config> {
         let dest_path_str = &self.args.dest_path;
 
         //PC内で移動
-        murack_core_data_file::move_path_str(&self.config.pc_lib, src_path_str, dest_path_str)?;
+        data_file::move_path_str(&self.config.pc_lib, src_path_str, dest_path_str)?;
 
         //DAP内で移動
-        murack_core_data_file::move_path_str(&self.config.dap_lib, src_path_str, dest_path_str)?;
+        data_file::move_path_str(&self.config.dap_lib, src_path_str, dest_path_str)?;
 
         //DB内で移動
         let mut tx = db_pool.begin().await?;
@@ -53,7 +53,7 @@ impl<'config> CommandMove<'config> {
         let pc_lib = &self.config.pc_lib;
         let dest_path_str = &self.args.dest_path;
 
-        if murack_core_data_file::is_exist_path_str(pc_lib, dest_path_str)? {
+        if data_file::is_exist_path_str(pc_lib, dest_path_str)? {
             return Err(DomainError::FilePathStrAlreadyExists {
                 lib_root: pc_lib.clone(),
                 path_str: dest_path_str.clone(),
@@ -68,7 +68,7 @@ impl<'config> CommandMove<'config> {
         let dap_lib = &self.config.dap_lib;
         let dest_path_str = &self.args.dest_path;
 
-        if murack_core_data_file::is_exist_path_str(dap_lib, dest_path_str)? {
+        if data_file::is_exist_path_str(dap_lib, dest_path_str)? {
             return Err(DomainError::FilePathStrAlreadyExists {
                 lib_root: dap_lib.clone(),
                 path_str: dest_path_str.clone(),

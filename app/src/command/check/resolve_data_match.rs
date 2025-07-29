@@ -11,7 +11,7 @@ use murack_core_domain::{
 use sqlx::PgPool;
 
 use super::{TrackItemConflict, messages};
-use crate::{Config, command::check::domain::check_usecase, cui::Cui};
+use crate::{Config, command::check::domain::check_usecase, cui::Cui, data_file};
 
 /// データ内容同一性についての解決処理
 #[automock]
@@ -44,7 +44,7 @@ where
     /// 次の解決処理へ継続するか
     async fn resolve(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<bool> {
         //データ読み込み
-        let mut pc_data = murack_core_data_file::read_track_sync(&self.config.pc_lib, track_path)?;
+        let mut pc_data = data_file::read_track_sync(&self.config.pc_lib, track_path)?;
         let mut db_data = self.load_db_track(db_pool, track_path).await?;
 
         if !self
@@ -134,7 +134,7 @@ where
                 self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                murack_core_data_file::overwrite_track_over_lib(
+                data_file::overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,
@@ -226,7 +226,7 @@ where
                 self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                murack_core_data_file::overwrite_track_over_lib(
+                data_file::overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,
@@ -304,7 +304,7 @@ where
                 self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
-                murack_core_data_file::overwrite_track_over_lib(
+                data_file::overwrite_track_over_lib(
                     &self.config.pc_lib,
                     &self.config.dap_lib,
                     track_path,
@@ -403,7 +403,7 @@ where
         track_path: &LibraryTrackPath,
         pc_track: &TrackSync,
     ) -> Result<()> {
-        murack_core_data_file::overwrite_track_sync(&self.config.pc_lib, track_path, pc_track)?;
+        data_file::overwrite_track_sync(&self.config.pc_lib, track_path, pc_track)?;
 
         Ok(())
     }

@@ -4,7 +4,7 @@ use murack_core_domain::{
 };
 use sqlx::{PgPool, PgTransaction};
 
-use crate::{Config, Error, cui::Cui};
+use crate::{Config, Error, cui::Cui, data_file};
 
 /// removeコマンド
 ///
@@ -62,7 +62,7 @@ where
     pub fn remove_dap(&self) -> Result<()> {
         cui_outln!(self.cui, "DAPからの削除中...")?;
 
-        match murack_core_data_file::delete_path_str(&self.config.dap_lib, &self.args.path) {
+        match data_file::delete_path_str(&self.config.dap_lib, &self.args.path) {
             Ok(_) => Ok(()),
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
@@ -79,7 +79,7 @@ where
     pub fn remove_pc(&self) -> Result<()> {
         cui_outln!(self.cui, "PCからの削除中...")?;
 
-        match murack_core_data_file::trash_path_str(&self.config.pc_lib, &self.args.path) {
+        match data_file::trash_path_str(&self.config.pc_lib, &self.args.path) {
             Ok(_) => Ok(()),
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
