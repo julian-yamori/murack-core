@@ -1,4 +1,5 @@
--- Test fixture for test_delete_db_if_empty_trans_once
+-- Test fixture for test_delete_db_if_empty_by_id::parent_has_tracks()
+--
 -- This sets up the database state where:
 -- - Folder 4 exists and contains tracks (should not be deleted)
 -- - Folder 15 exists as a child of folder 4, empty (should be deleted)
