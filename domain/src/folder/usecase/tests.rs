@@ -105,11 +105,12 @@ mod test_delete_db_if_empty_by_id {
         .await?;
         assert_eq!(folder_15_count, 0);
 
-        // 全フォルダ数が0になったことを確認
-        let total_count = sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM folder_paths"#)
-            .fetch_one(&mut *tx)
-            .await?;
-        assert_eq!(total_count, 0);
+        // 無関係なフォルダは残っていることを確認
+        let remain_id =
+            sqlx::query_scalar!("SELECT id FROM folder_paths WHERE path = 'otherfolder/'")
+                .fetch_optional(&mut *tx)
+                .await?;
+        assert!(remain_id.is_some());
 
         Ok(())
     }

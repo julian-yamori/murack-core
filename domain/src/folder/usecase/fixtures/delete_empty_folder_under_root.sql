@@ -5,4 +5,5 @@
 -- - Parent is Root, so recursion stops after deleting folder 15
 
 INSERT INTO folder_paths (id, path, name, parent_id) VALUES 
-    (15, 'music/', 'music', NULL);
+    (15, 'music/', 'music', NULL),
+    (25, 'otherfolder/', 'otherfolder', NULL);
