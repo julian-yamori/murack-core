@@ -5,7 +5,7 @@ use murack_core_domain::{
     Error as DomainError,
     artwork::{TrackArtwork, artwork_repository},
     path::LibraryTrackPath,
-    sync::{DbTrackSync, DbTrackSyncRepository, TrackSync},
+    sync::{DbTrackSync, TrackSync, track_sync_repository},
     track::TrackItemKind,
 };
 use sqlx::PgPool;
@@ -25,21 +25,18 @@ pub trait ResolveDataMatch {
 }
 
 /// ResolveDataMatchの実装
-pub struct ResolveDataMatchImpl<'config, 'cui, CUI, SSR>
+pub struct ResolveDataMatchImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    SSR: DbTrackSyncRepository + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
-    db_track_sync_repository: SSR,
 }
 
 #[async_trait]
-impl<'config, 'cui, CUI, SSR> ResolveDataMatch for ResolveDataMatchImpl<'config, 'cui, CUI, SSR>
+impl<'config, 'cui, CUI> ResolveDataMatch for ResolveDataMatchImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    SSR: DbTrackSyncRepository + Send + Sync,
 {
     /// データ内容同一性についての解決処理
     ///
@@ -75,17 +72,12 @@ where
     }
 }
 
-impl<'config, 'cui, CUI, SSR> ResolveDataMatchImpl<'config, 'cui, CUI, SSR>
+impl<'config, 'cui, CUI> ResolveDataMatchImpl<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    SSR: DbTrackSyncRepository + Send + Sync,
 {
-    pub fn new(config: &'config Config, cui: &'cui CUI, db_track_sync_repository: SSR) -> Self {
-        Self {
-            config,
-            cui,
-            db_track_sync_repository,
-        }
+    pub fn new(config: &'config Config, cui: &'cui CUI) -> Self {
+        Self { config, cui }
     }
 
     /// PC・DB間の、曲情報(編集可能部)の齟齬の解決
@@ -386,8 +378,7 @@ where
     ) -> Result<DbTrackSync> {
         let mut tx = db_pool.begin().await?;
 
-        self.db_track_sync_repository
-            .get_by_path(&mut tx, track_path)
+        track_sync_repository::get_by_path(&mut tx, track_path)
             .await?
             .ok_or_else(|| DomainError::DbTrackNotFound(track_path.clone()).into())
     }
@@ -400,9 +391,7 @@ where
     ) -> Result<()> {
         let mut tx = db_pool.begin().await?;
 
-        self.db_track_sync_repository
-            .save_exclude_artwork(&mut tx, db_track)
-            .await?;
+        track_sync_repository::save_exclude_artwork(&mut tx, db_track).await?;
 
         tx.commit().await?;
         Ok(())

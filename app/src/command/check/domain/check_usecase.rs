@@ -8,7 +8,7 @@ use anyhow::Result;
 use murack_core_domain::{
     Error,
     path::LibraryTrackPath,
-    sync::{DbTrackSyncRepository, TrackSync},
+    sync::{TrackSync, track_sync_repository},
     track::TrackItemKind,
 };
 use sqlx::PgPool;
@@ -23,17 +23,13 @@ use super::CheckIssueSummary;
 /// DAPのファイル内容を無視するか。
 /// trueなら、PC間とDAP間でファイル内容を比較しない。
 /// (一致として扱う)
-pub async fn listup_issue_summary<SSR>(
+pub async fn listup_issue_summary(
     db_pool: &PgPool,
     pc_lib: &Path,
     dap_lib: &Path,
     track_path: &LibraryTrackPath,
     ignore_dap_content: bool,
-    db_track_sync_repository: &SSR,
-) -> Result<Vec<CheckIssueSummary>>
-where
-    SSR: DbTrackSyncRepository + Sync + Send,
-{
+) -> Result<Vec<CheckIssueSummary>> {
     let mut issue_list = Vec::new();
 
     //PCデータ読み込み
@@ -53,9 +49,7 @@ where
 
     //DBデータ読み込み
     let mut tx = db_pool.begin().await?;
-    let db_data_opt = db_track_sync_repository
-        .get_by_path(&mut tx, track_path)
-        .await?;
+    let db_data_opt = track_sync_repository::get_by_path(&mut tx, track_path).await?;
     tx.commit().await?;
 
     if db_data_opt.is_none() {

@@ -5,10 +5,9 @@ use chrono::NaiveDate;
 use sqlx::PgPool;
 
 use super::*;
-use crate::sync::DbTrackSyncRepositoryImpl;
 
-fn target() -> SyncUsecaseImpl<DbTrackSyncRepositoryImpl> {
-    SyncUsecaseImpl::new(DbTrackSyncRepositoryImpl::new())
+fn target() -> SyncUsecaseImpl {
+    SyncUsecaseImpl::new()
 }
 
 // register_db 関数のテスト

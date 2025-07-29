@@ -4,7 +4,7 @@ use mockall::automock;
 use murack_core_domain::{
     Error as DomainError,
     path::LibraryTrackPath,
-    sync::{DbTrackSyncRepository, SyncUsecase, TrackSync},
+    sync::{SyncUsecase, TrackSync, track_sync_repository},
     track::TrackUsecase,
 };
 use sqlx::PgPool;
@@ -31,28 +31,25 @@ pub trait ResolveExistance {
 }
 
 /// ResolveExistanceの実装
-pub struct ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS, SSR>
+pub struct ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS>
 where
     CUI: Cui + Send + Sync,
     SOS: TrackUsecase + Send + Sync,
     SYS: SyncUsecase + Send + Sync,
-    SSR: DbTrackSyncRepository + Send + Sync,
 {
     config: &'config Config,
     cui: &'cui CUI,
     track_usecase: SOS,
     sync_usecase: SYS,
-    db_track_sync_repository: SSR,
 }
 
 #[async_trait]
-impl<'config, 'cui, CUI, SOS, SYS, SSR> ResolveExistance
-    for ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS, SSR>
+impl<'config, 'cui, CUI, SOS, SYS> ResolveExistance
+    for ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS>
 where
     CUI: Cui + Send + Sync,
     SOS: TrackUsecase + Send + Sync,
     SYS: SyncUsecase + Send + Sync,
-    SSR: DbTrackSyncRepository + Send + Sync,
 {
     /// データ存在系の解決処理
     ///
@@ -90,9 +87,7 @@ where
         let db_data_opt = {
             let mut tx = db_pool.begin().await?;
 
-            self.db_track_sync_repository
-                .get_by_path(&mut tx, track_path)
-                .await?
+            track_sync_repository::get_by_path(&mut tx, track_path).await?
         };
 
         //DAP存在確認
@@ -124,26 +119,23 @@ where
     }
 }
 
-impl<'config, 'cui, CUI, SOS, SYS, SSR> ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS, SSR>
+impl<'config, 'cui, CUI, SOS, SYS> ResolveExistanceImpl<'config, 'cui, CUI, SOS, SYS>
 where
     CUI: Cui + Send + Sync,
     SOS: TrackUsecase + Send + Sync,
     SYS: SyncUsecase + Send + Sync,
-    SSR: DbTrackSyncRepository + Send + Sync,
 {
     pub fn new(
         config: &'config Config,
         cui: &'cui CUI,
         track_usecase: SOS,
         sync_usecase: SYS,
-        db_track_sync_repository: SSR,
     ) -> Self {
         Self {
             config,
             cui,
             track_usecase,
             sync_usecase,
-            db_track_sync_repository,
         }
     }
 

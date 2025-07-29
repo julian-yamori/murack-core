@@ -6,11 +6,12 @@ use async_trait::async_trait;
 use mockall::mock;
 use sqlx::PgTransaction;
 
-use super::{DbTrackSyncRepository, TrackSync};
+use super::TrackSync;
 use crate::{
     folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
     playlist::playlist_repository,
+    sync::track_sync_repository,
 };
 
 /// DB・PC連携のUseCase
@@ -32,17 +33,10 @@ pub trait SyncUsecase {
 
 /// SyncUsecaseの本実装
 #[derive(new)]
-pub struct SyncUsecaseImpl<SSR>
-where
-    SSR: DbTrackSyncRepository + Sync + Send,
-{
-    db_track_sync_repository: SSR,
-}
+pub struct SyncUsecaseImpl {}
+
 #[async_trait]
-impl<SSR> SyncUsecase for SyncUsecaseImpl<SSR>
-where
-    SSR: DbTrackSyncRepository + Sync + Send,
-{
+impl SyncUsecase for SyncUsecaseImpl {
     /// DBに曲データを新規登録する
     ///
     /// # Arguments
@@ -66,9 +60,7 @@ where
         };
 
         //DBに書き込み
-        self.db_track_sync_repository
-            .register(tx, track_path, track_sync, folder_id)
-            .await?;
+        track_sync_repository::register(tx, track_path, track_sync, folder_id).await?;
 
         //プレイリストのリストアップ済みフラグを解除
         playlist_repository::reset_listuped_flag(tx).await?;

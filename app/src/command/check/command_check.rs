@@ -8,9 +8,7 @@ mod tests;
 use std::collections::BTreeSet;
 
 use anyhow::Result;
-use murack_core_domain::{
-    path::LibraryTrackPath, sync::DbTrackSyncRepository, track::DbTrackRepository,
-};
+use murack_core_domain::{path::LibraryTrackPath, track::DbTrackRepository};
 use sqlx::PgPool;
 
 use super::{
@@ -22,14 +20,13 @@ use crate::{
     cui::Cui,
 };
 
-pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, SR, SSR>
+pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, SR>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
     RDM: ResolveDataMatch,
     RDP: ResolveDap,
     SR: DbTrackRepository,
-    SSR: DbTrackSyncRepository + Sync + Send,
 {
     args: CommandCheckArgs,
 
@@ -40,20 +37,16 @@ where
     config: &'config Config,
     cui: &'cui CUI,
     db_track_repository: SR,
-    db_track_sync_repository: SSR,
 }
 
-impl<'config, 'cui, CUI, REX, RDM, RDP, SR, SSR>
-    CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, SR, SSR>
+impl<'config, 'cui, CUI, REX, RDM, RDP, SR> CommandCheck<'config, 'cui, CUI, REX, RDM, RDP, SR>
 where
     CUI: Cui + Send + Sync,
     REX: ResolveExistance,
     RDM: ResolveDataMatch,
     RDP: ResolveDap,
     SR: DbTrackRepository,
-    SSR: DbTrackSyncRepository + Sync + Send,
 {
-    #[allow(clippy::too_many_arguments)] // todo
     pub fn new(
         args: CommandCheckArgs,
         config: &'config Config,
@@ -63,7 +56,6 @@ where
         resolve_dap: RDP,
         cui: &'cui CUI,
         db_track_repository: SR,
-        db_track_sync_repository: SSR,
     ) -> Self {
         Self {
             args,
@@ -73,7 +65,6 @@ where
             config,
             cui,
             db_track_repository,
-            db_track_sync_repository,
         }
     }
 
@@ -178,7 +169,6 @@ where
                 &self.config.dap_lib,
                 &path,
                 self.args.ignore_dap_content,
-                &self.db_track_sync_repository,
             )
             .await?;
 
