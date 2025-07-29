@@ -11,7 +11,7 @@ use crate::{
     folder::{FolderIdMayRoot, FolderUsecase, folder_repository},
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{playlist_repository, playlist_track_repository},
-    tag::DbTrackTagRepository,
+    tag::track_tag_repository,
 };
 use sqlx::PgTransaction;
 
@@ -52,22 +52,19 @@ pub trait TrackUsecase {
 
 /// TrackUsecaseの本実装
 #[derive(new)]
-pub struct TrackUsecaseImpl<SR, STR, FU>
+pub struct TrackUsecaseImpl<SR, FU>
 where
     SR: DbTrackRepository + Sync + Send,
-    STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
     db_track_repository: SR,
-    db_track_tag_repository: STR,
     folder_usecase: FU,
 }
 
 #[async_trait]
-impl<SR, STR, FU> TrackUsecase for TrackUsecaseImpl<SR, STR, FU>
+impl<SR, FU> TrackUsecase for TrackUsecaseImpl<SR, FU>
 where
     SR: DbTrackRepository + Sync + Send,
-    STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
     /// パス文字列を指定してDBの曲パスを移動
@@ -134,9 +131,7 @@ where
         playlist_track_repository::delete_track_from_all_playlists(tx, track_id).await?;
 
         //タグと曲の紐付けを削除
-        self.db_track_tag_repository
-            .delete_all_tags_from_track(tx, track_id)
-            .await?;
+        track_tag_repository::delete_all_tags_from_track(tx, track_id).await?;
 
         //他に使用する曲がなければ、アートワークを削除
         artwork_repository::unregister_track_artworks(tx, track_id).await?;
@@ -176,10 +171,9 @@ where
     }
 }
 
-impl<SR, STR, FU> TrackUsecaseImpl<SR, STR, FU>
+impl<SR, FU> TrackUsecaseImpl<SR, FU>
 where
     SR: DbTrackRepository + Sync + Send,
-    STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
     /// 曲一つのDB内パス移動処理
