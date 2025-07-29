@@ -10,7 +10,7 @@ use crate::{
     artwork::artwork_repository,
     folder::{FolderIdMayRoot, FolderUsecase, folder_repository},
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    playlist::{DbPlaylistRepository, DbPlaylistTrackRepository},
+    playlist::{DbPlaylistTrackRepository, playlist_repository},
     tag::DbTrackTagRepository,
 };
 use sqlx::PgTransaction;
@@ -52,15 +52,13 @@ pub trait TrackUsecase {
 
 /// TrackUsecaseの本実装
 #[derive(new)]
-pub struct TrackUsecaseImpl<PR, PSR, SR, STR, FU>
+pub struct TrackUsecaseImpl<PSR, SR, STR, FU>
 where
-    PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
     STR: DbTrackTagRepository + Sync + Send,
     FU: FolderUsecase + Sync + Send,
 {
-    db_playlist_repository: PR,
     db_playlist_track_repository: PSR,
     db_track_repository: SR,
     db_track_tag_repository: STR,
@@ -68,9 +66,8 @@ where
 }
 
 #[async_trait]
-impl<PR, PSR, SR, STR, FU> TrackUsecase for TrackUsecaseImpl<PR, PSR, SR, STR, FU>
+impl<PSR, SR, STR, FU> TrackUsecase for TrackUsecaseImpl<PSR, SR, STR, FU>
 where
-    PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
     STR: DbTrackTagRepository + Sync + Send,
@@ -154,7 +151,7 @@ where
             self.folder_usecase.delete_db_if_empty(tx, &parent).await?;
         };
 
-        self.db_playlist_repository.reset_listuped_flag(tx).await?;
+        playlist_repository::reset_listuped_flag(tx).await?;
 
         Ok(())
     }
@@ -184,9 +181,8 @@ where
     }
 }
 
-impl<PR, PSR, SR, STR, FU> TrackUsecaseImpl<PR, PSR, SR, STR, FU>
+impl<PSR, SR, STR, FU> TrackUsecaseImpl<PSR, SR, STR, FU>
 where
-    PR: DbPlaylistRepository + Sync + Send,
     PSR: DbPlaylistTrackRepository + Sync + Send,
     SR: DbTrackRepository + Sync + Send,
     STR: DbTrackTagRepository + Sync + Send,
@@ -225,12 +221,10 @@ where
 
         //パスを使用したフィルタがあるかもしれないので、
         //プレイリストのリストアップ済みフラグを解除
-        self.db_playlist_repository.reset_listuped_flag(tx).await?;
+        playlist_repository::reset_listuped_flag(tx).await?;
         //プレイリストファイル内のパスだけ変わるので、
         //DAP変更フラグを立てる
-        self.db_playlist_repository
-            .set_dap_change_flag_all(tx, true)
-            .await?;
+        playlist_repository::set_dap_change_flag_all(tx, true).await?;
 
         Ok(())
     }

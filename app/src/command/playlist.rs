@@ -7,7 +7,7 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
     path::LibraryTrackPath,
-    playlist::{DbPlaylistRepository, PlaylistTree},
+    playlist::{PlaylistTree, playlist_repository},
     track_query::playlist_query,
 };
 use sqlx::{PgPool, PgTransaction};
@@ -17,20 +17,17 @@ use crate::{Config, command::playlist::file_name::FileNameContext, cui::Cui};
 /// playlistコマンド
 ///
 /// DAPのプレイリストを更新する
-pub struct CommandPlaylist<'config, 'cui, CUI, PR>
+pub struct CommandPlaylist<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    PR: DbPlaylistRepository + Sync + Send,
 {
     pub config: &'config Config,
     pub cui: &'cui CUI,
-    pub db_playlist_repository: PR,
 }
 
-impl<'config, 'cui, CUI, PR> CommandPlaylist<'config, 'cui, CUI, PR>
+impl<'config, 'cui, CUI> CommandPlaylist<'config, 'cui, CUI>
 where
     CUI: Cui + Send + Sync,
-    PR: DbPlaylistRepository + Sync + Send,
 {
     /// このコマンドを実行
     pub async fn run(self, db_pool: &PgPool) -> Result<()> {
@@ -47,18 +44,13 @@ where
 
         //全て更新するなら、一旦全プレイリストを変更済みとする
         if all_flag {
-            self.db_playlist_repository
-                .set_dap_change_flag_all(&mut tx, true)
-                .await?;
+            playlist_repository::set_dap_change_flag_all(&mut tx, true).await?;
         }
 
         cui_outln!(self.cui, "プレイリスト情報の取得中...").unwrap();
 
         //プレイリストを全て取得
-        let plist_trees = self
-            .db_playlist_repository
-            .get_playlist_tree(&mut tx)
-            .await?;
+        let plist_trees = playlist_repository::get_playlist_tree(&mut tx).await?;
 
         //DAPに保存する数を数える
         let save_count = count_save_plists_recursive(&plist_trees);
@@ -66,7 +58,7 @@ where
         cui_outln!(self.cui, "プレイリストファイルの保存中...").unwrap();
 
         //再帰的に保存を実行
-        self.save_plists_recursive(
+        save_plists_recursive(
             &plist_trees,
             &mut tx,
             dap_plist_path,
@@ -81,79 +73,73 @@ where
         }
 
         //DAP未反映フラグを下ろす
-        self.db_playlist_repository
-            .set_dap_change_flag_all(&mut tx, false)
-            .await?;
+        playlist_repository::set_dap_change_flag_all(&mut tx, false).await?;
 
         tx.commit().await?;
 
         Ok(())
     }
+}
 
-    /// プレイリスト数をDAPに再帰的に保存
-    ///
-    /// # Arguments
-    /// - plist_trees: 保存する全プレイリストツリー
-    /// - root_path: プレイリストファイルの保存先ディレクトリのパス
-    /// - existingFileSet:  DAPに既に存在するファイルパスのset
-    #[async_recursion]
-    async fn save_plists_recursive<'c, 'p>(
-        &self,
-        plist_trees: &'p [PlaylistTree],
-        tx: &mut PgTransaction<'c>,
-        root_path: &Path,
-        context: &mut FileNameContext<'p>,
-        existing_file_set: &mut HashSet<String>,
-    ) -> Result<()> {
-        for tree in plist_trees {
-            //DAPに保存するプレイリストなら処理
-            if tree.playlist.save_dap {
-                //プレイリストのファイル名を作成
-                let plist_file_name = file_name::build_file_name(tree, context);
-                context.offset_of_whole += 1;
+/// プレイリスト数をDAPに再帰的に保存
+///
+/// # Arguments
+/// - plist_trees: 保存する全プレイリストツリー
+/// - root_path: プレイリストファイルの保存先ディレクトリのパス
+/// - existingFileSet:  DAPに既に存在するファイルパスのset
+#[async_recursion]
+async fn save_plists_recursive<'c, 'p>(
+    plist_trees: &'p [PlaylistTree],
+    tx: &mut PgTransaction<'c>,
+    root_path: &Path,
+    context: &mut FileNameContext<'p>,
+    existing_file_set: &mut HashSet<String>,
+) -> Result<()> {
+    for tree in plist_trees {
+        //DAPに保存するプレイリストなら処理
+        if tree.playlist.save_dap {
+            //プレイリストのファイル名を作成
+            let plist_file_name = file_name::build_file_name(tree, context);
+            context.offset_of_whole += 1;
 
-                //プレイリスト内の曲パスを取得
-                let track_paths = playlist_query::get_track_path_list(tx, &tree.playlist).await?;
+            //プレイリスト内の曲パスを取得
+            let track_paths = playlist_query::get_track_path_list(tx, &tree.playlist).await?;
 
-                //プレイリストの曲データ取得後に、リストに変更があったか確認
-                let new_plist_data = self
-                    .db_playlist_repository
-                    .get_playlist(tx, tree.playlist.id)
-                    .await?
-                    .expect("playlist not found");
+            //プレイリストの曲データ取得後に、リストに変更があったか確認
+            let new_plist_data = playlist_repository::get_playlist(tx, tree.playlist.id)
+                .await?
+                .expect("playlist not found");
 
-                if new_plist_data.dap_changed {
-                    //変更があった場合、保存処理へ進む。
+            if new_plist_data.dap_changed {
+                //変更があった場合、保存処理へ進む。
 
-                    //既存ファイルSetから削除
-                    if existing_file_set.remove(&plist_file_name) {
-                        //見つかって削除できたなら、DAPからも削除
-                        dap_playlist_repository::delete_playlist_file(root_path, &plist_file_name)?;
-                    }
+                //既存ファイルSetから削除
+                if existing_file_set.remove(&plist_file_name) {
+                    //見つかって削除できたなら、DAPからも削除
+                    dap_playlist_repository::delete_playlist_file(root_path, &plist_file_name)?;
+                }
 
+                write_playlist_file(root_path, &plist_file_name, &track_paths)?;
+            } else {
+                //変更がないなら、上書きする必要なし
+
+                //既存ファイルSetから削除
+                if !existing_file_set.remove(&plist_file_name) {
+                    //もしSetになければ不慮の何かで消えてるので、保存しなおす
                     write_playlist_file(root_path, &plist_file_name, &track_paths)?;
-                } else {
-                    //変更がないなら、上書きする必要なし
-
-                    //既存ファイルSetから削除
-                    if !existing_file_set.remove(&plist_file_name) {
-                        //もしSetになければ不慮の何かで消えてるので、保存しなおす
-                        write_playlist_file(root_path, &plist_file_name, &track_paths)?;
-                    }
                 }
             }
-
-            context.parent_names.push(&tree.playlist.name);
-
-            //子プレイリストの保存
-            self.save_plists_recursive(&tree.children, tx, root_path, context, existing_file_set)
-                .await?;
-
-            context.parent_names.pop();
         }
 
-        Ok(())
+        context.parent_names.push(&tree.playlist.name);
+
+        //子プレイリストの保存
+        save_plists_recursive(&tree.children, tx, root_path, context, existing_file_set).await?;
+
+        context.parent_names.pop();
     }
+
+    Ok(())
 }
 
 /// 曲ファイルの配置先(プレイリストに記載するルートパス)

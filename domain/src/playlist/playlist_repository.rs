@@ -1,28 +1,20 @@
 use anyhow::Result;
-use async_trait::async_trait;
 use sqlx::PgTransaction;
 
 use crate::{
     NonEmptyString,
     playlist::{
-        DbPlaylistRepository, Playlist, PlaylistRow, PlaylistTree, PlaylistType, SortType,
+        Playlist, PlaylistRow, PlaylistTree, PlaylistType, SortType,
         playlist_error::{PlaylistError, PlaylistNoParentsDetectedItem},
     },
 };
 
-/// DbPlaylistRepositoryの本実装
-#[derive(new)]
-pub struct DbPlaylistRepositoryImpl {}
-
-#[async_trait]
-impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
-    /// IDを指定してプレイリストを検索
-    async fn get_playlist<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        playlist_id: i32,
-    ) -> Result<Option<Playlist>> {
-        let opt = sqlx::query_as!(
+/// IDを指定してプレイリストを検索
+pub async fn get_playlist<'c>(
+    tx: &mut PgTransaction<'c>,
+    playlist_id: i32,
+) -> Result<Option<Playlist>> {
+    let opt = sqlx::query_as!(
             PlaylistRow,
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
             playlist_id
@@ -30,45 +22,45 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
         .fetch_optional(&mut **tx)
         .await?;
 
-        match opt {
-            Some(row) => Ok(Some(row.try_into()?)),
-            None => Ok(None),
-        }
+    match opt {
+        Some(row) => Ok(Some(row.try_into()?)),
+        None => Ok(None),
     }
+}
 
-    /// プレイリストのツリー構造を取得
-    /// # Returns
-    /// 最上位プレイリストのリスト
-    async fn get_playlist_tree<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<Vec<PlaylistTree>> {
-        let remain_pool = sqlx::query_as!(
+/// プレイリストのツリー構造を取得
+/// # Returns
+/// 最上位プレイリストのリスト
+pub async fn get_playlist_tree<'c>(tx: &mut PgTransaction<'c>) -> Result<Vec<PlaylistTree>> {
+    let remain_pool = sqlx::query_as!(
             PlaylistRow,
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
         )
         .fetch_all(&mut **tx)
         .await?;
 
-        let (root_list, remain_pool) = build_plist_children_recursive(None, remain_pool)?;
+    let (root_list, remain_pool) = build_plist_children_recursive(None, remain_pool)?;
 
-        if !remain_pool.is_empty() {
-            return Err(PlaylistError::PlaylistNoParentsDetected(
-                remain_pool
-                    .into_iter()
-                    .map(|row| PlaylistNoParentsDetectedItem {
-                        playlist_id: row.id,
-                        name: row.name,
-                        parent_id: row.parent_id,
-                    })
-                    .collect(),
-            )
-            .into());
-        }
-
-        Ok(root_list)
+    if !remain_pool.is_empty() {
+        return Err(PlaylistError::PlaylistNoParentsDetected(
+            remain_pool
+                .into_iter()
+                .map(|row| PlaylistNoParentsDetectedItem {
+                    playlist_id: row.id,
+                    name: row.name,
+                    parent_id: row.parent_id,
+                })
+                .collect(),
+        )
+        .into());
     }
 
-    /// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
-    async fn reset_listuped_flag<'c>(&self, tx: &mut PgTransaction<'c>) -> Result<()> {
-        sqlx::query!(
+    Ok(root_list)
+}
+
+/// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
+pub async fn reset_listuped_flag<'c>(tx: &mut PgTransaction<'c>) -> Result<()> {
+    sqlx::query!(
             "UPDATE playlists SET listuped_flag = $1 WHERE playlist_type IN ($2::playlist_type, $3::playlist_type)",
             false,
             PlaylistType::Filter as PlaylistType,
@@ -77,23 +69,21 @@ impl DbPlaylistRepository for DbPlaylistRepositoryImpl {
         .execute(&mut **tx)
         .await?;
 
-        Ok(())
-    }
+    Ok(())
+}
 
-    /// 全プレイリストの、DAPに保存してからの変更フラグを設定
-    /// # Arguments
-    /// - is_changed: 変更されたか
-    async fn set_dap_change_flag_all<'c>(
-        &self,
-        tx: &mut PgTransaction<'c>,
-        is_changed: bool,
-    ) -> Result<()> {
-        sqlx::query!("UPDATE playlists SET dap_changed = $1", is_changed,)
-            .execute(&mut **tx)
-            .await?;
+/// 全プレイリストの、DAPに保存してからの変更フラグを設定
+/// # Arguments
+/// - is_changed: 変更されたか
+pub async fn set_dap_change_flag_all<'c>(
+    tx: &mut PgTransaction<'c>,
+    is_changed: bool,
+) -> Result<()> {
+    sqlx::query!("UPDATE playlists SET dap_changed = $1", is_changed,)
+        .execute(&mut **tx)
+        .await?;
 
-        Ok(())
-    }
+    Ok(())
 }
 
 /// 再帰的に子プレイリストのツリーを構築

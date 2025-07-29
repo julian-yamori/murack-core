@@ -10,7 +10,7 @@ use super::{DbTrackSyncRepository, TrackSync};
 use crate::{
     folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
-    playlist::DbPlaylistRepository,
+    playlist::playlist_repository,
 };
 
 /// DB・PC連携のUseCase
@@ -32,18 +32,15 @@ pub trait SyncUsecase {
 
 /// SyncUsecaseの本実装
 #[derive(new)]
-pub struct SyncUsecaseImpl<PR, SSR>
+pub struct SyncUsecaseImpl<SSR>
 where
-    PR: DbPlaylistRepository + Sync + Send,
     SSR: DbTrackSyncRepository + Sync + Send,
 {
-    db_playlist_repository: PR,
     db_track_sync_repository: SSR,
 }
 #[async_trait]
-impl<PR, SSR> SyncUsecase for SyncUsecaseImpl<PR, SSR>
+impl<SSR> SyncUsecase for SyncUsecaseImpl<SSR>
 where
-    PR: DbPlaylistRepository + Sync + Send,
     SSR: DbTrackSyncRepository + Sync + Send,
 {
     /// DBに曲データを新規登録する
@@ -74,7 +71,7 @@ where
             .await?;
 
         //プレイリストのリストアップ済みフラグを解除
-        self.db_playlist_repository.reset_listuped_flag(tx).await?;
+        playlist_repository::reset_listuped_flag(tx).await?;
 
         Ok(())
     }
