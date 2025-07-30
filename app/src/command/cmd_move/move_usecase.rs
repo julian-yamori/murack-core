@@ -5,7 +5,7 @@ use murack_core_domain::{
     Error, NonEmptyString,
     folder::{FolderIdMayRoot, folder_repository},
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    playlist::playlist_repository,
+    playlist::playlist_sqls,
     track::track_repository,
 };
 use sqlx::PgTransaction;
@@ -80,10 +80,10 @@ async fn move_track_db_unit<'c>(
 
     //パスを使用したフィルタがあるかもしれないので、
     //プレイリストのリストアップ済みフラグを解除
-    playlist_repository::reset_listuped_flag(tx).await?;
+    playlist_sqls::reset_listuped_flag(tx).await?;
     //プレイリストファイル内のパスだけ変わるので、
     //DAP変更フラグを立てる
-    playlist_repository::set_dap_change_flag_all(tx, true).await?;
+    playlist_sqls::set_dap_change_flag_all(tx, true).await?;
 
     Ok(())
 }

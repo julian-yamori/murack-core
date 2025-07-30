@@ -7,7 +7,7 @@ use murack_core_domain::{
     artwork::artwork_repository,
     folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
-    playlist::playlist_repository,
+    playlist::playlist_sqls,
 };
 use sqlx::PgTransaction;
 
@@ -122,7 +122,7 @@ pub async fn register_db<'c>(
     artwork_repository::register_track_artworks(tx, track_id, &track_sync.artworks).await?;
 
     //プレイリストのリストアップ済みフラグを解除
-    playlist_repository::reset_listuped_flag(tx).await?;
+    playlist_sqls::reset_listuped_flag(tx).await?;
 
     Ok(())
 }

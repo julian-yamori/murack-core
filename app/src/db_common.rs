@@ -8,7 +8,7 @@ use murack_core_domain::{
     artwork::artwork_repository,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    playlist::{playlist_repository, playlist_track_repository},
+    playlist::{playlist_sqls, playlist_track_repository},
     tag::track_tag_repository,
     track::track_repository,
 };
@@ -104,7 +104,7 @@ pub async fn delete_track_db<'c>(
         folder_repository::delete_db_if_empty(tx, &parent).await?;
     };
 
-    playlist_repository::reset_listuped_flag(tx).await?;
+    playlist_sqls::reset_listuped_flag(tx).await?;
 
     Ok(())
 }

@@ -58,34 +58,6 @@ pub async fn get_playlist_tree<'c>(tx: &mut PgTransaction<'c>) -> Result<Vec<Pla
     Ok(root_list)
 }
 
-/// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
-pub async fn reset_listuped_flag<'c>(tx: &mut PgTransaction<'c>) -> Result<()> {
-    sqlx::query!(
-            "UPDATE playlists SET listuped_flag = $1 WHERE playlist_type IN ($2::playlist_type, $3::playlist_type)",
-            false,
-            PlaylistType::Filter as PlaylistType,
-            PlaylistType::Folder as PlaylistType
-        )
-        .execute(&mut **tx)
-        .await?;
-
-    Ok(())
-}
-
-/// 全プレイリストの、DAPに保存してからの変更フラグを設定
-/// # Arguments
-/// - is_changed: 変更されたか
-pub async fn set_dap_change_flag_all<'c>(
-    tx: &mut PgTransaction<'c>,
-    is_changed: bool,
-) -> Result<()> {
-    sqlx::query!("UPDATE playlists SET dap_changed = $1", is_changed,)
-        .execute(&mut **tx)
-        .await?;
-
-    Ok(())
-}
-
 /// 再帰的に子プレイリストのツリーを構築
 /// # Arguments
 /// - parent: 構築対象のプレイリストの親(NoneならRoot)

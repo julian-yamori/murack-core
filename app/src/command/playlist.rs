@@ -7,7 +7,7 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
     path::LibraryTrackPath,
-    playlist::{PlaylistTree, playlist_repository},
+    playlist::{PlaylistTree, playlist_repository, playlist_sqls},
     track_query::playlist_query,
 };
 use sqlx::{PgPool, PgTransaction};
@@ -44,7 +44,7 @@ where
 
         //全て更新するなら、一旦全プレイリストを変更済みとする
         if all_flag {
-            playlist_repository::set_dap_change_flag_all(&mut tx, true).await?;
+            playlist_sqls::set_dap_change_flag_all(&mut tx, true).await?;
         }
 
         cui_outln!(self.cui, "プレイリスト情報の取得中...").unwrap();
@@ -73,7 +73,7 @@ where
         }
 
         //DAP未反映フラグを下ろす
-        playlist_repository::set_dap_change_flag_all(&mut tx, false).await?;
+        playlist_sqls::set_dap_change_flag_all(&mut tx, false).await?;
 
         tx.commit().await?;
 
