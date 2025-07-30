@@ -64,7 +64,14 @@ async fn move_track_db_unit<'c>(
     };
 
     //曲のパス情報を変更
-    track_repository::update_path(tx, src, dest, new_folder_id).await?;
+    sqlx::query!(
+        "UPDATE tracks SET path = $1, folder_id = $2 WHERE path = $3",
+        dest.as_ref() as &str,
+        new_folder_id.into_db(),
+        src.as_ref() as &str,
+    )
+    .execute(&mut **tx)
+    .await?;
 
     //子要素がなくなった親フォルダを削除
     if let Some(parent) = src.parent() {

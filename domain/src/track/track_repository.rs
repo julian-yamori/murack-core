@@ -5,7 +5,7 @@ use crate::{
     Error as DomainError,
     artwork::artwork_repository,
     db_utils::like_esc,
-    folder::{FolderIdMayRoot, folder_repository},
+    folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{playlist_repository, playlist_track_repository},
     tag::track_tag_repository,
@@ -38,30 +38,6 @@ pub async fn get_path_by_directory<'c>(
         .await?;
 
     Ok(paths)
-}
-
-/// 曲のパスを書き換え
-///
-/// # Arguments
-/// - old_path: 書き換え元の曲のパス
-/// - new_path: 書き換え先の曲のパス
-/// - new_folder_id: 新しい親フォルダのID
-pub async fn update_path<'c>(
-    tx: &mut PgTransaction<'c>,
-    old_path: &LibraryTrackPath,
-    new_path: &LibraryTrackPath,
-    new_folder_id: FolderIdMayRoot,
-) -> Result<()> {
-    sqlx::query!(
-        "UPDATE tracks SET path = $1, folder_id = $2 WHERE path = $3",
-        new_path.as_ref() as &str,
-        new_folder_id.into_db(),
-        old_path.as_ref() as &str,
-    )
-    .execute(&mut **tx)
-    .await?;
-
-    Ok(())
 }
 
 /// 曲の再生時間を書き換え
