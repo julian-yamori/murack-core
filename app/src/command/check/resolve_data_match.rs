@@ -367,6 +367,15 @@ where
                 db_track.track_sync.duration = pc_track.duration;
                 self.save_db_exclude_artwork(db_pool, db_track).await?;
 
+                // 再生時間だけ書き換える方がいいかも……？
+                // sqlx::query!(
+                //     "UPDATE tracks SET duration = $1 WHERE id = $2",
+                //     i32::try_from(duration)?,
+                //     track_id,
+                // )
+                // .execute(&mut **tx)
+                // .await?;
+
                 Ok(true)
             }
             '0' => Ok(true),

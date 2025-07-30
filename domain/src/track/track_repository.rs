@@ -40,25 +40,6 @@ pub async fn get_path_by_directory<'c>(
     Ok(paths)
 }
 
-/// 曲の再生時間を書き換え
-pub async fn update_duration<'c>(
-    tx: &mut PgTransaction<'c>,
-    track_id: i32,
-    duration: u32,
-) -> Result<()> {
-    let duration_i32: i32 = duration.try_into()?;
-
-    sqlx::query!(
-        "UPDATE tracks SET duration = $1 WHERE id = $2",
-        duration_i32,
-        track_id,
-    )
-    .execute(&mut **tx)
-    .await?;
-
-    Ok(())
-}
-
 /// DBから曲を削除
 ///
 /// # Arguments
