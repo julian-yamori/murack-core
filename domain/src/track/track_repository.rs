@@ -40,18 +40,6 @@ pub async fn get_path_by_directory<'c>(
     Ok(paths)
 }
 
-/// 指定されたフォルダに曲が存在するか確認
-pub async fn is_exist_in_folder<'c>(tx: &mut PgTransaction<'c>, folder_id: i32) -> Result<bool> {
-    let track_count = sqlx::query_scalar!(
-        r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id = $1"#,
-        folder_id,
-    )
-    .fetch_one(&mut **tx)
-    .await?;
-
-    Ok(track_count > 0)
-}
-
 /// 曲のパスを書き換え
 ///
 /// # Arguments

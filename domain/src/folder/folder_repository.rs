@@ -5,10 +5,7 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use sqlx::PgTransaction;
 
-use crate::{
-    Error as DomainError, folder::FolderIdMayRoot, path::LibraryDirectoryPath,
-    track::track_repository,
-};
+use crate::{Error as DomainError, folder::FolderIdMayRoot, path::LibraryDirectoryPath};
 
 /// 指定されたパスのフォルダが存在するか確認
 pub async fn is_exist_path<'c>(
@@ -100,7 +97,13 @@ pub async fn delete_db_if_empty<'c>(
 #[async_recursion]
 async fn delete_db_if_empty_by_id<'c>(tx: &mut PgTransaction<'c>, folder_id: i32) -> Result<()> {
     //他の曲が含まれる場合、削除せずに終了
-    if track_repository::is_exist_in_folder(tx, folder_id).await? {
+    let track_count = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id = $1"#,
+        folder_id,
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+    if track_count > 0 {
         return Ok(());
     }
 
