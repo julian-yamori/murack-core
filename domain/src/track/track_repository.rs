@@ -12,21 +12,6 @@ use crate::{
     track::track_sqls,
 };
 
-/// パスから曲IDを取得
-async fn get_id_by_path<'c>(
-    tx: &mut PgTransaction<'c>,
-    path: &LibraryTrackPath,
-) -> Result<Option<i32>> {
-    let id = sqlx::query_scalar!(
-        "SELECT id FROM tracks WHERE path = $1",
-        path.as_ref() as &str
-    )
-    .fetch_optional(&mut **tx)
-    .await?;
-
-    Ok(id)
-}
-
 /// 文字列でパスを指定して、該当曲のパスリストを取得
 pub async fn get_path_by_path_str<'c>(
     tx: &mut PgTransaction<'c>,
@@ -153,13 +138,19 @@ pub async fn delete_track_db<'c>(
     tx: &mut PgTransaction<'c>,
     path: &LibraryTrackPath,
 ) -> Result<()> {
-    //ID情報を取得
-    let track_id = get_id_by_path(tx, path)
-        .await?
-        .ok_or_else(|| DomainError::DbTrackNotFound(path.clone()))?;
+    // 指定されたパスの曲の ID を取得
+    let track_id = sqlx::query_scalar!(
+        "SELECT id FROM tracks WHERE path = $1",
+        path.as_ref() as &str
+    )
+    .fetch_optional(&mut **tx)
+    .await?
+    .ok_or_else(|| DomainError::DbTrackNotFound(path.clone()))?;
 
     //曲の削除
-    delete(tx, track_id).await?;
+    sqlx::query!("DELETE FROM tracks WHERE id = $1", track_id,)
+        .execute(&mut **tx)
+        .await?;
 
     //プレイリストからこの曲を削除
     playlist_track_repository::delete_track_from_all_playlists(tx, track_id).await?;
@@ -176,18 +167,6 @@ pub async fn delete_track_db<'c>(
     };
 
     playlist_repository::reset_listuped_flag(tx).await?;
-
-    Ok(())
-}
-
-/// 曲を削除
-///
-/// # Arguments
-/// - track_id: 削除する曲のID
-async fn delete<'c>(tx: &mut PgTransaction<'c>, track_id: i32) -> Result<()> {
-    sqlx::query!("DELETE FROM tracks WHERE id = $1", track_id,)
-        .execute(&mut **tx)
-        .await?;
 
     Ok(())
 }
