@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
-use murack_core_domain::{Error as DomainError, path::LibraryTrackPath, track::track_repository};
+use murack_core_domain::{Error as DomainError, path::LibraryTrackPath};
 use sqlx::PgPool;
 
 use super::{ResolveFileExistanceResult, messages};
@@ -411,7 +411,7 @@ where
     async fn delete_track_db(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<()> {
         let mut tx = db_pool.begin().await?;
 
-        track_repository::delete_track_db(&mut tx, track_path).await?;
+        db_common::delete_track_db(&mut tx, track_path).await?;
 
         tx.commit().await?;
         Ok(())

@@ -4,8 +4,12 @@
 mod tests;
 
 use murack_core_domain::{
-    NonEmptyString,
+    Error as DomainError, NonEmptyString,
+    artwork::artwork_repository,
+    folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
+    playlist::{playlist_repository, playlist_track_repository},
+    tag::track_tag_repository,
     track::track_repository,
 };
 use sqlx::{PgPool, PgTransaction};
@@ -61,5 +65,46 @@ pub async fn add_track_to_db(
     track_sync_repository::register_db(&mut tx, track_path, track_sync).await?;
 
     tx.commit().await?;
+    Ok(())
+}
+
+/// DBから曲を削除
+///
+/// # Arguments
+/// - path: 削除する曲のパス
+pub async fn delete_track_db<'c>(
+    tx: &mut PgTransaction<'c>,
+    path: &LibraryTrackPath,
+) -> anyhow::Result<()> {
+    // 指定されたパスの曲の ID を取得
+    let track_id = sqlx::query_scalar!(
+        "SELECT id FROM tracks WHERE path = $1",
+        path.as_ref() as &str
+    )
+    .fetch_optional(&mut **tx)
+    .await?
+    .ok_or_else(|| DomainError::DbTrackNotFound(path.clone()))?;
+
+    //曲の削除
+    sqlx::query!("DELETE FROM tracks WHERE id = $1", track_id,)
+        .execute(&mut **tx)
+        .await?;
+
+    //プレイリストからこの曲を削除
+    playlist_track_repository::delete_track_from_all_playlists(tx, track_id).await?;
+
+    //タグと曲の紐付けを削除
+    track_tag_repository::delete_all_tags_from_track(tx, track_id).await?;
+
+    //他に使用する曲がなければ、アートワークを削除
+    artwork_repository::unregister_track_artworks(tx, track_id).await?;
+
+    //他に使用する曲がなければ、親フォルダを削除
+    if let Some(parent) = path.parent() {
+        folder_repository::delete_db_if_empty(tx, &parent).await?;
+    };
+
+    playlist_repository::reset_listuped_flag(tx).await?;
+
     Ok(())
 }

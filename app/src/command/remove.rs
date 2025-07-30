@@ -1,7 +1,5 @@
 use anyhow::Result;
-use murack_core_domain::{
-    Error as DomainError, NonEmptyString, path::LibraryTrackPath, track::track_repository,
-};
+use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
 use sqlx::{PgPool, PgTransaction};
 
 use crate::{Config, Error, cui::Cui, data_file, db_common};
@@ -107,7 +105,7 @@ async fn delete_path_str_db<'c>(
     let track_path_list = db_common::track_paths_by_path_str(tx, path_str).await?;
 
     for path in &track_path_list {
-        track_repository::delete_track_db(tx, path).await?;
+        db_common::delete_track_db(tx, path).await?;
     }
 
     Ok(track_path_list)
