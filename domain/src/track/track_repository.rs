@@ -12,14 +12,6 @@ use crate::{
     track::track_sqls,
 };
 
-/// 全ての曲のパスを取得
-pub async fn get_all_path<'c>(tx: &mut PgTransaction<'c>) -> Result<Vec<LibraryTrackPath>> {
-    let paths = sqlx::query_scalar!(r#"SELECT path AS "path: LibraryTrackPath" FROM tracks"#)
-        .fetch_all(&mut **tx)
-        .await?;
-    Ok(paths)
-}
-
 /// ディレクトリを指定してパスを取得
 /// # Arguments
 /// - path: 検索対象のライブラリパス

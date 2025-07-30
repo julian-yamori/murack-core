@@ -8,7 +8,7 @@ mod tests;
 use std::collections::BTreeSet;
 
 use anyhow::Result;
-use murack_core_domain::{path::LibraryTrackPath, track::track_repository};
+use murack_core_domain::path::LibraryTrackPath;
 use sqlx::PgPool;
 
 use super::{
@@ -120,8 +120,15 @@ where
         let mut tx = db_pool.begin().await?;
 
         let db_list = match &self.args.path {
+            // パスを指定された場合は、そのパス以下の曲のパスを取得
             Some(path_str) => db_common::track_paths_by_path_str(&mut tx, path_str).await?,
-            None => track_repository::get_all_path(&mut tx).await?,
+
+            // パスの指定がなければ、全曲のパスを取得
+            None => {
+                sqlx::query_scalar!(r#"SELECT path AS "path: LibraryTrackPath" FROM tracks"#)
+                    .fetch_all(&mut *tx)
+                    .await?
+            }
         };
         for path in db_list {
             set.insert(path);
