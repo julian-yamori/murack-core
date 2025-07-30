@@ -2,7 +2,7 @@ use anyhow::Result;
 use sqlx::PgTransaction;
 
 use crate::{
-    Error as DomainError, NonEmptyString,
+    Error as DomainError,
     artwork::artwork_repository,
     db_utils::like_esc,
     folder::{FolderIdMayRoot, folder_repository},
@@ -11,24 +11,6 @@ use crate::{
     tag::track_tag_repository,
     track::track_sqls,
 };
-
-/// 文字列でパスを指定して、該当曲のパスリストを取得
-pub async fn get_path_by_path_str<'c>(
-    tx: &mut PgTransaction<'c>,
-    path: &NonEmptyString,
-) -> Result<Vec<LibraryTrackPath>> {
-    //ディレクトリ指定とみなして検索
-    let dir_path: LibraryDirectoryPath = path.clone().into();
-    let mut list = get_path_by_directory(tx, &dir_path).await?;
-
-    //ファイル指定とみなしての検索でヒットしたら追加
-    let track_path: LibraryTrackPath = path.clone().into();
-    if is_exist_path(tx, &track_path).await? {
-        list.push(track_path);
-    }
-
-    Ok(list)
-}
 
 /// 全ての曲のパスを取得
 pub async fn get_all_path<'c>(tx: &mut PgTransaction<'c>) -> Result<Vec<LibraryTrackPath>> {

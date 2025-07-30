@@ -18,7 +18,7 @@ use crate::{
     Config,
     command::check::domain::{CheckIssueSummary, check_usecase},
     cui::Cui,
-    data_file,
+    data_file, db_common,
 };
 
 pub struct CommandCheck<'config, 'cui, CUI, REX, RDM, RDP>
@@ -120,7 +120,7 @@ where
         let mut tx = db_pool.begin().await?;
 
         let db_list = match &self.args.path {
-            Some(path_str) => track_repository::get_path_by_path_str(&mut tx, path_str).await?,
+            Some(path_str) => db_common::track_paths_by_path_str(&mut tx, path_str).await?,
             None => track_repository::get_all_path(&mut tx).await?,
         };
         for path in db_list {

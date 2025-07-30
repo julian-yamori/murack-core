@@ -4,7 +4,7 @@ use murack_core_domain::{
 };
 use sqlx::{PgPool, PgTransaction};
 
-use crate::{Config, Error, cui::Cui, data_file};
+use crate::{Config, Error, cui::Cui, data_file, db_common};
 
 /// removeコマンド
 ///
@@ -104,7 +104,7 @@ async fn delete_path_str_db<'c>(
     tx: &mut PgTransaction<'c>,
     path_str: &NonEmptyString,
 ) -> Result<Vec<LibraryTrackPath>> {
-    let track_path_list = track_repository::get_path_by_path_str(tx, path_str).await?;
+    let track_path_list = db_common::track_paths_by_path_str(tx, path_str).await?;
 
     for path in &track_path_list {
         track_repository::delete_track_db(tx, path).await?;
