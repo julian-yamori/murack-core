@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
+use murack_core_domain::{NonEmptyString, path::LibraryTrackPath};
 
 use crate::data_file::utils;
 
@@ -92,10 +92,9 @@ fn search_track_abs_path(target: &Path) -> Result<Vec<PathBuf>> {
 /// - path: 検索対象ディレクトリの絶対パス
 fn search_dir_rec(dest: &mut Vec<PathBuf>, path: &Path) -> Result<()> {
     //子要素の走査
-    let entries = match fs::read_dir(path) {
-        Ok(i) => i.collect::<Vec<std::result::Result<std::fs::DirEntry, std::io::Error>>>(),
-        Err(e) => return Err(DomainError::FileIoError(path.to_owned(), e).into()),
-    };
+    let entries = fs::read_dir(path)
+        .with_context(|| path.display().to_string())?
+        .collect::<Vec<anyhow::Result<std::fs::DirEntry, std::io::Error>>>();
 
     //直下ディレクトリの絶対パスリスト
     //直下ファイルをdestにまとめて格納した後に、子ディレクトリを処理。
@@ -108,12 +107,10 @@ fn search_dir_rec(dest: &mut Vec<PathBuf>, path: &Path) -> Result<()> {
 
         let entry_path = entry.path();
 
-        let file_type = match entry.metadata() {
-            Ok(m) => m.file_type(),
-            Err(e) => {
-                return Err(DomainError::FileIoError(entry_path, e).into());
-            }
-        };
+        let file_type = entry
+            .metadata()
+            .with_context(|| entry_path.display().to_string())?
+            .file_type();
 
         //ディレクトリなら、一旦パスリストに追加
         if file_type.is_dir() {

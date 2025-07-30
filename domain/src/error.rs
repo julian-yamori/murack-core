@@ -7,10 +7,6 @@ use std::path::PathBuf;
 /// murack-core domain層のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    /// ファイルIO汎用エラー
-    #[error("{1}: {0}")]
-    FileIoError(PathBuf, std::io::Error),
-
     #[error("曲ファイルが存在しません: {track_path} (in {lib_root})")]
     FileTrackNotFound {
         lib_root: PathBuf,

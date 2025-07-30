@@ -35,7 +35,7 @@ pub fn move_path_str(lib_root: &Path, src: &NonEmptyString, dest: &NonEmptyStrin
 
     //移動先で不足しているディレクトリを作成
     if let Some(parent) = dest_abs.parent() {
-        fs::create_dir_all(parent).map_err(|e| DomainError::FileIoError(parent.to_owned(), e))?;
+        fs::create_dir_all(parent).with_context(|| parent.display().to_string())?;
     }
 
     //移動を実行

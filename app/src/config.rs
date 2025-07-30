@@ -3,8 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::Result;
-use murack_core_domain::Error as DomainError;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 /// 設定ファイル取扱
@@ -26,10 +25,7 @@ impl Config {
     /// # Arguments
     /// - path: 設定tomlファイルのパス
     pub fn load(path: &Path) -> Result<Self> {
-        let file_str = match fs::read_to_string(path) {
-            Ok(s) => s,
-            Err(e) => return Err(DomainError::FileIoError(path.to_owned(), e).into()),
-        };
+        let file_str = fs::read_to_string(path).with_context(|| path.display().to_string())?;
 
         let config = toml::from_str(&file_str)?;
         Ok(config)

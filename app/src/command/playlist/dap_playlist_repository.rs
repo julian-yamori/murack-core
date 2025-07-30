@@ -6,14 +6,13 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use murack_core_domain::Error as DomainError;
 
 /// DAPにあるプレイリストファイルを列挙
 /// # Arguments
 /// - dap_plist_path: DAPのプレイリスト保存パス
 pub fn listup_playlist_files(dap_plist_path: &Path) -> Result<Vec<String>> {
-    let entries = fs::read_dir(dap_plist_path)
-        .map_err(|e| DomainError::FileIoError(dap_plist_path.to_owned(), e))?;
+    let entries =
+        fs::read_dir(dap_plist_path).with_context(|| dap_plist_path.display().to_string())?;
 
     let mut ret_vec = Vec::new();
 
@@ -26,7 +25,7 @@ pub fn listup_playlist_files(dap_plist_path: &Path) -> Result<Vec<String>> {
         let entry_path = entry.path();
         let metadata = entry
             .metadata()
-            .map_err(|e| DomainError::FileIoError(entry_path.clone(), e))?;
+            .with_context(|| entry_path.display().to_string())?;
 
         //プレイリストならリストに追加
         if is_entry_playlist(&entry_path, &metadata) {
@@ -58,7 +57,7 @@ pub fn listup_playlist_files(dap_plist_path: &Path) -> Result<Vec<String>> {
 pub fn make_playlist_file(dap_plist_path: &Path, file_name: &str, content: &str) -> Result<()> {
     let path = dap_plist_path.join(file_name);
 
-    fs::write(&path, content).map_err(|e| DomainError::FileIoError(path, e).into())
+    fs::write(&path, content).with_context(|| path.display().to_string())
 }
 
 /// DAPのプレイリストファイルを削除
@@ -68,7 +67,7 @@ pub fn make_playlist_file(dap_plist_path: &Path, file_name: &str, content: &str)
 pub fn delete_playlist_file(dap_plist_path: &Path, file_name: &str) -> Result<()> {
     let path = dap_plist_path.join(file_name);
 
-    fs::remove_file(&path).map_err(|e| DomainError::FileIoError(path, e).into())
+    fs::remove_file(&path).with_context(|| path.display().to_string())
 }
 
 /// プレイリストファイルの拡張子(ピリオドなし)

@@ -42,7 +42,7 @@ pub fn copy_track_over_lib(
 
     //コピー先で不足しているディレクトリを作成
     if let Some(parent) = dest_track.parent() {
-        fs::create_dir_all(parent).map_err(|e| DomainError::FileIoError(parent.to_owned(), e))?;
+        fs::create_dir_all(parent).with_context(|| parent.display().to_string())?;
     }
 
     //コピーを実行
@@ -89,7 +89,7 @@ pub fn copy_from_outside_lib(
 
     //コピー先で不足しているディレクトリを作成
     if let Some(parent) = dest_track.parent() {
-        fs::create_dir_all(parent).map_err(|e| DomainError::FileIoError(parent.to_owned(), e))?;
+        fs::create_dir_all(parent).with_context(|| parent.display().to_string())?;
     }
 
     //コピーを実行
@@ -131,7 +131,7 @@ pub fn overwrite_track_over_lib(
         //コピー元に歌詞ファイルがない場合
         //上書き先にあれば削除
         if dest_lrc.exists() {
-            fs::remove_file(&dest_lrc).map_err(|e| DomainError::FileIoError(dest_lrc, e))?;
+            fs::remove_file(&dest_lrc).with_context(|| dest_lrc.display().to_string())?;
         }
     }
 

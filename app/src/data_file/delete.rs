@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
 
 use crate::data_file::utils;
@@ -62,13 +62,13 @@ pub fn delete_path_str(lib_root: &Path, target: &NonEmptyString) -> Result<()> {
 /// # Arguments
 /// - abs_path: 削除対象曲ファイルの絶対パス
 fn delete_track_checked(abs_path: &Path) -> Result<()> {
-    fs::remove_file(abs_path).map_err(|e| DomainError::FileIoError(abs_path.to_owned(), e))?;
+    fs::remove_file(abs_path).with_context(|| abs_path.display().to_string())?;
 
     let lrc_path = utils::get_lrc_path(abs_path);
 
     //歌詞ファイルもあれば削除
     if lrc_path.exists() {
-        fs::remove_file(&lrc_path).map_err(|e| DomainError::FileIoError(lrc_path, e))?;
+        fs::remove_file(&lrc_path).with_context(|| lrc_path.display().to_string())?;
     }
 
     Ok(())

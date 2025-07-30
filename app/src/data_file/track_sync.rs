@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use murack_core_domain::{Error as DomainError, artwork::TrackArtwork, path::LibraryTrackPath};
 use murack_core_media::audio_meta::{AudioMetaData, FormatType, formats};
 
@@ -98,20 +98,20 @@ pub fn overwrite_track_sync(
 fn read_lyrics(path: &Path) -> Result<String> {
     let lrc_path = utils::get_lrc_path(path);
 
-    let mut f = match File::open(lrc_path) {
+    let mut f = match File::open(&lrc_path) {
         Ok(f) => f,
         Err(e) => {
             if e.kind() == std::io::ErrorKind::NotFound {
                 return Ok(String::default());
             } else {
-                return Err(io_to_my_error(path, e).into());
+                return Err(anyhow::Error::new(e).context(lrc_path.display().to_string()));
             }
         }
     };
 
     let mut contents = String::new();
     f.read_to_string(&mut contents)
-        .map_err(|e| io_to_my_error(path, e))?;
+        .with_context(|| lrc_path.display().to_string())?;
 
     Ok(contents)
 }
@@ -127,19 +127,14 @@ fn write_lyrics(path: &Path, lyrics: &str) -> Result<()> {
     if lyrics.is_empty() {
         // 歌詞が空の場合、.lrc ファイルがあれば削除
         if lrc_path.exists() {
-            fs::remove_file(lrc_path).map_err(|e| io_to_my_error(path, e))?;
+            fs::remove_file(&lrc_path).with_context(|| lrc_path.display().to_string())?;
         }
 
         Ok(())
     } else {
         //歌詞が空でない場合
-        fs::write(lrc_path, lyrics).map_err(|e| io_to_my_error(path, e))?;
+        fs::write(&lrc_path, lyrics).with_context(|| lrc_path.display().to_string())?;
 
         Ok(())
     }
-}
-
-/// std::io::error を DomainError::FileIoErrorに変換
-fn io_to_my_error(path: &Path, e: std::io::Error) -> DomainError {
-    DomainError::FileIoError(path.to_owned(), e)
 }

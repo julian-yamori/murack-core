@@ -4,7 +4,7 @@
 
 use std::{fs::File, io::prelude::*, path::Path};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use murack_core_domain::{Error, path::LibraryTrackPath, track::TrackItemKind};
 use sqlx::PgPool;
 
@@ -164,21 +164,19 @@ pub fn check_pc_dap_content(
 ) -> Result<bool> {
     //PCデータ読み込み
     let pc_path = track_path.abs(pc_lib);
-    let mut pc_file =
-        File::open(&pc_path).map_err(|e| Error::FileIoError(pc_path.to_owned(), e))?;
+    let mut pc_file = File::open(&pc_path).with_context(|| pc_path.display().to_string())?;
     let mut pc_content = Vec::new();
     pc_file
         .read_to_end(&mut pc_content)
-        .map_err(|e| Error::FileIoError(pc_path, e))?;
+        .with_context(|| pc_path.display().to_string())?;
 
     //DAPデータ読み込み
     let dap_path = track_path.abs(dap_lib);
-    let mut dap_file =
-        File::open(&dap_path).map_err(|e| Error::FileIoError(dap_path.to_owned(), e))?;
+    let mut dap_file = File::open(&dap_path).with_context(|| dap_path.display().to_string())?;
     let mut dap_content = Vec::new();
     dap_file
         .read_to_end(&mut dap_content)
-        .map_err(|e| Error::FileIoError(dap_path, e))?;
+        .with_context(|| dap_path.display().to_string())?;
 
     Ok(pc_content == dap_content)
 }
