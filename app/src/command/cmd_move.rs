@@ -5,11 +5,10 @@ use murack_core_domain::{
     Error as DomainError, NonEmptyString,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    track::track_repository,
 };
 use sqlx::PgPool;
 
-use crate::{Config, Error, data_file};
+use crate::{Config, Error, data_file, db_common};
 
 /// moveコマンド
 ///
@@ -85,7 +84,7 @@ impl<'config> CommandMove<'config> {
 
         // 曲が存在しないかチェック
         let dest_track_path: LibraryTrackPath = self.args.dest_path.clone().into();
-        if track_repository::is_exist_path(&mut tx, &dest_track_path).await? {
+        if db_common::exists_path(&mut tx, &dest_track_path).await? {
             return Err(DomainError::DbTrackAlreadyExists(dest_track_path).into());
         }
 

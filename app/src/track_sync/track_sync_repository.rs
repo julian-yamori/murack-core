@@ -8,11 +8,13 @@ use murack_core_domain::{
     folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
     playlist::playlist_repository,
-    track::track_sqls,
 };
 use sqlx::PgTransaction;
 
-use crate::track_sync::{DbTrackSync, TrackSync, TrackSyncRow};
+use crate::{
+    db_common,
+    track_sync::{DbTrackSync, TrackSync, TrackSyncRow},
+};
 
 /// パスを指定して曲情報を取得
 ///
@@ -81,7 +83,7 @@ pub async fn register_db<'c>(
 
     //DBに既に存在しないか確認
     //TODO unique keyにする
-    if track_sqls::exists_path(tx, track_path).await? {
+    if db_common::exists_path(tx, track_path).await? {
         return Err(DomainError::DbTrackAlreadyExists(track_path.clone()).into());
     }
 

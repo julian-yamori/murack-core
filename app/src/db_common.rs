@@ -12,6 +12,21 @@ use sqlx::{PgPool, PgTransaction};
 
 use crate::track_sync::{TrackSync, track_sync_repository};
 
+/// 指定されたpathのレコードが存在するか確認
+pub async fn exists_path<'c>(
+    tx: &mut PgTransaction<'c>,
+    path: &LibraryTrackPath,
+) -> sqlx::Result<bool> {
+    let count = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE path = $1"#,
+        path.as_ref() as &str,
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(count > 0)
+}
+
 /// 文字列でパスを指定して、該当曲のパスリストを取得
 pub async fn track_paths_by_path_str<'c>(
     tx: &mut PgTransaction<'c>,
@@ -23,7 +38,7 @@ pub async fn track_paths_by_path_str<'c>(
 
     //ファイル指定とみなしての検索でヒットしたら追加
     let track_path: LibraryTrackPath = path.clone().into();
-    if track_repository::is_exist_path(tx, &track_path).await? {
+    if exists_path(tx, &track_path).await? {
         list.push(track_path);
     }
 

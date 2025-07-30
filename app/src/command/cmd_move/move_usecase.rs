@@ -10,6 +10,8 @@ use murack_core_domain::{
 };
 use sqlx::PgTransaction;
 
+use crate::db_common;
+
 /// パス文字列を指定してDBの曲パスを移動
 pub async fn move_path_str_db<'c>(
     tx: &mut PgTransaction<'c>,
@@ -18,7 +20,7 @@ pub async fn move_path_str_db<'c>(
 ) -> Result<()> {
     // パス文字列がファイルかどうかを、完全一致するパスの曲が DB に存在するかどうかで判定
     let src_as_track: LibraryTrackPath = src.clone().into();
-    let track_exists = track_repository::is_exist_path(tx, &src_as_track).await?;
+    let track_exists = db_common::exists_path(tx, &src_as_track).await?;
 
     if track_exists {
         // 指定された 1 曲だけ処理
@@ -47,7 +49,7 @@ async fn move_track_db_unit<'c>(
     src: &LibraryTrackPath,
     dest: &LibraryTrackPath,
 ) -> Result<()> {
-    if track_repository::is_exist_path(tx, dest).await? {
+    if db_common::exists_path(tx, dest).await? {
         return Err(Error::DbTrackAlreadyExists(dest.to_owned()).into());
     }
 

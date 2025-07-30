@@ -9,7 +9,6 @@ use crate::{
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{playlist_repository, playlist_track_repository},
     tag::track_tag_repository,
-    track::track_sqls,
 };
 
 /// ディレクトリを指定してパスを取得
@@ -39,14 +38,6 @@ pub async fn get_path_by_directory<'c>(
         .await?;
 
     Ok(paths)
-}
-
-/// 指定したパスの曲が存在するか確認
-pub async fn is_exist_path<'c>(
-    tx: &mut PgTransaction<'c>,
-    path: &LibraryTrackPath,
-) -> Result<bool> {
-    track_sqls::exists_path(tx, path).await
 }
 
 /// 指定されたフォルダに曲が存在するか確認
