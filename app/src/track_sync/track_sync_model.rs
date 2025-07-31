@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 use murack_core_domain::string_order_cnv;
-use murack_core_media::audio_meta::{AudioMetaDataEntry, AudioPictureEntry};
+use murack_core_media::audio_metadata::{AudioMetaDataEntry, AudioPictureEntry};
 
 use crate::app_artwork_repository::TrackArtwork;
 

@@ -12,7 +12,7 @@ use id3::{Tag, TagLike};
 
 use crate::{
     Error,
-    audio_meta::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry},
+    audio_metadata::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry},
 };
 
 const KEY_COMPOSER: &str = "TCOM";

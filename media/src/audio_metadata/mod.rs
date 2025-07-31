@@ -5,7 +5,7 @@ pub use format_type::FormatType;
 
 pub mod formats;
 
-mod audio_metadata;
-pub use audio_metadata::{AudioMetaData, AudioMetaDataEntry};
+mod audio_metadata_model;
+pub use audio_metadata_model::{AudioMetaData, AudioMetaDataEntry};
 mod audio_picture;
 pub use audio_picture::{AudioPicture, AudioPictureEntry};
