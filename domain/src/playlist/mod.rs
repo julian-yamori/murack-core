@@ -5,8 +5,6 @@ pub use playlist_model::Playlist;
 
 pub mod playlist_error;
 
-pub mod playlist_repository;
-
 mod playlist_row;
 pub use playlist_row::PlaylistRow;
 
@@ -14,7 +12,7 @@ pub mod playlist_sqls;
 
 pub mod playlist_track_repository;
 
-mod playlist_tree;
+pub mod playlist_tree;
 pub use playlist_tree::PlaylistTree;
 
 mod playlist_type;

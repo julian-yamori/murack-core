@@ -1,17 +1,17 @@
 use anyhow::Result;
 use sqlx::PgPool;
 
-// get_playlist_tree 関数のテスト
-mod test_get_playlist_tree {
+// get_whole_tree 関数のテスト
+mod test_get_whole_tree {
     use super::*;
 
     /// 空のプレイリストツリーを取得するテスト
     /// データベースにプレイリストが存在しない場合
-    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_empty"))]
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_whole_tree_empty"))]
     async fn 空の場合(pool: PgPool) -> Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = super::super::get_playlist_tree(&mut tx).await?;
+        let result = super::super::get_whole_tree(&mut tx).await?;
 
         // 結果は空のベクタであるはず
         assert_eq!(result, vec![]);
@@ -27,11 +27,11 @@ mod test_get_playlist_tree {
 
     /// フラットなプレイリスト構造のテスト
     /// 親子関係のない3つのプレイリストが存在する場合
-    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_flat"))]
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_whole_tree_flat"))]
     async fn フラット構造(pool: PgPool) -> Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = super::super::get_playlist_tree(&mut tx).await?;
+        let result = super::super::get_whole_tree(&mut tx).await?;
 
         // 結果は3つのルートプレイリストであるはず
         assert_eq!(result.len(), 3);
@@ -55,11 +55,11 @@ mod test_get_playlist_tree {
 
     /// 階層構造のあるプレイリストツリーのテスト
     /// 複雑な親子関係を持つプレイリストが存在する場合
-    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_playlist_tree_treed"))]
+    #[sqlx::test(migrator = "crate::MIGRATOR", fixtures("test_get_whole_tree_treed"))]
     async fn 階層構造(pool: PgPool) -> Result<()> {
         let mut tx = pool.begin().await?;
 
-        let result = super::super::get_playlist_tree(&mut tx).await?;
+        let result = super::super::get_whole_tree(&mut tx).await?;
 
         // 結果は2つのルートプレイリスト（root1, root2）であるはず
         assert_eq!(result.len(), 2);

@@ -7,7 +7,7 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
     path::LibraryTrackPath,
-    playlist::{PlaylistTree, playlist_model, playlist_repository, playlist_sqls},
+    playlist::{PlaylistTree, playlist_model, playlist_sqls, playlist_tree},
     track_query::playlist_query,
 };
 use sqlx::{PgPool, PgTransaction};
@@ -50,7 +50,7 @@ where
         cui_outln!(self.cui, "プレイリスト情報の取得中...").unwrap();
 
         //プレイリストを全て取得
-        let plist_trees = playlist_repository::get_playlist_tree(&mut tx).await?;
+        let plist_trees = playlist_tree::get_whole_tree(&mut tx).await?;
 
         //DAPに保存する数を数える
         let save_count = count_save_plists_recursive(&plist_trees);
