@@ -11,7 +11,7 @@ use murack_core_domain::{
 use sqlx::PgTransaction;
 
 use crate::{
-    DbTrackError, db_common,
+    DbTrackError, app_artwork_repository, db_common,
     track_sync::{DbTrackSync, TrackSync, TrackSyncRow},
 };
 
@@ -118,7 +118,7 @@ pub async fn register_db<'c>(
     ).fetch_one(&mut **tx).await?;
 
     //アートワークを登録
-    artwork_repository::register_track_artworks(tx, track_id, &track_sync.artworks).await?;
+    app_artwork_repository::register_track_artworks(tx, track_id, &track_sync.artworks).await?;
 
     //プレイリストのリストアップ済みフラグを解除
     playlist_sqls::reset_listuped_flag(tx).await?;

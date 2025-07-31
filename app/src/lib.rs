@@ -2,6 +2,8 @@
 //!
 //! domainを操作する、CUIアプリケーションのロジック
 
+pub mod app_artwork_repository;
+
 #[macro_use]
 pub mod cui;
 

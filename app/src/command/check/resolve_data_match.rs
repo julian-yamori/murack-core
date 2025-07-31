@@ -10,7 +10,7 @@ use sqlx::PgPool;
 
 use super::{TrackItemConflict, messages};
 use crate::{
-    Config, DbTrackError,
+    Config, DbTrackError, app_artwork_repository,
     command::check::domain::check_usecase,
     cui::Cui,
     data_file,
@@ -288,8 +288,12 @@ where
                 //DBに上書き保存
                 let track_id = db_track.id;
 
-                artwork_repository::register_track_artworks(&mut tx, track_id, &pc_track.artworks)
-                    .await?;
+                app_artwork_repository::register_track_artworks(
+                    &mut tx,
+                    track_id,
+                    &pc_track.artworks,
+                )
+                .await?;
 
                 //念の為、保存した値で変数値を上書きしておく
                 db_track.track_sync.artworks =

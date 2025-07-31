@@ -5,7 +5,6 @@ mod tests;
 
 use murack_core_domain::{
     NonEmptyString,
-    artwork::artwork_repository,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{playlist_sqls, playlist_track_repository},
@@ -15,7 +14,7 @@ use murack_core_domain::{
 use sqlx::{PgPool, PgTransaction};
 
 use crate::{
-    DbTrackError,
+    DbTrackError, app_artwork_repository,
     track_sync::{TrackSync, track_sync_repository},
 };
 
@@ -100,7 +99,7 @@ pub async fn delete_track_db<'c>(
     track_tag_repository::delete_all_tags_from_track(tx, track_id).await?;
 
     //他に使用する曲がなければ、アートワークを削除
-    artwork_repository::unregister_track_artworks(tx, track_id).await?;
+    app_artwork_repository::unregister_track_artworks(tx, track_id).await?;
 
     //他に使用する曲がなければ、親フォルダを削除
     if let Some(parent) = path.parent() {
