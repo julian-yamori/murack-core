@@ -3,11 +3,14 @@ use crate::NonEmptyString;
 /// プレイリスト関連のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum PlaylistError {
-    #[error("親が見つからないプレイリストが検出されました: {}", diaplay_playlist_no_parents_detected(.0))]
-    PlaylistNoParentsDetected(Vec<PlaylistNoParentsDetectedItem>),
+    #[error("フィルタの deserialize に失敗しました: {}", .0)]
+    FailedToDeserializeFilter(serde_json::Error),
 
     #[error("フィルタプレイリストにフィルタがありません: playlist_id={plist_id}")]
     FilterPlaylistHasNoFilter { plist_id: i32 },
+
+    #[error("親が見つからないプレイリストが検出されました: {}", diaplay_playlist_no_parents_detected(.0))]
+    PlaylistNoParentsDetected(Vec<PlaylistNoParentsDetectedItem>),
 }
 
 #[derive(Debug, PartialEq)]

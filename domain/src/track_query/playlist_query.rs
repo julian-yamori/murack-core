@@ -1,12 +1,12 @@
 use std::collections::{BTreeSet, HashSet};
 
-use anyhow::Result;
 use async_recursion::async_recursion;
 use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
 use super::{esc::esci, filter_query};
 use crate::playlist::playlist_tracks_sqls;
+use crate::track_query::TrackQueryError;
 use crate::{
     NonEmptyString,
     path::LibraryTrackPath,
@@ -22,7 +22,7 @@ const PLIST_TRACK_IDX_COLUMN: &str = "playlist_index";
 pub async fn get_track_path_list<'c>(
     tx: &mut PgTransaction<'c>,
     plist: &Playlist,
-) -> Result<Vec<LibraryTrackPath>> {
+) -> Result<Vec<LibraryTrackPath>, TrackQueryError> {
     //対象プレイリストのクエリ(from,join,where句)を取得
     let fjw_query = get_query_by_playlist(tx, plist).await?;
 
@@ -56,7 +56,10 @@ pub async fn get_track_path_list<'c>(
 /// - plist: 対象プレイリスト情報
 /// # Result
 /// from,join,where句のクエリ
-async fn get_query_by_playlist<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Result<String> {
+async fn get_query_by_playlist<'c>(
+    tx: &mut PgTransaction<'c>,
+    plist: &Playlist,
+) -> Result<String, TrackQueryError> {
     //リストアップされていなければ、まずリストアップする
     if !plist.listuped_flag {
         listup_tracks(tx, plist).await?;
@@ -72,7 +75,10 @@ async fn get_query_by_playlist<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist)
 /// プレイリストの曲をリストアップし、playlist_trackテーブルを更新する
 /// # Arguments
 /// - plist: 対象プレイリスト情報
-async fn listup_tracks<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Result<()> {
+async fn listup_tracks<'c>(
+    tx: &mut PgTransaction<'c>,
+    plist: &Playlist,
+) -> Result<(), TrackQueryError> {
     //通常プレイリストなら、リストアップ済みフラグを立てるのみ
     if plist.playlist_type != PlaylistType::Normal {
         //元々保存されていた曲リストを取得
@@ -138,7 +144,7 @@ async fn listup_tracks<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Resu
 async fn search_plist_tracks_folder<'c>(
     tx: &mut PgTransaction<'c>,
     plist: &Playlist,
-) -> Result<Vec<i32>> {
+) -> Result<Vec<i32>, TrackQueryError> {
     let children = sqlx::query_as!(
             PlaylistRow,
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE parent_id IS NOT DISTINCT FROM $1 ORDER BY in_folder_order"#,
@@ -178,7 +184,7 @@ async fn search_plist_tracks_folder<'c>(
 async fn search_plist_tracks_filter<'c>(
     tx: &mut PgTransaction<'c>,
     plist: &Playlist,
-) -> Result<Vec<i32>> {
+) -> Result<Vec<i32>, TrackQueryError> {
     let filter = plist
         .filter
         .as_ref()

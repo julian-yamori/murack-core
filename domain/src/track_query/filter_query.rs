@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests;
 
-use anyhow::Result;
 use chrono::NaiveDate;
 use sqlx::PgTransaction;
 
@@ -12,6 +11,7 @@ use crate::{
         ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,
         IntFilterRange, RootFilter, StringFilterRange, TagsFilterRange,
     },
+    track_query::TrackQueryError,
 };
 
 /// フィルタを使用して曲 ID を列挙
@@ -20,7 +20,7 @@ use crate::{
 pub async fn get_track_ids<'c>(
     tx: &mut PgTransaction<'c>,
     filter: &RootFilter,
-) -> Result<Vec<i32>> {
+) -> Result<Vec<i32>, TrackQueryError> {
     let mut query_base = "SELECT tracks.id FROM tracks".to_owned();
 
     //フィルタから条件を取得して追加

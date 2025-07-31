@@ -1,6 +1,6 @@
 use crate::{
     NonEmptyString,
-    playlist::{Playlist, PlaylistType, SortType},
+    playlist::{Playlist, PlaylistType, SortType, playlist_error::PlaylistError},
 };
 
 /// playlistテーブルのレコード
@@ -48,9 +48,9 @@ pub struct PlaylistRow {
 }
 
 impl TryFrom<PlaylistRow> for Playlist {
-    type Error = anyhow::Error;
+    type Error = PlaylistError;
 
-    fn try_from(row: PlaylistRow) -> anyhow::Result<Self> {
+    fn try_from(row: PlaylistRow) -> Result<Self, Self::Error> {
         Ok(Self {
             id: row.id,
             playlist_type: row.playlist_type,
@@ -58,7 +58,10 @@ impl TryFrom<PlaylistRow> for Playlist {
             parent_id: row.parent_id,
             in_folder_order: row.in_folder_order as u32,
             filter: match row.filter_json {
-                Some(json) => Some(serde_json::from_value(json)?),
+                Some(json) => Some(
+                    serde_json::from_value(json)
+                        .map_err(PlaylistError::FailedToDeserializeFilter)?,
+                ),
                 None => None,
             },
             sort_type: row.sort_type,

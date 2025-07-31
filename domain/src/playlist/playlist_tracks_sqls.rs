@@ -4,7 +4,7 @@ use sqlx::PgTransaction;
 pub async fn select_track_id_by_playlist_id<'c>(
     tx: &mut PgTransaction<'c>,
     plist_id: i32,
-) -> anyhow::Result<Vec<i32>> {
+) -> sqlx::Result<Vec<i32>> {
     let id = sqlx::query_scalar!(
         "SELECT track_id FROM playlist_tracks WHERE playlist_id = $1",
         plist_id,
@@ -21,7 +21,7 @@ pub async fn insert_playlist_track<'c>(
     plist_id: i32,
     track_id: i32,
     order: i32,
-) -> anyhow::Result<()> {
+) -> sqlx::Result<()> {
     sqlx::query!(
         "INSERT INTO playlist_tracks (playlist_id, order_index, track_id) VALUES($1, $2, $3)",
         plist_id,
@@ -41,7 +41,7 @@ pub async fn insert_playlist_track<'c>(
 pub async fn delete_by_playlist_id<'c>(
     tx: &mut PgTransaction<'c>,
     plist_id: i32,
-) -> anyhow::Result<()> {
+) -> sqlx::Result<()> {
     sqlx::query!(
         "DELETE FROM playlist_tracks WHERE playlist_id = $1",
         plist_id,
