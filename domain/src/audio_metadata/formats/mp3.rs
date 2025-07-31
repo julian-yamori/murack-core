@@ -7,7 +7,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::Result;
 use chrono::{Datelike, NaiveDate};
 use id3::{Tag, TagLike};
 use mp3_duration::MP3DurationError;
@@ -23,7 +22,7 @@ const KEY_DATE: &str = "TDAT";
 /// - path: オーディオファイルの絶対パス
 /// # Returns
 /// オーディオファイルのメタデータ
-pub fn read(path: &Path) -> Result<AudioMetaData> {
+pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
     let file = File::open(path).map_err(|e| MP3Error::FileIoError(path.to_owned(), e))?;
     let mut reader = BufReader::new(file);
 
@@ -67,7 +66,7 @@ pub fn overwrite(
     path: &Path,
     track: &AudioMetaDataEntry,
     artworks: &[AudioPictureEntry],
-) -> Result<()> {
+) -> Result<(), MP3Error> {
     let mut tag = Tag::read_from_path(path)?;
 
     match track.title {
@@ -145,7 +144,7 @@ pub fn overwrite(
 /// # Arguments
 /// - reader: 読み込み元のファイルリーダー
 /// - path: 読み込むファイルのパス（エラー情報用）
-fn read_duration(reader: &mut BufReader<File>, path: &Path) -> Result<u32> {
+fn read_duration(reader: &mut BufReader<File>, path: &Path) -> Result<u32, MP3Error> {
     let offset = reader
         .stream_position()
         .map_err(|e| MP3Error::FileIoError(path.to_owned(), e))?;
@@ -154,7 +153,7 @@ fn read_duration(reader: &mut BufReader<File>, path: &Path) -> Result<u32> {
         Ok(d) => Ok(d.as_millis() as u32),
         Err(mut e) => {
             e.offset += offset as usize;
-            Err(MP3Error::DurationError(e).into())
+            Err(MP3Error::DurationError(e))
         }
     }
 }
@@ -169,7 +168,7 @@ fn id3_get_str(tag: &Tag, key: &str) -> Option<String> {
     opt_str_to_owned(text)
 }
 /// ID3からリリース日を取得
-fn id3_get_release_date(tag: &Tag) -> Result<Option<NaiveDate>> {
+fn id3_get_release_date(tag: &Tag) -> Result<Option<NaiveDate>, MP3Error> {
     let opt_year = tag.year();
     let opt_date = tag.get(KEY_DATE).and_then(|frame| frame.content().text());
 
@@ -181,15 +180,13 @@ fn id3_get_release_date(tag: &Tag) -> Result<Option<NaiveDate>> {
             None => Err(MP3Error::InvalidReleaseDate {
                 year: Some(year),
                 tdat: None,
-            }
-            .into()),
+            }),
         },
         None => match opt_date {
             Some(date_str) => Err(MP3Error::InvalidReleaseDate {
                 year: None,
                 tdat: Some(date_str.to_string()),
-            }
-            .into()),
+            }),
             None => Ok(None),
         },
     }
@@ -236,13 +233,12 @@ fn trim_null(s: &str) -> &str {
 }
 
 /// 年・日付文字列をReleaseDateに変換
-fn year_date_to_release_date(year: i32, date: &str) -> Result<Option<NaiveDate>> {
+fn year_date_to_release_date(year: i32, date: &str) -> Result<Option<NaiveDate>, MP3Error> {
     if date.len() != 4 {
         return Err(MP3Error::InvalidReleaseDate {
             year: Some(year),
             tdat: Some(date.to_string()),
-        }
-        .into());
+        });
     }
 
     let s = format!("{year}/{date}");
@@ -251,8 +247,7 @@ fn year_date_to_release_date(year: i32, date: &str) -> Result<Option<NaiveDate>>
         Err(_) => Err(MP3Error::InvalidReleaseDate {
             year: Some(year),
             tdat: Some(date.to_string()),
-        }
-        .into()),
+        }),
     }
 }
 /// ID3タグにリリース日を設定
@@ -271,7 +266,7 @@ fn id3_set_release_date(tag: &mut Tag, date: &Option<NaiveDate>) {
 }
 
 /// ID3タグにアートワークを設定
-fn id3_set_artworks(tag: &mut Tag, artworks: &[AudioPictureEntry]) -> Result<()> {
+fn id3_set_artworks(tag: &mut Tag, artworks: &[AudioPictureEntry]) -> Result<(), MP3Error> {
     use id3::frame::{Picture, PictureType};
 
     //一旦全削除
@@ -285,8 +280,7 @@ fn id3_set_artworks(tag: &mut Tag, artworks: &[AudioPictureEntry]) -> Result<()>
         {
             return Err(MP3Error::PictureTypeDuplicated {
                 type_num: artwork.picture_type,
-            }
-            .into());
+            });
         }
 
         tag.add_frame(Picture {
@@ -303,6 +297,9 @@ fn id3_set_artworks(tag: &mut Tag, artworks: &[AudioPictureEntry]) -> Result<()>
 /// MP3 曲データ関連のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum MP3Error {
+    #[error(transparent)]
+    Id3(#[from] id3::Error),
+
     /// ファイルIO汎用エラー
     #[error("{0}: {1}")]
     FileIoError(PathBuf, std::io::Error),
@@ -364,13 +361,12 @@ mod tests {
             if let Some(d) = date {
                 tag.set_text(KEY_DATE, d);
             }
-            match id3_get_release_date(&tag).unwrap_err().downcast_ref() {
-                Some(MP3Error::InvalidReleaseDate { year: r_year, tdat }) => {
-                    assert_eq!(r_year, &year);
+            match id3_get_release_date(&tag).unwrap_err() {
+                MP3Error::InvalidReleaseDate { year: r_year, tdat } => {
+                    assert_eq!(r_year, year);
                     assert_eq!(tdat.as_deref(), date)
                 }
-                Some(e) => panic!("unknown error: {e}"),
-                None => panic!("None returned"),
+                e => panic!("unknown error: {e}"),
             }
         }
 
