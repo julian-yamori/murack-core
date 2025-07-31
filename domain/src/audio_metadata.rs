@@ -5,9 +5,6 @@ pub use format_type::FormatType;
 
 pub mod formats;
 
-pub mod audio_metadata_error;
-pub use audio_metadata_error::AudioMetaDataError;
-
 mod audio_metadata_model;
 pub use audio_metadata_model::{AudioMetaData, AudioMetaDataEntry};
 
