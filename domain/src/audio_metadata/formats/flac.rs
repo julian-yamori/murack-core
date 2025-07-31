@@ -2,7 +2,6 @@
 
 use std::path::Path;
 
-use anyhow::Result;
 use chrono::NaiveDate;
 use metaflac::{
     Tag,
@@ -25,7 +24,7 @@ const KEY_MEMO: &str = "DESCRIPTION";
 /// - path: オーディオファイルの絶対パス
 /// # Returns
 /// オーディオファイルのメタデータ
-pub fn read(path: &Path) -> Result<AudioMetaData> {
+pub fn read(path: &Path) -> Result<AudioMetaData, FlacError> {
     let tag = Tag::read_from_path(path)?;
 
     let si = tag
@@ -64,7 +63,7 @@ pub fn overwrite(
     path: &Path,
     track: &AudioMetaDataEntry,
     artworks: &[AudioPictureEntry],
-) -> Result<()> {
+) -> Result<(), FlacError> {
     let mut tag = Tag::read_from_path(path)?;
     let v = tag.vorbis_comments_mut();
 
@@ -135,7 +134,7 @@ fn vorbis_get_str_ref(values: Option<&Vec<String>>) -> Option<&String> {
     values.and_then(|vec| vec.iter().next())
 }
 /// VorbisCommentの文字列値から整数値を取得
-fn vorbis_get_str_to_int(vc: &VorbisComment, key: &str) -> Result<Option<i32>> {
+fn vorbis_get_str_to_int(vc: &VorbisComment, key: &str) -> Result<Option<i32>, FlacError> {
     let op = vc.get(key).and_then(|vec| vec.iter().next());
     match op {
         Some(s) => match s.parse::<i32>() {
@@ -143,22 +142,20 @@ fn vorbis_get_str_to_int(vc: &VorbisComment, key: &str) -> Result<Option<i32>> {
             Err(_) => Err(FlacError::FailedToParseInteger {
                 key: key.to_owned(),
                 value: s.clone(),
-            }
-            .into()),
+            }),
         },
         None => Ok(None),
     }
 }
 /// VorbisCommentからリリース日を取得
-fn get_release_date(vc: &VorbisComment) -> Result<Option<NaiveDate>> {
+fn get_release_date(vc: &VorbisComment) -> Result<Option<NaiveDate>, FlacError> {
     match vorbis_get_str_ref(vc.get(KEY_DATE)) {
         Some(s) => match NaiveDate::parse_from_str(s.as_ref(), "%Y-%m-%d") {
             Ok(date) => Ok(Some(date)),
             Err(_) => Err(FlacError::FailedToParseDate {
                 key: KEY_DATE.to_string(),
                 value: s.clone(),
-            }
-            .into()),
+            }),
         },
         None => Ok(None),
     }
@@ -245,6 +242,9 @@ fn int_to_track_number(i: &Option<i32>) -> Vec<String> {
 /// Flac 曲データ関連のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum FlacError {
+    #[error(transparent)]
+    Metafrac(#[from] metaflac::Error),
+
     #[error("StreamInfoブロックがありません")]
     StreamInfoBlockNotFound,
 

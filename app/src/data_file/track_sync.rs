@@ -37,7 +37,7 @@ pub fn read_metadata(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<A
 
     match FormatType::from_path(&track_abs)? {
         FormatType::Mp3 => formats::mp3::read(&track_abs),
-        FormatType::Flac => formats::flac::read(&track_abs),
+        FormatType::Flac => Ok(formats::flac::read(&track_abs)?),
         FormatType::M4a => formats::m4a::read(&track_abs),
     }
 }
