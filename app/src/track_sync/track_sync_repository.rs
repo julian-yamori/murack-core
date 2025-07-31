@@ -3,7 +3,6 @@ mod tests;
 
 use anyhow::Result;
 use murack_core_domain::{
-    artwork::artwork_repository,
     folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
     playlist::playlist_sqls,
@@ -54,7 +53,7 @@ pub async fn get_by_path<'c>(
             memo: track_row.memo,
             lyrics: track_row.lyrics,
             //アートワーク情報を検索して紐づけ
-            artworks: artwork_repository::get_track_artworks(tx, track_row.id).await?,
+            artworks: app_artwork_repository::get_track_artworks(tx, track_row.id).await?,
         },
     }))
 }

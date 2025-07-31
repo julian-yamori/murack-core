@@ -9,9 +9,6 @@ use murack_core_media::{
 #[derive(Debug, PartialEq, Clone)]
 pub struct TrackArtwork {
     /// 画像データ
-    ///
-    /// 同一の画像をキャッシュで共有できるように、Arc で持つ。
-    /// (アプリケーション層でやるべきか？)
     pub picture: Arc<Picture>,
 
     /// 画像タイプ

@@ -1,16 +1,13 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
-use murack_core_domain::{
-    artwork::{TrackArtwork, artwork_repository},
-    path::LibraryTrackPath,
-    track::TrackItemKind,
-};
+use murack_core_domain::{path::LibraryTrackPath, track::TrackItemKind};
 use sqlx::PgPool;
 
 use super::{TrackItemConflict, messages};
 use crate::{
-    Config, DbTrackError, app_artwork_repository,
+    Config, DbTrackError,
+    app_artwork_repository::{self, TrackArtwork},
     command::check::domain::check_usecase,
     cui::Cui,
     data_file,
@@ -297,7 +294,7 @@ where
 
                 //念の為、保存した値で変数値を上書きしておく
                 db_track.track_sync.artworks =
-                    artwork_repository::get_track_artworks(&mut tx, track_id).await?;
+                    app_artwork_repository::get_track_artworks(&mut tx, track_id).await?;
 
                 tx.commit().await?;
                 Ok(true)
