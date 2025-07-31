@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use sqlx::PgTransaction;
 
-use crate::artwork::Picture;
+use crate::artwork::{ArtworkError, Picture};
 
 /// アートワークを DB に追加
 pub async fn add_artwork(
     tx: &mut PgTransaction<'_>,
     picture: &Arc<Picture>,
-) -> anyhow::Result<i32> {
+) -> Result<i32, ArtworkError> {
     //対象データのMD5ハッシュを取得
     let hash = picture.hash();
 
@@ -25,7 +25,10 @@ pub async fn add_artwork(
 }
 
 /// アートワークを DB から削除
-pub async fn delete_artwork(tx: &mut PgTransaction<'_>, artwork_id: i32) -> anyhow::Result<()> {
+pub async fn delete_artwork(
+    tx: &mut PgTransaction<'_>,
+    artwork_id: i32,
+) -> Result<(), ArtworkError> {
     sqlx::query!("DELETE FROM artworks WHERE id = $1", artwork_id,)
         .execute(&mut **tx)
         .await?;

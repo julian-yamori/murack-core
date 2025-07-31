@@ -1,7 +1,8 @@
 use std::{fmt, io::Cursor};
 
-use anyhow::{Context, Result};
 use image::{ImageResult, codecs::jpeg::JpegEncoder, imageops::FilterType};
+
+use crate::artwork::ArtworkError;
 
 /// 縮小版アートワークのサイズ
 const MINI_SIZE: u32 = 112;
@@ -25,8 +26,8 @@ impl Picture {
     }
 
     /// アートワークの縮小版画像データを作成
-    pub fn artwork_mini_image(&self) -> Result<Vec<u8>> {
-        make_mini_image(&self.bytes).with_context(|| "failed to make mini artwork".to_owned())
+    pub fn artwork_mini_image(&self) -> Result<Vec<u8>, ArtworkError> {
+        make_mini_image(&self.bytes).map_err(ArtworkError::FailedToBuildMiniArtwork)
     }
 }
 
