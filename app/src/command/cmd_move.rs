@@ -9,7 +9,7 @@ use murack_core_domain::{
 use sqlx::PgPool;
 
 use crate::{
-    Config,
+    Config, DbTrackError,
     data_file::{self, LibraryFsError},
     db_common,
 };
@@ -89,7 +89,7 @@ impl<'config> CommandMove<'config> {
         // 曲が存在しないかチェック
         let dest_track_path: LibraryTrackPath = self.args.dest_path.clone().into();
         if db_common::exists_path(&mut tx, &dest_track_path).await? {
-            return Err(DomainError::DbTrackAlreadyExists(dest_track_path).into());
+            return Err(DbTrackError::DbTrackAlreadyExists(dest_track_path).into());
         }
 
         // フォルダが存在しないかチェック

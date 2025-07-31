@@ -4,7 +4,7 @@
 mod tests;
 
 use murack_core_domain::{
-    Error as DomainError, NonEmptyString,
+    NonEmptyString,
     artwork::artwork_repository,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
@@ -14,7 +14,10 @@ use murack_core_domain::{
 };
 use sqlx::{PgPool, PgTransaction};
 
-use crate::track_sync::{TrackSync, track_sync_repository};
+use crate::{
+    DbTrackError,
+    track_sync::{TrackSync, track_sync_repository},
+};
 
 /// 指定されたpathのレコードが存在するか確認
 pub async fn exists_path<'c>(
@@ -83,7 +86,7 @@ pub async fn delete_track_db<'c>(
     )
     .fetch_optional(&mut **tx)
     .await?
-    .ok_or_else(|| DomainError::DbTrackNotFound(path.clone()))?;
+    .ok_or_else(|| DbTrackError::DbTrackNotFound(path.clone()))?;
 
     //曲の削除
     sqlx::query!("DELETE FROM tracks WHERE id = $1", track_id,)

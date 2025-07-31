@@ -10,7 +10,7 @@ use murack_core_domain::{
 };
 use sqlx::PgTransaction;
 
-use crate::db_common;
+use crate::{DbTrackError, db_common};
 
 /// パス文字列を指定してDBの曲パスを移動
 pub async fn move_path_str_db<'c>(
@@ -50,7 +50,7 @@ async fn move_track_db_unit<'c>(
     dest: &LibraryTrackPath,
 ) -> Result<()> {
     if db_common::exists_path(tx, dest).await? {
-        return Err(Error::DbTrackAlreadyExists(dest.to_owned()).into());
+        return Err(DbTrackError::DbTrackAlreadyExists(dest.to_owned()).into());
     }
 
     //移動先の親フォルダを登録してIDを取得

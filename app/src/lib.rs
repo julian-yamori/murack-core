@@ -11,6 +11,10 @@ pub use config::Config;
 pub mod command;
 pub mod data_file;
 pub mod db_common;
+
+pub mod db_track_error;
+pub use db_track_error::DbTrackError;
+
 pub mod track_sync;
 
 #[cfg(test)]

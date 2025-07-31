@@ -2,7 +2,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
 use murack_core_domain::{
-    Error as DomainError,
     artwork::{TrackArtwork, artwork_repository},
     path::LibraryTrackPath,
     track::TrackItemKind,
@@ -11,7 +10,7 @@ use sqlx::PgPool;
 
 use super::{TrackItemConflict, messages};
 use crate::{
-    Config,
+    Config, DbTrackError,
     command::check::domain::check_usecase,
     cui::Cui,
     data_file,
@@ -394,7 +393,7 @@ where
 
         track_sync_repository::get_by_path(&mut tx, track_path)
             .await?
-            .ok_or_else(|| DomainError::DbTrackNotFound(track_path.clone()).into())
+            .ok_or_else(|| DbTrackError::DbTrackNotFound(track_path.clone()).into())
     }
 
     /// DBに曲の連携情報(アートワーク以外)を保存

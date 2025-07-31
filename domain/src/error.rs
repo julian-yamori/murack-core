@@ -1,17 +1,8 @@
-use crate::{
-    NonEmptyString,
-    path::{LibraryDirectoryPath, LibraryTrackPath},
-};
+use crate::path::{LibraryDirectoryPath, LibraryTrackPath};
 
 /// murack-core domain層のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("曲データがDBに存在しません: {0}")]
-    DbTrackNotFound(LibraryTrackPath),
-    #[error("DBに指定されたパスが存在しません: {0}")]
-    DbPathStrNotFound(NonEmptyString),
-    #[error("曲データが既にDBに存在します: {0}")]
-    DbTrackAlreadyExists(LibraryTrackPath),
     #[error("フォルダがDBに存在しません: {0}")]
     DbFolderPathNotFound(LibraryDirectoryPath),
     #[error("フォルダIDがDBに存在しません: {0}")]

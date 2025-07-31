@@ -3,7 +3,6 @@ mod tests;
 
 use anyhow::Result;
 use murack_core_domain::{
-    Error as DomainError,
     artwork::artwork_repository,
     folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
@@ -12,7 +11,7 @@ use murack_core_domain::{
 use sqlx::PgTransaction;
 
 use crate::{
-    db_common,
+    DbTrackError, db_common,
     track_sync::{DbTrackSync, TrackSync, TrackSyncRow},
 };
 
@@ -84,7 +83,7 @@ pub async fn register_db<'c>(
     //DBに既に存在しないか確認
     //TODO unique keyにする
     if db_common::exists_path(tx, track_path).await? {
-        return Err(DomainError::DbTrackAlreadyExists(track_path.clone()).into());
+        return Err(DbTrackError::DbTrackAlreadyExists(track_path.clone()).into());
     }
 
     // tracks テーブルに書き込み

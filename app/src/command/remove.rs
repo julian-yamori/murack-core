@@ -1,9 +1,9 @@
 use anyhow::Result;
-use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
+use murack_core_domain::{NonEmptyString, path::LibraryTrackPath};
 use sqlx::{PgPool, PgTransaction};
 
 use crate::{
-    Config,
+    Config, DbTrackError,
     cui::Cui,
     data_file::{self, LibraryFsError},
     db_common,
@@ -47,7 +47,7 @@ where
         if track_path_list.is_empty() {
             self.cui.err(format_args!(
                 "{}\n",
-                DomainError::DbPathStrNotFound(self.args.path.clone()),
+                DbTrackError::DbPathStrNotFound(self.args.path.clone()),
             ))?;
             return Ok(());
         }
