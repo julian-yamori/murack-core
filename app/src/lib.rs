@@ -2,9 +2,6 @@
 //!
 //! domainを操作する、CUIアプリケーションのロジック
 
-mod error;
-pub use error::Error;
-
 #[macro_use]
 pub mod cui;
 

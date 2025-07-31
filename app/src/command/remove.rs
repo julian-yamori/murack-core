@@ -3,7 +3,7 @@ use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrac
 use sqlx::{PgPool, PgTransaction};
 
 use crate::{
-    Config, Error,
+    Config,
     cui::Cui,
     data_file::{self, LibraryFsError},
     db_common,
@@ -122,19 +122,4 @@ pub struct CommandRemoveArgs {
     ///
     /// ディレクトリ指定可
     pub path: NonEmptyString,
-}
-
-impl CommandRemoveArgs {
-    /// コマンドの引数を解析
-    pub fn parse(command_line: &[String]) -> Result<CommandRemoveArgs> {
-        match command_line {
-            [s, ..] => Ok(CommandRemoveArgs {
-                path: s.clone().try_into()?,
-            }),
-            [] => Err(Error::InvalidCommandArgument {
-                msg: "target path is not specified.".to_owned(),
-            }
-            .into()),
-        }
-    }
 }

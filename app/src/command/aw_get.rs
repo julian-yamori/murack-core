@@ -1,4 +1,4 @@
-use crate::{Config, Error, cui::Cui, data_file};
+use crate::{Config, cui::Cui, data_file};
 
 use anyhow::{Context, Result, anyhow};
 use murack_core_domain::path::LibraryTrackPath;
@@ -6,7 +6,6 @@ use murack_core_domain::path::LibraryTrackPath;
 use std::{
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 
 /// aw-getコマンド
@@ -123,26 +122,6 @@ pub struct CommandArtworkGetArgs {
     ///
     /// Noneの場合、trackPathを使用する。
     pub artwork_path: Option<PathBuf>,
-}
-
-impl CommandArtworkGetArgs {
-    /// コマンドの引数を解析
-    pub fn parse(command_line: &[String]) -> Result<CommandArtworkGetArgs> {
-        match command_line {
-            [track, artwork, ..] => Ok(CommandArtworkGetArgs {
-                track_path: LibraryTrackPath::from_str(track)?,
-                artwork_path: Some(artwork.into()),
-            }),
-            [track] => Ok(CommandArtworkGetArgs {
-                track_path: LibraryTrackPath::from_str(track)?,
-                artwork_path: None,
-            }),
-            [] => Err(Error::InvalidCommandArgument {
-                msg: "audio file path is not specified.".to_owned(),
-            }
-            .into()),
-        }
-    }
 }
 
 #[cfg(test)]

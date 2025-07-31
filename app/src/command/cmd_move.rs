@@ -9,7 +9,7 @@ use murack_core_domain::{
 use sqlx::PgPool;
 
 use crate::{
-    Config, Error,
+    Config,
     data_file::{self, LibraryFsError},
     db_common,
 };
@@ -114,24 +114,4 @@ pub struct CommandMoveArgs {
     ///
     /// ディレクトリ指定可(src_pathもディレクトリであること)
     pub dest_path: NonEmptyString,
-}
-
-impl CommandMoveArgs {
-    /// コマンドの引数を解析
-    pub fn parse(command_line: &[String]) -> Result<CommandMoveArgs> {
-        match command_line {
-            [src, dest, ..] => Ok(CommandMoveArgs {
-                src_path: src.clone().try_into()?,
-                dest_path: dest.clone().try_into()?,
-            }),
-            [_] => Err(Error::InvalidCommandArgument {
-                msg: "destination path is not specified.".to_owned(),
-            }
-            .into()),
-            [] => Err(Error::InvalidCommandArgument {
-                msg: "source file path is not specified.".to_owned(),
-            }
-            .into()),
-        }
-    }
 }

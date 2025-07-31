@@ -3,7 +3,7 @@ use murack_core_domain::{NonEmptyString, path::LibraryTrackPath};
 use sqlx::PgPool;
 
 use crate::{
-    Config, Error,
+    Config,
     cui::Cui,
     data_file::{self, LibraryFsError},
     db_common,
@@ -100,19 +100,4 @@ where
 pub struct CommandAddArgs {
     /// 追加対象のパス
     pub path: NonEmptyString,
-}
-
-impl CommandAddArgs {
-    /// コマンドの引数を解析
-    pub fn parse(command_line: &[String]) -> Result<CommandAddArgs> {
-        match command_line {
-            [s, ..] => Ok(CommandAddArgs {
-                path: s.clone().try_into()?,
-            }),
-            [] => Err(Error::InvalidCommandArgument {
-                msg: "target path is not specified.".to_owned(),
-            }
-            .into()),
-        }
-    }
 }
