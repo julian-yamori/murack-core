@@ -7,8 +7,7 @@ pub use track_artwork::TrackArtwork;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Result, anyhow};
-use murack_core_domain::artwork::artwork_repository;
-use murack_core_media::picture::Picture;
+use murack_core_domain::artwork::{Picture, artwork_repository};
 use once_cell::sync::Lazy;
 use sqlx::PgTransaction;
 

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use murack_core_media::picture::Picture;
+use murack_core_domain::artwork::Picture;
 
 /// キャッシュされるアートワークのデータ
 pub struct ArtworkCachedData {

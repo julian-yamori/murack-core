@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use murack_core_media::picture::Picture;
 use sqlx::PgTransaction;
+
+use crate::artwork::Picture;
 
 /// アートワークを DB に追加
 pub async fn add_artwork(
