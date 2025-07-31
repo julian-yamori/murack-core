@@ -1,7 +1,7 @@
 use crate::{Config, cui::Cui, data_file};
 
 use anyhow::{Context, Result, anyhow};
-use murack_core_domain::{audio_metadata::AudioMetaDataError, path::LibraryTrackPath};
+use murack_core_domain::path::LibraryTrackPath;
 
 use std::{
     fs,
@@ -88,7 +88,7 @@ fn make_output_path(
         "image/gif" => "gif",
         "image/bmp" => "bmp",
         s => {
-            return Err(AudioMetaDataError::UnsupportedArtworkFmt { fmt: s.to_owned() }.into());
+            return Err(anyhow!("非対応のアートワーク形式です: {s}"));
         }
     };
 
