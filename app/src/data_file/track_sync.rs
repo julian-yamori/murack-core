@@ -7,10 +7,13 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use murack_core_domain::{Error as DomainError, artwork::TrackArtwork, path::LibraryTrackPath};
+use murack_core_domain::{artwork::TrackArtwork, path::LibraryTrackPath};
 use murack_core_media::audio_meta::{AudioMetaData, FormatType, formats};
 
-use crate::{data_file::utils, track_sync::TrackSync};
+use crate::{
+    data_file::{LibraryFsError, utils},
+    track_sync::TrackSync,
+};
 
 /// 曲のオーディオメタデータを読み込み
 ///
@@ -22,7 +25,7 @@ pub fn read_metadata(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<A
 
     //ファイルがない場合はdomain側で判別したいので個別エラー
     if !track_abs.exists() {
-        return Err(DomainError::FileTrackNotFound {
+        return Err(LibraryFsError::FileTrackNotFound {
             lib_root: lib_root.to_owned(),
             track_path: track_path.to_owned(),
         }

@@ -4,9 +4,9 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use murack_core_domain::{Error as DomainError, NonEmptyString};
+use murack_core_domain::NonEmptyString;
 
-use crate::data_file::utils;
+use crate::data_file::{LibraryFsError, utils};
 
 /// パス文字列を指定してライブラリ内のファイル/フォルダを移動
 ///
@@ -17,7 +17,7 @@ use crate::data_file::utils;
 pub fn move_path_str(lib_root: &Path, src: &NonEmptyString, dest: &NonEmptyString) -> Result<()> {
     let src_abs = lib_root.join(src);
     if !src_abs.exists() {
-        return Err(DomainError::FilePathStrNotFound {
+        return Err(LibraryFsError::FilePathStrNotFound {
             lib_root: lib_root.to_owned(),
             path_str: src.to_owned(),
         }
@@ -26,7 +26,7 @@ pub fn move_path_str(lib_root: &Path, src: &NonEmptyString, dest: &NonEmptyStrin
 
     let dest_abs = lib_root.join(dest);
     if dest_abs.exists() {
-        return Err(DomainError::FilePathStrAlreadyExists {
+        return Err(LibraryFsError::FilePathStrAlreadyExists {
             lib_root: lib_root.to_owned(),
             path_str: dest.to_owned(),
         }

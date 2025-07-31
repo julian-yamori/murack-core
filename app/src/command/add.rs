@@ -1,8 +1,13 @@
 use anyhow::Result;
-use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
+use murack_core_domain::{NonEmptyString, path::LibraryTrackPath};
 use sqlx::PgPool;
 
-use crate::{Config, Error, cui::Cui, data_file, db_common};
+use crate::{
+    Config, Error,
+    cui::Cui,
+    data_file::{self, LibraryFsError},
+    db_common,
+};
 
 /// addコマンド
 ///
@@ -32,7 +37,7 @@ where
 
         let file_count = path_list.len();
         if file_count == 0 {
-            return Err(DomainError::FilePathStrNotFound {
+            return Err(LibraryFsError::FilePathStrNotFound {
                 lib_root: self.config.pc_lib.clone(),
                 path_str: self.args.path.clone(),
             }

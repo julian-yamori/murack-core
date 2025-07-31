@@ -8,7 +8,11 @@ use murack_core_domain::{
 };
 use sqlx::PgPool;
 
-use crate::{Config, Error, data_file, db_common};
+use crate::{
+    Config, Error,
+    data_file::{self, LibraryFsError},
+    db_common,
+};
 
 /// moveコマンド
 ///
@@ -53,7 +57,7 @@ impl<'config> CommandMove<'config> {
         let dest_path_str = &self.args.dest_path;
 
         if data_file::is_exist_path_str(pc_lib, dest_path_str)? {
-            return Err(DomainError::FilePathStrAlreadyExists {
+            return Err(LibraryFsError::FilePathStrAlreadyExists {
                 lib_root: pc_lib.clone(),
                 path_str: dest_path_str.clone(),
             }
@@ -68,7 +72,7 @@ impl<'config> CommandMove<'config> {
         let dest_path_str = &self.args.dest_path;
 
         if data_file::is_exist_path_str(dap_lib, dest_path_str)? {
-            return Err(DomainError::FilePathStrAlreadyExists {
+            return Err(LibraryFsError::FilePathStrAlreadyExists {
                 lib_root: dap_lib.clone(),
                 path_str: dest_path_str.clone(),
             }

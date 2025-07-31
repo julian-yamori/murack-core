@@ -7,6 +7,9 @@ pub use copy::{copy_track_over_lib, overwrite_track_over_lib};
 mod delete;
 pub use delete::{delete_path_str, delete_track, trash_path_str, trash_track};
 
+pub mod library_fs_error;
+pub use library_fs_error::LibraryFsError;
+
 mod mod_move;
 pub use mod_move::move_path_str;
 

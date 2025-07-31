@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
-use murack_core_domain::{Error as DomainError, path::LibraryTrackPath};
+use murack_core_domain::path::LibraryTrackPath;
 use sqlx::PgPool;
 
 use super::{ResolveFileExistanceResult, messages};
@@ -9,7 +9,8 @@ use crate::{
     Config,
     command::check::domain::CheckIssueSummary,
     cui::Cui,
-    data_file, db_common,
+    data_file::{self, LibraryFsError},
+    db_common,
     track_sync::{TrackSync, track_sync_repository},
 };
 
@@ -62,7 +63,7 @@ where
         let pc_data_opt = match pc_read_result {
             Ok(d) => Some(d),
             Err(e) => match e.downcast_ref() {
-                Some(DomainError::FileTrackNotFound { .. }) => None,
+                Some(LibraryFsError::FileTrackNotFound { .. }) => None,
                 _ => {
                     //読み込み失敗の場合は専用の解決処理
                     //実態は通知のみで、

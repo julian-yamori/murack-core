@@ -2,7 +2,12 @@ use anyhow::Result;
 use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
 use sqlx::{PgPool, PgTransaction};
 
-use crate::{Config, Error, cui::Cui, data_file, db_common};
+use crate::{
+    Config, Error,
+    cui::Cui,
+    data_file::{self, LibraryFsError},
+    db_common,
+};
 
 /// removeコマンド
 ///
@@ -64,7 +69,7 @@ where
             Ok(_) => Ok(()),
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
-                Some(DomainError::FilePathStrNotFound { .. }) => {
+                Some(LibraryFsError::FilePathStrNotFound { .. }) => {
                     self.cui.err(format_args!("{e}\n"))?;
                     Ok(())
                 }
@@ -81,7 +86,7 @@ where
             Ok(_) => Ok(()),
             Err(e) => match e.downcast_ref() {
                 //パスが見つからないエラーなら、出力してこの関数はOK
-                Some(DomainError::FilePathStrNotFound { .. }) => {
+                Some(LibraryFsError::FilePathStrNotFound { .. }) => {
                     self.cui.err(format_args!("{e}\n"))?;
                     Ok(())
                 }

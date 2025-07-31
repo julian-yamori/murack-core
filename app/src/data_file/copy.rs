@@ -3,9 +3,9 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use murack_core_domain::{Error as DomainError, path::LibraryTrackPath};
+use murack_core_domain::path::LibraryTrackPath;
 
-use crate::data_file::utils;
+use crate::data_file::{LibraryFsError, utils};
 
 /// ライブラリからライブラリへ、曲データをコピー
 ///
@@ -23,7 +23,7 @@ pub fn copy_track_over_lib(
     //コピー元にファイルがあるか確認
     let src_track = target.abs(src_lib);
     if !src_track.exists() {
-        return Err(DomainError::FileTrackNotFound {
+        return Err(LibraryFsError::FileTrackNotFound {
             lib_root: src_lib.to_owned(),
             track_path: target.to_owned(),
         }
@@ -33,7 +33,7 @@ pub fn copy_track_over_lib(
     //コピー先に既に存在しないか確認
     let dest_track = target.abs(dest_lib);
     if dest_track.exists() {
-        return Err(DomainError::FileTrackAlreadyExists {
+        return Err(LibraryFsError::FileTrackAlreadyExists {
             lib_root: dest_lib.to_owned(),
             track_path: target.to_owned(),
         }
@@ -73,7 +73,7 @@ pub fn overwrite_track_over_lib(
     //コピー元にファイルがあるか確認
     let src_track = target.abs(src_lib);
     if !src_track.exists() {
-        return Err(DomainError::FileTrackNotFound {
+        return Err(LibraryFsError::FileTrackNotFound {
             lib_root: src_lib.to_owned(),
             track_path: target.to_owned(),
         }

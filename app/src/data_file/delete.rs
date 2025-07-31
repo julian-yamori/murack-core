@@ -4,9 +4,9 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use murack_core_domain::{Error as DomainError, NonEmptyString, path::LibraryTrackPath};
+use murack_core_domain::{NonEmptyString, path::LibraryTrackPath};
 
-use crate::data_file::utils;
+use crate::data_file::{LibraryFsError, utils};
 
 /// ライブラリから曲を削除
 ///
@@ -17,7 +17,7 @@ pub fn delete_track(lib_root: &Path, target: &LibraryTrackPath) -> Result<()> {
     //ファイルが存在するか確認
     let abs_path = target.abs(lib_root);
     if !abs_path.exists() {
-        return Err(DomainError::FileTrackNotFound {
+        return Err(LibraryFsError::FileTrackNotFound {
             lib_root: lib_root.to_owned(),
             track_path: target.to_owned(),
         }
@@ -40,7 +40,7 @@ pub fn delete_path_str(lib_root: &Path, target: &NonEmptyString) -> Result<()> {
 
     //ファイルが存在しない
     if !target_abs.exists() {
-        Err(DomainError::FilePathStrNotFound {
+        Err(LibraryFsError::FilePathStrNotFound {
             lib_root: lib_root.to_owned(),
             path_str: target.to_owned(),
         }
@@ -83,7 +83,7 @@ pub fn trash_track(lib_root: &Path, target: &LibraryTrackPath) -> Result<()> {
     //ファイルが存在するか確認
     let abs_path = target.abs(lib_root);
     if !abs_path.exists() {
-        return Err(DomainError::FileTrackNotFound {
+        return Err(LibraryFsError::FileTrackNotFound {
             lib_root: lib_root.to_owned(),
             track_path: target.to_owned(),
         }
@@ -106,7 +106,7 @@ pub fn trash_path_str(lib_root: &Path, target: &NonEmptyString) -> Result<()> {
 
     //ファイルが存在しない
     if !target_abs.exists() {
-        Err(DomainError::FilePathStrNotFound {
+        Err(LibraryFsError::FilePathStrNotFound {
             lib_root: lib_root.to_owned(),
             path_str: target.to_owned(),
         }

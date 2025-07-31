@@ -5,11 +5,11 @@
 use std::{fs::File, io::prelude::*, path::Path};
 
 use anyhow::{Context, Result};
-use murack_core_domain::{Error, path::LibraryTrackPath, track::TrackItemKind};
+use murack_core_domain::{path::LibraryTrackPath, track::TrackItemKind};
 use sqlx::PgPool;
 
 use crate::{
-    data_file,
+    data_file::{self, LibraryFsError},
     track_sync::{TrackSync, track_sync_repository},
 };
 
@@ -36,7 +36,7 @@ pub async fn listup_issue_summary(
     let pc_data_opt = match data_file::read_track_sync(pc_lib, track_path) {
         Ok(d) => Some(d),
         Err(e) => match e.downcast_ref() {
-            Some(Error::FileTrackNotFound { .. }) => {
+            Some(LibraryFsError::FileTrackNotFound { .. }) => {
                 issue_list.push(CheckIssueSummary::PcNotExists);
                 None
             }
