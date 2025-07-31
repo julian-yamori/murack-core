@@ -1,4 +1,6 @@
-use crate::{NonEmptyString, filter::RootFilter};
+use sqlx::PgTransaction;
+
+use crate::{NonEmptyString, filter::RootFilter, playlist::PlaylistRow};
 
 use super::{PlaylistType, SortType};
 
@@ -50,4 +52,23 @@ pub struct Playlist {
 
     /// 前回DAPに反映してから、リストが変更されたか
     pub dap_changed: bool,
+}
+
+/// IDを指定してプレイリストを検索
+pub async fn get_playlist<'c>(
+    tx: &mut PgTransaction<'c>,
+    playlist_id: i32,
+) -> anyhow::Result<Option<Playlist>> {
+    let opt = sqlx::query_as!(
+            PlaylistRow,
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
+            playlist_id
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
+
+    match opt {
+        Some(row) => Ok(Some(row.try_into()?)),
+        None => Ok(None),
+    }
 }

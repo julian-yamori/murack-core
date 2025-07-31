@@ -9,25 +9,6 @@ use crate::{
     },
 };
 
-/// IDを指定してプレイリストを検索
-pub async fn get_playlist<'c>(
-    tx: &mut PgTransaction<'c>,
-    playlist_id: i32,
-) -> Result<Option<Playlist>> {
-    let opt = sqlx::query_as!(
-            PlaylistRow,
-            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
-            playlist_id
-        )
-        .fetch_optional(&mut **tx)
-        .await?;
-
-    match opt {
-        Some(row) => Ok(Some(row.try_into()?)),
-        None => Ok(None),
-    }
-}
-
 /// プレイリストのツリー構造を取得
 /// # Returns
 /// 最上位プレイリストのリスト
