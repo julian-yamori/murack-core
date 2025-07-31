@@ -75,7 +75,7 @@ async fn move_track_db_unit<'c>(
 
     //子要素がなくなった親フォルダを削除
     if let Some(parent) = src.parent() {
-        folder_repository::delete_db_if_empty(tx, &parent).await?;
+        folder_repository::delete_if_empty(tx, &parent).await?;
     }
 
     //パスを使用したフィルタがあるかもしれないので、

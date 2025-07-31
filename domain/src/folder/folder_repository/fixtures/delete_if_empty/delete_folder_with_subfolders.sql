@@ -1,4 +1,4 @@
--- Test fixture for delete_db_if_empty::with_subfolders()
+-- Test fixture for delete_if_empty::with_subfolders()
 -- 
 -- This sets up the database state where:
 -- - Folder 15 exists but has subfolders (should not be deleted)

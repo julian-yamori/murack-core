@@ -75,7 +75,7 @@ pub async fn register_not_exists<'c>(
 ///
 /// # Arguments
 /// - folder_path: 確認・削除対象のフォルダパス
-pub async fn delete_db_if_empty<'c>(
+pub async fn delete_if_empty<'c>(
     tx: &mut PgTransaction<'c>,
     folder_path: &LibraryDirectoryPath,
 ) -> Result<()> {
@@ -90,7 +90,7 @@ pub async fn delete_db_if_empty<'c>(
     let folder_id = folder_id_opt
         .ok_or_else(|| FolderPathError::DbFolderPathNotFound(folder_path.to_owned()))?;
 
-    delete_db_if_empty_by_id(tx, folder_id).await
+    delete_if_empty_by_id(tx, folder_id).await
 }
 
 /// フォルダに曲が含まれてない場合、削除する(再帰実行用のID指定版)
@@ -98,7 +98,7 @@ pub async fn delete_db_if_empty<'c>(
 /// # Arguments
 /// - folder_path: 確認・削除対象のフォルダパス
 #[async_recursion]
-async fn delete_db_if_empty_by_id<'c>(tx: &mut PgTransaction<'c>, folder_id: i32) -> Result<()> {
+async fn delete_if_empty_by_id<'c>(tx: &mut PgTransaction<'c>, folder_id: i32) -> Result<()> {
     //他の曲が含まれる場合、削除せずに終了
     let track_count = sqlx::query_scalar!(
         r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id = $1"#,
@@ -142,7 +142,7 @@ async fn delete_db_if_empty_by_id<'c>(tx: &mut PgTransaction<'c>, folder_id: i32
 
     //親フォルダについて再帰実行
     if let FolderIdMayRoot::Folder(parent_id) = parent_id_mr {
-        delete_db_if_empty_by_id(tx, parent_id).await?;
+        delete_if_empty_by_id(tx, parent_id).await?;
     }
 
     Ok(())

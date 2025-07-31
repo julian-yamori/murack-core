@@ -109,8 +109,8 @@ mod test_register_not_exists {
     }
 }
 
-// delete_db_if_empty 関数のテスト
-mod delete_db_if_empty {
+// delete_if_empty 関数のテスト
+mod test_delete_if_empty {
     use super::*;
 
     #[sqlx::test(
@@ -121,7 +121,7 @@ mod delete_db_if_empty {
         let mut tx = pool.begin().await?;
 
         // "music/empty/" フォルダを削除実行
-        super::super::delete_db_if_empty(&mut tx, &"music/empty/".to_string().try_into()?).await?;
+        super::super::delete_if_empty(&mut tx, &"music/empty/".to_string().try_into()?).await?;
 
         // "music/empty/" フォルダが削除されたことを確認
         let target_id = sqlx::query_scalar!(
@@ -156,7 +156,7 @@ mod delete_db_if_empty {
         let mut tx = pool.begin().await?;
 
         // "music/" フォルダを削除実行（サブフォルダがあるので削除されないはず）
-        super::super::delete_db_if_empty(&mut tx, &"music/".to_string().try_into()?).await?;
+        super::super::delete_if_empty(&mut tx, &"music/".to_string().try_into()?).await?;
 
         // "music/" フォルダが削除されていないことを確認
         let target_id =
@@ -185,7 +185,7 @@ mod delete_db_if_empty {
         let mut tx = pool.begin().await?;
 
         // "music/" フォルダを削除実行
-        super::super::delete_db_if_empty(&mut tx, &"music/".to_string().try_into()?).await?;
+        super::super::delete_if_empty(&mut tx, &"music/".to_string().try_into()?).await?;
 
         // "music/" フォルダが削除されたことを確認
         let target_id =

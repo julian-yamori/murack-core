@@ -103,7 +103,7 @@ pub async fn delete_track_db<'c>(
 
     //他に使用する曲がなければ、親フォルダを削除
     if let Some(parent) = path.parent() {
-        folder_repository::delete_db_if_empty(tx, &parent).await?;
+        folder_repository::delete_if_empty(tx, &parent).await?;
     };
 
     playlist_sqls::reset_listuped_flag(tx).await?;
