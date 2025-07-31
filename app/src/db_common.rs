@@ -7,7 +7,7 @@ use murack_core_domain::{
     NonEmptyString,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    playlist::playlist_sqls,
+    playlist::{playlist_sqls, playlist_tracks_sqls},
     track::track_repository,
 };
 use sqlx::{PgPool, PgTransaction};
@@ -123,15 +123,15 @@ async fn delete_track_from_all_playlists<'c>(
         .await?;
     for playlist_id in playlist_ids {
         //プレイリスト内の曲を取得
-        let tracks = playlist_sqls::select_track_id_by_playlist_id(tx, playlist_id).await?;
+        let tracks = playlist_tracks_sqls::select_track_id_by_playlist_id(tx, playlist_id).await?;
 
         //プレイリストから一旦全削除
-        playlist_sqls::delete_by_playlist_id(tx, playlist_id).await?;
+        playlist_tracks_sqls::delete_by_playlist_id(tx, playlist_id).await?;
 
         //削除対象の曲を除き、全て追加
         let add_tracks = tracks.iter().filter(|i| **i != track_id).enumerate();
         for (order, it) in add_tracks {
-            playlist_sqls::insert_playlist_track(tx, playlist_id, *it, order as i32).await?;
+            playlist_tracks_sqls::insert_playlist_track(tx, playlist_id, *it, order as i32).await?;
         }
     }
 

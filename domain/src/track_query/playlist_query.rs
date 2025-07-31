@@ -6,12 +6,11 @@ use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
 use super::{esc::esci, filter_query};
+use crate::playlist::playlist_tracks_sqls;
 use crate::{
     NonEmptyString,
     path::LibraryTrackPath,
-    playlist::{
-        Playlist, PlaylistRow, PlaylistType, SortType, playlist_error::PlaylistError, playlist_sqls,
-    },
+    playlist::{Playlist, PlaylistRow, PlaylistType, SortType, playlist_error::PlaylistError},
 };
 
 /// playlist_track.orderカラムに付ける別名
@@ -77,10 +76,11 @@ async fn listup_tracks<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Resu
     //通常プレイリストなら、リストアップ済みフラグを立てるのみ
     if plist.playlist_type != PlaylistType::Normal {
         //元々保存されていた曲リストを取得
-        let old_id_list: BTreeSet<_> = playlist_sqls::select_track_id_by_playlist_id(tx, plist.id)
-            .await?
-            .into_iter()
-            .collect();
+        let old_id_list: BTreeSet<_> =
+            playlist_tracks_sqls::select_track_id_by_playlist_id(tx, plist.id)
+                .await?
+                .into_iter()
+                .collect();
 
         let new_id_list = match plist.playlist_type {
             PlaylistType::Filter => search_plist_tracks_filter(tx, plist).await?,
@@ -89,9 +89,10 @@ async fn listup_tracks<'c>(tx: &mut PgTransaction<'c>, plist: &Playlist) -> Resu
         };
 
         //PlaylistTrackテーブルを更新
-        playlist_sqls::delete_by_playlist_id(tx, plist.id).await?;
+        playlist_tracks_sqls::delete_by_playlist_id(tx, plist.id).await?;
         for (idx, track_id) in new_id_list.iter().enumerate() {
-            playlist_sqls::insert_playlist_track(tx, plist.id, *track_id, idx as i32).await?;
+            playlist_tracks_sqls::insert_playlist_track(tx, plist.id, *track_id, idx as i32)
+                .await?;
         }
 
         //古いリストから変更があったか確認
