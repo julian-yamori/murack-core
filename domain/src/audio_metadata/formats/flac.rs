@@ -9,8 +9,6 @@ use metaflac::{
     block::{Block, BlockType, PictureType, StreamInfo, VorbisComment},
 };
 
-use crate::audio_metadata::AudioMetaDataError;
-
 use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
 
 const KEY_COMPOSER: &str = "COMPOSER";
@@ -32,10 +30,10 @@ pub fn read(path: &Path) -> Result<AudioMetaData> {
 
     let si = tag
         .get_streaminfo()
-        .ok_or(AudioMetaDataError::FlacStreamInfoNone)?;
+        .ok_or(FlacError::StreamInfoBlockNotFound)?;
     let v = tag
         .vorbis_comments()
-        .ok_or(AudioMetaDataError::FlacVorbisCommentNone)?;
+        .ok_or(FlacError::VorbisCommentBlockNotFound)?;
 
     Ok(AudioMetaData {
         duration: get_duration(si),
@@ -142,7 +140,7 @@ fn vorbis_get_str_to_int(vc: &VorbisComment, key: &str) -> Result<Option<i32>> {
     match op {
         Some(s) => match s.parse::<i32>() {
             Ok(i) => Ok(Some(i)),
-            Err(_) => Err(AudioMetaDataError::FlacIntegerPaseError {
+            Err(_) => Err(FlacError::FailedToParseInteger {
                 key: key.to_owned(),
                 value: s.clone(),
             }
@@ -156,8 +154,9 @@ fn get_release_date(vc: &VorbisComment) -> Result<Option<NaiveDate>> {
     match vorbis_get_str_ref(vc.get(KEY_DATE)) {
         Some(s) => match NaiveDate::parse_from_str(s.as_ref(), "%Y-%m-%d") {
             Ok(date) => Ok(Some(date)),
-            Err(_) => Err(AudioMetaDataError::InvalidReleaseDate {
-                value_info: s.clone(),
+            Err(_) => Err(FlacError::FailedToParseDate {
+                key: KEY_DATE.to_string(),
+                value: s.clone(),
             }
             .into()),
         },
@@ -241,6 +240,32 @@ fn int_to_track_number(i: &Option<i32>) -> Vec<String> {
         Some(n) => vec![n.to_string()],
         None => vec![],
     }
+}
+
+/// Flac 曲データ関連のエラー
+#[derive(thiserror::Error, Debug)]
+pub enum FlacError {
+    #[error("StreamInfoブロックがありません")]
+    StreamInfoBlockNotFound,
+
+    #[error("VorbisCommentブロックがありません")]
+    VorbisCommentBlockNotFound,
+
+    #[error("VorbisCommentの値を数値に変換できませんでした: {key}={value}")]
+    FailedToParseInteger {
+        /// 変換に失敗した値のVorbisComment key
+        key: String,
+        /// 変換しようとした文字列
+        value: String,
+    },
+
+    #[error("VorbisCommentの値を日付に変換できませんでした: {key}={value}")]
+    FailedToParseDate {
+        /// 変換に失敗した値のVorbisComment key
+        key: String,
+        /// 変換しようとした文字列
+        value: String,
+    },
 }
 
 #[cfg(test)]
