@@ -6,7 +6,7 @@ use murack_core_domain::{
     folder::{FolderIdMayRoot, folder_repository},
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::playlist_sqls,
-    track::track_repository,
+    track::track_sqls,
 };
 use sqlx::PgTransaction;
 
@@ -34,7 +34,7 @@ pub async fn move_path_str_db<'c>(
         let src_as_dir: LibraryDirectoryPath = src.clone().into();
         let dest_as_dir: LibraryDirectoryPath = dest.clone().into();
 
-        for src_track in track_repository::get_path_by_directory(tx, &src_as_dir).await? {
+        for src_track in track_sqls::get_path_by_directory(tx, &src_as_dir).await? {
             let dest_track = src_child_path_to_dest(&src_track, &src_as_dir, &dest_as_dir)?;
             move_track_db_unit(tx, &src_track, &dest_track).await?;
         }

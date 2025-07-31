@@ -8,7 +8,7 @@ use murack_core_domain::{
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::{playlist_sqls, playlist_tracks_sqls},
-    track::track_repository,
+    track::track_sqls,
 };
 use sqlx::{PgPool, PgTransaction};
 
@@ -39,7 +39,7 @@ pub async fn track_paths_by_path_str<'c>(
 ) -> anyhow::Result<Vec<LibraryTrackPath>> {
     //ディレクトリ指定とみなして検索
     let dir_path: LibraryDirectoryPath = path.clone().into();
-    let mut list = track_repository::get_path_by_directory(tx, &dir_path).await?;
+    let mut list = track_sqls::get_path_by_directory(tx, &dir_path).await?;
 
     //ファイル指定とみなしての検索でヒットしたら追加
     let track_path: LibraryTrackPath = path.clone().into();
