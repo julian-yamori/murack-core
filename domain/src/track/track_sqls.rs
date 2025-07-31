@@ -1,4 +1,3 @@
-use anyhow::Result;
 use sqlx::PgTransaction;
 
 use crate::{
@@ -14,7 +13,7 @@ use crate::{
 pub async fn get_path_by_directory<'c>(
     tx: &mut PgTransaction<'c>,
     path: &LibraryDirectoryPath,
-) -> Result<Vec<LibraryTrackPath>> {
+) -> sqlx::Result<Vec<LibraryTrackPath>> {
     let path_str: &str = path.as_ref();
 
     //LIKE文エスケープ

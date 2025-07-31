@@ -1,10 +1,9 @@
-use anyhow::Result;
 use sqlx::PgTransaction;
 
 use crate::playlist::PlaylistType;
 
 /// 全フィルタプレイリスト・フォルダプレイリストの、リストアップ済みフラグを解除する。
-pub async fn reset_listuped_flag<'c>(tx: &mut PgTransaction<'c>) -> Result<()> {
+pub async fn reset_listuped_flag<'c>(tx: &mut PgTransaction<'c>) -> sqlx::Result<()> {
     sqlx::query!(
             "UPDATE playlists SET listuped_flag = $1 WHERE playlist_type IN ($2::playlist_type, $3::playlist_type)",
             false,
@@ -23,7 +22,7 @@ pub async fn reset_listuped_flag<'c>(tx: &mut PgTransaction<'c>) -> Result<()> {
 pub async fn set_dap_change_flag_all<'c>(
     tx: &mut PgTransaction<'c>,
     is_changed: bool,
-) -> Result<()> {
+) -> sqlx::Result<()> {
     sqlx::query!("UPDATE playlists SET dap_changed = $1", is_changed,)
         .execute(&mut **tx)
         .await?;
