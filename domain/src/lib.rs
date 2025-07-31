@@ -11,7 +11,6 @@ pub use non_empty_string::{EmptyStringError, NonEmptyString};
 pub mod path;
 pub mod playlist;
 pub mod string_order_cnv;
-pub mod tag;
 pub mod track;
 pub mod track_query;
 

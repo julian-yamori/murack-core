@@ -7,8 +7,7 @@ use murack_core_domain::{
     NonEmptyString,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
-    playlist::{playlist_sqls, playlist_track_repository},
-    tag::track_tag_repository,
+    playlist::playlist_sqls,
     track::track_repository,
 };
 use sqlx::{PgPool, PgTransaction};
@@ -93,10 +92,12 @@ pub async fn delete_track_db<'c>(
         .await?;
 
     //プレイリストからこの曲を削除
-    playlist_track_repository::delete_track_from_all_playlists(tx, track_id).await?;
+    delete_track_from_all_playlists(tx, track_id).await?;
 
     //タグと曲の紐付けを削除
-    track_tag_repository::delete_all_tags_from_track(tx, track_id).await?;
+    sqlx::query!("DELETE FROM track_tags WHERE track_id = $1", track_id,)
+        .execute(&mut **tx)
+        .await?;
 
     //他に使用する曲がなければ、アートワークを削除
     app_artwork_repository::unregister_track_artworks(tx, track_id).await?;
@@ -107,6 +108,32 @@ pub async fn delete_track_db<'c>(
     };
 
     playlist_sqls::reset_listuped_flag(tx).await?;
+
+    Ok(())
+}
+
+//曲を全プレイリストから削除
+async fn delete_track_from_all_playlists<'c>(
+    tx: &mut PgTransaction<'c>,
+    track_id: i32,
+) -> anyhow::Result<()> {
+    // 全てのプレイリストについて処理
+    let playlist_ids = sqlx::query_scalar!(r#"SELECT id FROM playlists"#)
+        .fetch_all(&mut **tx)
+        .await?;
+    for playlist_id in playlist_ids {
+        //プレイリスト内の曲を取得
+        let tracks = playlist_sqls::select_track_id_by_playlist_id(tx, playlist_id).await?;
+
+        //プレイリストから一旦全削除
+        playlist_sqls::delete_by_playlist_id(tx, playlist_id).await?;
+
+        //削除対象の曲を除き、全て追加
+        let add_tracks = tracks.iter().filter(|i| **i != track_id).enumerate();
+        for (order, it) in add_tracks {
+            playlist_sqls::insert_playlist_track(tx, playlist_id, *it, order as i32).await?;
+        }
+    }
 
     Ok(())
 }

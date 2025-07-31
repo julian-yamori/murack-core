@@ -10,8 +10,6 @@ pub use playlist_row::PlaylistRow;
 
 pub mod playlist_sqls;
 
-pub mod playlist_track_repository;
-
 pub mod playlist_tree;
 pub use playlist_tree::PlaylistTree;
 
