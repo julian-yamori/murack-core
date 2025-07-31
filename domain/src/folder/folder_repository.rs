@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests;
 
-use anyhow::Result;
 use async_recursion::async_recursion;
 use sqlx::PgTransaction;
 
@@ -14,7 +13,7 @@ use crate::{
 pub async fn is_exist_path<'c>(
     tx: &mut PgTransaction<'c>,
     path: &LibraryDirectoryPath,
-) -> Result<bool> {
+) -> Result<bool, FolderPathError> {
     let count = sqlx::query_scalar!(
         r#"SELECT COUNT(*) AS "count!" FROM folder_paths WHERE path = $1"#,
         path.as_ref() as &str
@@ -36,7 +35,7 @@ pub async fn is_exist_path<'c>(
 pub async fn register_not_exists<'c>(
     tx: &mut PgTransaction<'c>,
     path: &LibraryDirectoryPath,
-) -> Result<i32> {
+) -> Result<i32, FolderPathError> {
     //同一パスのデータを検索し、そのIDを取得
     let existing_id = sqlx::query_scalar!(
         "SELECT id FROM folder_paths WHERE path = $1",
@@ -78,7 +77,7 @@ pub async fn register_not_exists<'c>(
 pub async fn delete_if_empty<'c>(
     tx: &mut PgTransaction<'c>,
     folder_path: &LibraryDirectoryPath,
-) -> Result<()> {
+) -> Result<(), FolderPathError> {
     let folder_id_opt = sqlx::query_scalar!(
         "SELECT id FROM folder_paths WHERE path = $1",
         folder_path.as_ref() as &str
@@ -98,7 +97,10 @@ pub async fn delete_if_empty<'c>(
 /// # Arguments
 /// - folder_path: 確認・削除対象のフォルダパス
 #[async_recursion]
-async fn delete_if_empty_by_id<'c>(tx: &mut PgTransaction<'c>, folder_id: i32) -> Result<()> {
+async fn delete_if_empty_by_id<'c>(
+    tx: &mut PgTransaction<'c>,
+    folder_id: i32,
+) -> Result<(), FolderPathError> {
     //他の曲が含まれる場合、削除せずに終了
     let track_count = sqlx::query_scalar!(
         r#"SELECT COUNT(*) AS "count!" FROM tracks WHERE folder_id = $1"#,
