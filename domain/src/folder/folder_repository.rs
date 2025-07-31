@@ -5,7 +5,10 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use sqlx::PgTransaction;
 
-use crate::{Error as DomainError, folder::FolderIdMayRoot, path::LibraryDirectoryPath};
+use crate::{
+    folder::{FolderIdMayRoot, FolderPathError},
+    path::LibraryDirectoryPath,
+};
 
 /// 指定されたパスのフォルダが存在するか確認
 pub async fn is_exist_path<'c>(
@@ -84,8 +87,8 @@ pub async fn delete_db_if_empty<'c>(
     .await?;
 
     //IDを取得
-    let folder_id =
-        folder_id_opt.ok_or_else(|| DomainError::DbFolderPathNotFound(folder_path.to_owned()))?;
+    let folder_id = folder_id_opt
+        .ok_or_else(|| FolderPathError::DbFolderPathNotFound(folder_path.to_owned()))?;
 
     delete_db_if_empty_by_id(tx, folder_id).await
 }
@@ -127,7 +130,7 @@ async fn delete_db_if_empty_by_id<'c>(tx: &mut PgTransaction<'c>, folder_id: i32
         .fetch_optional(&mut **tx)
         .await?
         .map(FolderIdMayRoot::from);
-        let parent_id_mr = opt_mr.ok_or(DomainError::DbFolderIdNotFound(folder_id))?;
+        let parent_id_mr = opt_mr.ok_or(FolderPathError::DbFolderIdNotFound(folder_id))?;
 
         //削除を実行
         sqlx::query!("DELETE FROM folder_paths WHERE id = $1", folder_id)

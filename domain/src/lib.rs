@@ -1,8 +1,5 @@
 //! domain層
 
-mod error;
-pub use error::Error;
-
 pub mod artwork;
 pub mod db_utils;
 pub mod filter;
