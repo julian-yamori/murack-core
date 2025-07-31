@@ -10,6 +10,26 @@ use crate::artwork::{ArtworkCache, ArtworkCachedData, ArtworkImageRow, TrackArtw
 static ARTWORK_CACHE: Lazy<Arc<Mutex<ArtworkCache>>> =
     Lazy::new(|| Arc::new(Mutex::new(ArtworkCache::new())));
 
+/// アートワークを DB に追加
+pub async fn add_artwork(
+    tx: &mut PgTransaction<'_>,
+    picture: &Arc<Picture>,
+) -> anyhow::Result<i32> {
+    //対象データのMD5ハッシュを取得
+    let hash = picture.hash();
+
+    //縮小画像を作成
+    let image_mini = picture.artwork_mini_image()?;
+
+    //新規追加を実行
+    let artwork_id = sqlx::query_scalar!(
+            "INSERT INTO artworks (hash, image, image_mini, mime_type) values($1,$2,$3,$4) RETURNING id",
+            &hash[..], &picture.bytes, &image_mini[..], &picture.mime_type
+        ).fetch_one(&mut **tx).await?;
+
+    Ok(artwork_id)
+}
+
 /// アートワークを新規登録する
 ///
 /// 既に登録されていた場合は、新規登録せずに既存データのIDを返す
@@ -53,14 +73,7 @@ async fn register_artwork(tx: &mut PgTransaction<'_>, picture: &Arc<Picture>) ->
         }
     }
 
-    //縮小画像を作成
-    let image_mini = picture.artwork_mini_image()?;
-
-    //新規追加を実行
-    let new_pk = sqlx::query_scalar!(
-            "INSERT INTO artworks (hash, image, image_mini, mime_type) values($1,$2,$3,$4) RETURNING id",
-            &hash[..], &picture.bytes, &image_mini[..], &picture.mime_type
-        ).fetch_one(&mut **tx).await?;
+    let new_pk = add_artwork(tx, picture).await?;
 
     //すぐに使う可能性が高いので、キャッシュに保存
     lock_cache()?.cache = Some(ArtworkCachedData {
@@ -141,6 +154,14 @@ pub async fn register_track_artworks<'c>(
     Ok(())
 }
 
+pub async fn delete_artwork(tx: &mut PgTransaction<'_>, artwork_id: i32) -> anyhow::Result<()> {
+    sqlx::query!("DELETE FROM artworks WHERE id = $1", artwork_id,)
+        .execute(&mut **tx)
+        .await?;
+
+    Ok(())
+}
+
 /// 曲へのアートワーク紐付き情報を削除
 ///
 /// どの曲にも紐付かないアートワークは、DBから削除する
@@ -173,9 +194,7 @@ pub async fn unregister_track_artworks<'c>(
         .fetch_one(&mut **tx)
         .await?;
         if use_count == 0 {
-            sqlx::query!("DELETE FROM artworks WHERE id = $1", artwork_id,)
-                .execute(&mut **tx)
-                .await?;
+            delete_artwork(tx, artwork_id).await?;
 
             //キャッシュされていたら削除
             let mut artwork_cache = lock_cache()?;
