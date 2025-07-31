@@ -1,7 +1,7 @@
 //! プレイリスト関係のDB機能
 
-mod model;
-pub use model::Playlist;
+mod playlist_model;
+pub use playlist_model::Playlist;
 
 pub mod playlist_error;
 
