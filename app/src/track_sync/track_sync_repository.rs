@@ -69,6 +69,11 @@ pub async fn register_db<'c>(
     track_path: &LibraryTrackPath,
     track_sync: &TrackSync,
 ) -> Result<()> {
+    //DBに既に存在しないか確認
+    if db_common::exists_path(tx, track_path).await? {
+        return Err(DbTrackError::DbTrackAlreadyExists(track_path.clone()).into());
+    }
+
     //親ディレクトリを登録してIDを取得
     let parent_path_opt = track_path.parent();
     let folder_id = match parent_path_opt {
@@ -78,12 +83,6 @@ pub async fn register_db<'c>(
             FolderIdMayRoot::Folder(id)
         }
     };
-
-    //DBに既に存在しないか確認
-    //TODO unique keyにする
-    if db_common::exists_path(tx, track_path).await? {
-        return Err(DbTrackError::DbTrackAlreadyExists(track_path.clone()).into());
-    }
 
     // tracks テーブルに書き込み
     let track_id = sqlx::query_scalar!(
