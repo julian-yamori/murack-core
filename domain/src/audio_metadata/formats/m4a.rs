@@ -2,7 +2,6 @@
 
 use std::path::Path;
 
-use anyhow::Result;
 use chrono::NaiveDate;
 use mp4ameta::{ImgFmt, Tag};
 
@@ -14,7 +13,7 @@ use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPicture
 /// - path: オーディオファイルの絶対パス
 /// # Returns
 /// オーディオファイルのメタデータ
-pub fn read(path: &Path) -> Result<AudioMetaData> {
+pub fn read(path: &Path) -> Result<AudioMetaData, M4AError> {
     let tag = Tag::read_from_path(path)?;
 
     Ok(AudioMetaData {
@@ -45,7 +44,7 @@ pub fn overwrite(
     path: &Path,
     track: &AudioMetaDataEntry,
     artworks: &[AudioPictureEntry],
-) -> Result<()> {
+) -> Result<(), M4AError> {
     let mut tag = Tag::read_from_path(path)?;
 
     match track.title {
@@ -77,8 +76,7 @@ pub fn overwrite(
             if v == 0 {
                 return Err(M4AError::M4ANumberZero {
                     field: "track number".to_owned(),
-                }
-                .into());
+                });
             }
             tag.set_track_number(v as u16)
         }
@@ -89,8 +87,7 @@ pub fn overwrite(
             if v == 0 {
                 return Err(M4AError::M4ANumberZero {
                     field: "track max".to_owned(),
-                }
-                .into());
+                });
             }
             tag.set_total_tracks(v as u16)
         }
@@ -101,8 +98,7 @@ pub fn overwrite(
             if v == 0 {
                 return Err(M4AError::M4ANumberZero {
                     field: "disc number".to_owned(),
-                }
-                .into());
+                });
             }
             tag.set_disc_number(v as u16)
         }
@@ -113,8 +109,7 @@ pub fn overwrite(
             if v == 0 {
                 return Err(M4AError::M4ANumberZero {
                     field: "disc max".to_owned(),
-                }
-                .into());
+                });
             }
             tag.set_total_discs(v as u16)
         }
@@ -154,14 +149,13 @@ pub fn overwrite(
                         s => {
                             return Err(M4AError::UnsupportedArtworkFormat {
                                 mime_type: s.to_owned(),
-                            }
-                            .into());
+                            });
                         }
                     },
                     data: art.bytes.to_vec(),
                 })
             })
-            .collect::<Result<Vec<_>>>()?,
+            .collect::<Result<Vec<_>, _>>()?,
     );
 
     tag.write_to_path(path)?;
@@ -180,14 +174,13 @@ fn opt_str_to_owned(o: Option<&str>) -> Option<String> {
 }
 
 /// Tagからリリース日を取得
-fn get_release_date(tag: &Tag) -> Result<Option<NaiveDate>> {
+fn get_release_date(tag: &Tag) -> Result<Option<NaiveDate>, M4AError> {
     match tag.year() {
         Some(s) => match NaiveDate::parse_from_str(s, "%Y-%m-%d") {
             Ok(date) => Ok(Some(date)),
             Err(_) => Err(M4AError::FailedToParseDate {
                 value: s.to_owned(),
-            }
-            .into()),
+            }),
         },
         None => Ok(None),
     }
@@ -212,6 +205,9 @@ fn get_artworks(tag: &Tag) -> Vec<AudioPicture> {
 /// M4A 曲データ関連のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum M4AError {
+    #[error(transparent)]
+    Mp4ameta(#[from] mp4ameta::Error),
+
     #[error("m4aでは{field}に0を設定できません。")]
     M4ANumberZero {
         /// 0を設定しようとした項目名
