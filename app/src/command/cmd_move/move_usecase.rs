@@ -1,8 +1,8 @@
 //! 旧 track_usecase の関数
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use murack_core_domain::{
-    Error, NonEmptyString,
+    NonEmptyString,
     folder::{FolderIdMayRoot, folder_repository},
     path::{LibraryDirectoryPath, LibraryTrackPath},
     playlist::playlist_sqls,
@@ -99,11 +99,9 @@ fn src_child_path_to_dest(
 
     // src_track が src_dir で始まっているか確認
     if !src_track_str.starts_with(src_dir_str) {
-        return Err(Error::GetRelativePathFailed {
-            track: src_track.to_owned(),
-            parent: src_dir.to_owned(),
-        }
-        .into());
+        return Err(anyhow!(
+            "相対パスの取得に失敗しました: \"{src_dir}\" 内の \"{src_track}\""
+        ));
     }
 
     let relative_path = &src_track_str[src_dir_str.len()..];

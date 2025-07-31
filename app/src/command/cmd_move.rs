@@ -1,8 +1,8 @@
 mod move_usecase;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use murack_core_domain::{
-    Error as DomainError, NonEmptyString,
+    NonEmptyString,
     folder::folder_repository,
     path::{LibraryDirectoryPath, LibraryTrackPath},
 };
@@ -96,7 +96,7 @@ impl<'config> CommandMove<'config> {
         let dest_dir_path: LibraryDirectoryPath = self.args.dest_path.clone().into();
 
         if folder_repository::is_exist_path(&mut tx, &dest_dir_path).await? {
-            return Err(DomainError::DbFolderAlreadyExists(dest_dir_path).into());
+            return Err(anyhow!("フォルダが既にDBに存在します: {0}", dest_dir_path));
         }
 
         Ok(())
