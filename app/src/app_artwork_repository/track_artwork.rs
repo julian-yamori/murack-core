@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
-use murack_core_domain::artwork::Picture;
-use murack_core_media::audio_metadata::{AudioPicture, AudioPictureEntry};
+use murack_core_domain::{
+    artwork::Picture,
+    audio_metadata::{AudioPicture, AudioPictureEntry},
+};
 
 /// 曲に紐付いたアートワーク1つの情報
 #[derive(Debug, PartialEq, Clone)]

@@ -1,14 +1,17 @@
 //! FLACフォーマット取扱
 
-use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
-use crate::Error;
+use std::path::Path;
+
 use anyhow::Result;
 use chrono::NaiveDate;
 use metaflac::{
     Tag,
     block::{Block, BlockType, PictureType, StreamInfo, VorbisComment},
 };
-use std::path::Path;
+
+use crate::audio_metadata::AudioMetaDataError;
+
+use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
 
 const KEY_COMPOSER: &str = "COMPOSER";
 const KEY_TRACK_NUMBER: &str = "TRACKNUMBER";
@@ -27,8 +30,12 @@ const KEY_MEMO: &str = "DESCRIPTION";
 pub fn read(path: &Path) -> Result<AudioMetaData> {
     let tag = Tag::read_from_path(path)?;
 
-    let si = tag.get_streaminfo().ok_or(Error::FlacStreamInfoNone)?;
-    let v = tag.vorbis_comments().ok_or(Error::FlacVorbisCommentNone)?;
+    let si = tag
+        .get_streaminfo()
+        .ok_or(AudioMetaDataError::FlacStreamInfoNone)?;
+    let v = tag
+        .vorbis_comments()
+        .ok_or(AudioMetaDataError::FlacVorbisCommentNone)?;
 
     Ok(AudioMetaData {
         duration: get_duration(si),
@@ -135,7 +142,7 @@ fn vorbis_get_str_to_int(vc: &VorbisComment, key: &str) -> Result<Option<i32>> {
     match op {
         Some(s) => match s.parse::<i32>() {
             Ok(i) => Ok(Some(i)),
-            Err(_) => Err(Error::FlacIntegerPaseError {
+            Err(_) => Err(AudioMetaDataError::FlacIntegerPaseError {
                 key: key.to_owned(),
                 value: s.clone(),
             }
@@ -149,7 +156,7 @@ fn get_release_date(vc: &VorbisComment) -> Result<Option<NaiveDate>> {
     match vorbis_get_str_ref(vc.get(KEY_DATE)) {
         Some(s) => match NaiveDate::parse_from_str(s.as_ref(), "%Y-%m-%d") {
             Ok(date) => Ok(Some(date)),
-            Err(_) => Err(Error::InvalidReleaseDate {
+            Err(_) => Err(AudioMetaDataError::InvalidReleaseDate {
                 value_info: s.clone(),
             }
             .into()),

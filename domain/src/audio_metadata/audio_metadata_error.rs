@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-/// murack-core メディアデータのエラー
+/// audio metadata 関連のエラー
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum AudioMetaDataError {
     /// ファイルIO汎用エラー
     #[error("{0}: {1}")]
     FileIoError(PathBuf, std::io::Error),

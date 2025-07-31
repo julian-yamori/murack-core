@@ -1,11 +1,14 @@
 //! M4Aフォーマット取扱
 
-use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
-use crate::Error;
+use std::path::Path;
+
 use anyhow::Result;
 use chrono::NaiveDate;
 use mp4ameta::{ImgFmt, Tag};
-use std::path::Path;
+
+use crate::audio_metadata::AudioMetaDataError;
+
+use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
 
 /// ファイルからメタデータを読み込み
 ///
@@ -74,7 +77,7 @@ pub fn overwrite(
     match track.track_number {
         Some(v) => {
             if v == 0 {
-                return Err(Error::M4ANumberZero {
+                return Err(AudioMetaDataError::M4ANumberZero {
                     field: "track number".to_owned(),
                 }
                 .into());
@@ -86,7 +89,7 @@ pub fn overwrite(
     match track.track_max {
         Some(v) => {
             if v == 0 {
-                return Err(Error::M4ANumberZero {
+                return Err(AudioMetaDataError::M4ANumberZero {
                     field: "track max".to_owned(),
                 }
                 .into());
@@ -98,7 +101,7 @@ pub fn overwrite(
     match track.disc_number {
         Some(v) => {
             if v == 0 {
-                return Err(Error::M4ANumberZero {
+                return Err(AudioMetaDataError::M4ANumberZero {
                     field: "disc number".to_owned(),
                 }
                 .into());
@@ -110,7 +113,7 @@ pub fn overwrite(
     match track.disc_max {
         Some(v) => {
             if v == 0 {
-                return Err(Error::M4ANumberZero {
+                return Err(AudioMetaDataError::M4ANumberZero {
                     field: "disc max".to_owned(),
                 }
                 .into());
@@ -150,7 +153,12 @@ pub fn overwrite(
                         "image/jpeg" => ImgFmt::Jpeg,
                         "image/bmp" => ImgFmt::Bmp,
                         "image/png" => ImgFmt::Png,
-                        s => return Err(Error::UnsupportedArtworkFmt { fmt: s.to_owned() }.into()),
+                        s => {
+                            return Err(AudioMetaDataError::UnsupportedArtworkFmt {
+                                fmt: s.to_owned(),
+                            }
+                            .into());
+                        }
                     },
                     data: art.bytes.to_vec(),
                 })
@@ -178,7 +186,7 @@ fn get_release_date(tag: &Tag) -> Result<Option<NaiveDate>> {
     match tag.year() {
         Some(s) => match NaiveDate::parse_from_str(s, "%Y-%m-%d") {
             Ok(date) => Ok(Some(date)),
-            Err(_) => Err(Error::InvalidReleaseDate {
+            Err(_) => Err(AudioMetaDataError::InvalidReleaseDate {
                 value_info: s.to_owned(),
             }
             .into()),

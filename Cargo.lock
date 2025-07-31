@@ -1256,7 +1256,6 @@ dependencies = [
  "chrono",
  "mockall",
  "murack-core-domain",
- "murack-core-media",
  "once_cell",
  "serde",
  "sqlx",
@@ -1274,9 +1273,12 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
+ "id3",
  "image",
  "md5",
- "murack-core-media",
+ "metaflac",
+ "mp3-duration",
+ "mp4ameta",
  "once_cell",
  "serde",
  "serde_json",
@@ -1284,19 +1286,6 @@ dependencies = [
  "test-case",
  "thiserror 2.0.12",
  "tokio",
-]
-
-[[package]]
-name = "murack-core-media"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "id3",
- "metaflac",
- "mp3-duration",
- "mp4ameta",
- "thiserror 2.0.12",
 ]
 
 [[package]]

@@ -1,6 +1,8 @@
-use crate::Error;
-use anyhow::{Context, Result};
 use std::path::Path;
+
+use anyhow::{Context, Result};
+
+use crate::audio_metadata::AudioMetaDataError;
 
 /// オーディオファイルのフォーマット種別
 pub enum FormatType {
@@ -28,7 +30,7 @@ impl FormatType {
             "flac" => Ok(FormatType::Flac),
             //"ogg" | "oga" => FormatType::Ogg,
             "m4a" | "m4b" | "m4p" | "m4v" | "isom" | "mp4" => Ok(FormatType::M4a),
-            ext => Err(Error::UnsupportedAudioFormat {
+            ext => Err(AudioMetaDataError::UnsupportedAudioFormat {
                 fmt: ext.to_owned(),
             }
             .into()),

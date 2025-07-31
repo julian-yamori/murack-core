@@ -7,8 +7,10 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use murack_core_domain::path::LibraryTrackPath;
-use murack_core_media::audio_metadata::{AudioMetaData, FormatType, formats};
+use murack_core_domain::{
+    audio_metadata::{AudioMetaData, FormatType, formats},
+    path::LibraryTrackPath,
+};
 
 use crate::{
     app_artwork_repository::TrackArtwork,

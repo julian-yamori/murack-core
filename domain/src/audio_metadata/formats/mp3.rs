@@ -10,9 +10,8 @@ use anyhow::Result;
 use chrono::{Datelike, NaiveDate};
 use id3::{Tag, TagLike};
 
-use crate::{
-    Error,
-    audio_metadata::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry},
+use crate::audio_metadata::{
+    AudioMetaData, AudioMetaDataEntry, AudioMetaDataError, AudioPicture, AudioPictureEntry,
 };
 
 const KEY_COMPOSER: &str = "TCOM";
@@ -25,7 +24,7 @@ const KEY_DATE: &str = "TDAT";
 /// # Returns
 /// オーディオファイルのメタデータ
 pub fn read(path: &Path) -> Result<AudioMetaData> {
-    let file = File::open(path).map_err(|e| Error::FileIoError(path.to_owned(), e))?;
+    let file = File::open(path).map_err(|e| AudioMetaDataError::FileIoError(path.to_owned(), e))?;
     let mut reader = BufReader::new(file);
 
     let tag = Tag::read_from2(&mut reader)?;
@@ -149,13 +148,13 @@ pub fn overwrite(
 fn read_duration(reader: &mut BufReader<File>, path: &Path) -> Result<u32> {
     let offset = reader
         .stream_position()
-        .map_err(|e| Error::FileIoError(path.to_owned(), e))?;
+        .map_err(|e| AudioMetaDataError::FileIoError(path.to_owned(), e))?;
 
     match mp3_duration::from_read(reader) {
         Ok(d) => Ok(d.as_millis() as u32),
         Err(mut e) => {
             e.offset += offset as usize;
-            Err(Error::InvalidDuration {
+            Err(AudioMetaDataError::InvalidDuration {
                 msg: format!("* MP3 Duration Error: \n{e}"),
             }
             .into())
@@ -182,13 +181,13 @@ fn id3_get_release_date(tag: &Tag) -> Result<Option<NaiveDate>> {
     match opt_year {
         Some(year) => match opt_date {
             Some(date_str) => year_date_to_release_date(year, date_str),
-            None => Err(Error::InvalidReleaseDate {
+            None => Err(AudioMetaDataError::InvalidReleaseDate {
                 value_info: format!("TYER: {year}, TDAT: None"),
             }
             .into()),
         },
         None => match opt_date {
-            Some(date_str) => Err(Error::InvalidReleaseDate {
+            Some(date_str) => Err(AudioMetaDataError::InvalidReleaseDate {
                 value_info: format!("TYER: None, TDAT: {date_str}"),
             }
             .into()),
@@ -240,7 +239,7 @@ fn trim_null(s: &str) -> &str {
 /// 年・日付文字列をReleaseDateに変換
 fn year_date_to_release_date(year: i32, date: &str) -> Result<Option<NaiveDate>> {
     if date.len() != 4 {
-        return Err(Error::InvalidReleaseDate {
+        return Err(AudioMetaDataError::InvalidReleaseDate {
             value_info: format!("TYER: {year}, TDAT: {date}"),
         }
         .into());
@@ -249,7 +248,7 @@ fn year_date_to_release_date(year: i32, date: &str) -> Result<Option<NaiveDate>>
     let s = format!("{year}/{date}");
     match NaiveDate::parse_from_str(&s, "%Y/%d%m") {
         Ok(date) => Ok(Some(date)),
-        Err(_) => Err(Error::InvalidReleaseDate {
+        Err(_) => Err(AudioMetaDataError::InvalidReleaseDate {
             value_info: format!("TYER: {year}, TDAT: {date}"),
         }
         .into()),
@@ -283,7 +282,7 @@ fn id3_set_artworks(tag: &mut Tag, artworks: &[AudioPictureEntry]) -> Result<()>
             .pictures()
             .any(|p| u8::from(p.picture_type) == artwork.picture_type)
         {
-            return Err(Error::Id3PictureTypeDuplicated {
+            return Err(AudioMetaDataError::Id3PictureTypeDuplicated {
                 type_num: artwork.picture_type,
             }
             .into());
@@ -332,7 +331,8 @@ mod tests {
             }
             assert!(
                 match id3_get_release_date(&tag).unwrap_err().downcast_ref() {
-                    Some(Error::InvalidReleaseDate { value_info: vi }) => vi == value_info,
+                    Some(AudioMetaDataError::InvalidReleaseDate { value_info: vi }) =>
+                        vi == value_info,
                     _ => false,
                 }
             )
