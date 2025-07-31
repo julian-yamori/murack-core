@@ -5,7 +5,7 @@ use std::{fs, path::Path};
 use anyhow::{Context, Result};
 use murack_core_domain::{Error as DomainError, path::LibraryTrackPath};
 
-use crate::data_file::{Error, utils};
+use crate::data_file::utils;
 
 /// ライブラリからライブラリへ、曲データをコピー
 ///
@@ -57,43 +57,6 @@ pub fn copy_track_over_lib(
     }
 
     Ok(())
-}
-
-/// ライブラリ外からライブラリ内にファイルをコピー
-///
-/// lrcファイルは扱わない
-///
-/// # Arguments
-/// - lib_root: ライブラリルートの絶対パス
-/// - track_path: コピー先のライブラリ内パス
-/// - src_path: コピー元のライブラリ外のファイル絶対パス
-pub fn copy_from_outside_lib(
-    lib_root: &Path,
-    track_path: &LibraryTrackPath,
-    src_path: &Path,
-) -> Result<()> {
-    //コピー元にファイルがあるか確認
-    if !src_path.exists() {
-        return Err(Error::AbsFileNotFound(src_path.to_owned()).into());
-    }
-
-    //コピー先に既に存在しないか確認
-    let dest_track = track_path.abs(lib_root);
-    if dest_track.exists() {
-        return Err(DomainError::FileTrackAlreadyExists {
-            lib_root: lib_root.to_owned(),
-            track_path: track_path.to_owned(),
-        }
-        .into());
-    }
-
-    //コピー先で不足しているディレクトリを作成
-    if let Some(parent) = dest_track.parent() {
-        fs::create_dir_all(parent).with_context(|| parent.display().to_string())?;
-    }
-
-    //コピーを実行
-    copy(src_path, &dest_track)
 }
 
 /// ライブラリからライブラリへ、曲データを上書き

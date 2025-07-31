@@ -1,11 +1,8 @@
 //! ファイルシステムのライブラリフォルダ内の曲データ取扱
 //! (旧 murack-core-data-file クレート)
 
-mod error;
-pub use error::Error;
-
 mod copy;
-pub use copy::{copy_from_outside_lib, copy_track_over_lib, overwrite_track_over_lib};
+pub use copy::{copy_track_over_lib, overwrite_track_over_lib};
 
 mod delete;
 pub use delete::{delete_path_str, delete_track, trash_path_str, trash_track};
