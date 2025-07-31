@@ -18,7 +18,9 @@ pub struct PlaylistTree {
 }
 
 /// DB 全体のプレイリストのツリー構造を取得
-pub async fn get_whole_tree<'c>(tx: &mut PgTransaction<'c>) -> anyhow::Result<Vec<PlaylistTree>> {
+pub async fn get_whole_tree<'c>(
+    tx: &mut PgTransaction<'c>,
+) -> Result<Vec<PlaylistTree>, PlaylistError> {
     let remain_pool = sqlx::query_as!(
             PlaylistRow,
             r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
@@ -38,8 +40,7 @@ pub async fn get_whole_tree<'c>(tx: &mut PgTransaction<'c>) -> anyhow::Result<Ve
                     parent_id: row.parent_id,
                 })
                 .collect(),
-        )
-        .into());
+        ));
     }
 
     Ok(root_list)
@@ -55,7 +56,7 @@ pub async fn get_whole_tree<'c>(tx: &mut PgTransaction<'c>) -> anyhow::Result<Ve
 fn build_plist_children_recursive(
     parent: Option<&PlaylistTree>,
     remain_pool: Vec<PlaylistRow>,
-) -> anyhow::Result<(Vec<PlaylistTree>, Vec<PlaylistRow>)> {
+) -> Result<(Vec<PlaylistTree>, Vec<PlaylistRow>), PlaylistError> {
     //親プレイリストが対象のものと、それ以外を分ける
     let (targets, mut remain_pool): (Vec<PlaylistRow>, Vec<PlaylistRow>) = remain_pool
         .into_iter()

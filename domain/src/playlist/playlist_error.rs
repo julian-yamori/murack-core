@@ -11,6 +11,9 @@ pub enum PlaylistError {
 
     #[error("親が見つからないプレイリストが検出されました: {}", diaplay_playlist_no_parents_detected(.0))]
     PlaylistNoParentsDetected(Vec<PlaylistNoParentsDetectedItem>),
+
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
 }
 
 #[derive(Debug, PartialEq)]
