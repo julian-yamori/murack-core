@@ -20,8 +20,8 @@ CREATE TYPE sort_type AS ENUM (
 -- Tag groups table
 CREATE TABLE tag_groups (
     id SERIAL PRIMARY KEY,
-    name VARCHAR NOT NULL,
-    order_index INTEGER NOT NULL,
+    name VARCHAR NOT NULL UNIQUE,
+    order_index INTEGER NOT NULL UNIQUE,
     description TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -30,18 +30,19 @@ CREATE TABLE tag_groups (
 -- Tags table
 CREATE TABLE tags (
     id SERIAL PRIMARY KEY,
-    name VARCHAR NOT NULL,
+    name VARCHAR NOT NULL UNIQUE,
     group_id INTEGER NOT NULL,
     order_index INTEGER NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    UNIQUE (group_id, order_index)
 );
 
 -- Folder paths table
 CREATE TABLE folder_paths (
     id SERIAL PRIMARY KEY,
-    path VARCHAR NOT NULL,
+    path VARCHAR NOT NULL UNIQUE,
     name VARCHAR NOT NULL,
     parent_id INTEGER,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -52,7 +53,7 @@ CREATE TABLE folder_paths (
 CREATE TABLE tracks (
     id SERIAL PRIMARY KEY,
     duration INTEGER NOT NULL,
-    path VARCHAR NOT NULL,
+    path VARCHAR NOT NULL UNIQUE,
     folder_id INTEGER,
     title VARCHAR NOT NULL,
 
@@ -98,14 +99,15 @@ CREATE TABLE playlists (
     listuped_flag BOOLEAN NOT NULL DEFAULT false,
     dap_changed BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    UNIQUE (parent_id, in_folder_order)
 );
 
 -- Search presets table (with embedded filter JSON)
 CREATE TABLE search_presets (
     id SERIAL PRIMARY KEY,
-    order_index INTEGER NOT NULL,
-    name VARCHAR NOT NULL,
+    order_index INTEGER NOT NULL UNIQUE,
+    name VARCHAR NOT NULL UNIQUE,
     filter_json JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -188,8 +190,6 @@ CREATE INDEX idx_tracks_folder_id ON tracks(folder_id);
 CREATE INDEX idx_tracks_artist ON tracks(artist);
 CREATE INDEX idx_tracks_album ON tracks(album);
 CREATE INDEX idx_tracks_genre ON tracks(genre);
-CREATE INDEX idx_playlists_parent_id ON playlists(parent_id);
-CREATE INDEX idx_tags_group_id ON tags(group_id);
 CREATE INDEX idx_folder_paths_parent_id ON folder_paths(parent_id);
 CREATE INDEX idx_artworks_hash ON artworks(hash);
 CREATE INDEX idx_track_tags_tag_id ON track_tags(tag_id);
