@@ -9,7 +9,3 @@ pub fn esci(v: Option<i32>) -> String {
         None => "null".to_owned(),
     }
 }
-pub fn escs(v: &str) -> String {
-    //'で囲む 更にSQLインジェクション等対策
-    format!("'{}'", v.replace('\'', "''"))
-}

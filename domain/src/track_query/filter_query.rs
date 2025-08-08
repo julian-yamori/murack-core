@@ -4,9 +4,8 @@ mod tests;
 use chrono::NaiveDate;
 use sqlx::PgTransaction;
 
-use super::esc::escs;
 use crate::{
-    db_utils::like_esc,
+    db_utils::{escs, like_esc},
     filter::{
         ArtworkFilterRange, BoolFilterRange, DateFilterRange, FilterTarget, GroupOperand,
         IntFilterRange, RootFilter, StringFilterRange, TagsFilterRange,
