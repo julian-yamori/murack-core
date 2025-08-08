@@ -4,13 +4,14 @@ use async_recursion::async_recursion;
 use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
-use super::{esc::esci, filter_query};
-use crate::playlist::playlist_tracks_sqls;
-use crate::track_query::TrackQueryError;
 use crate::{
     NonEmptyString,
     path::LibraryTrackPath,
-    playlist::{Playlist, PlaylistRow, PlaylistType, SortType, playlist_error::PlaylistError},
+    playlist::{
+        Playlist, PlaylistRow, PlaylistType, SortType, playlist_error::PlaylistError,
+        playlist_tracks_sqls,
+    },
+    track_query::{TrackQueryError, filter_query},
 };
 
 /// playlist_track.orderカラムに付ける別名
@@ -68,7 +69,7 @@ async fn get_query_by_playlist<'c>(
 
     Ok(format!(
         " FROM playlist_trakcs JOIN tracks ON playlist_tracks.track_id = tracks.id WHERE playlist_tracks.playlist_id = {}",
-        esci(Some(plist.id))
+        plist.id
     ))
 }
 
