@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 /// 曲のソートの種類
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum SortType {
     /// 曲名
     TrackName,
