@@ -4,7 +4,7 @@ use thiserror::Error;
 
 /// 曲のソートの種類
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "playlist_type", rename_all = "lowercase")]
+#[sqlx(type_name = "sort_type_with_playlist", rename_all = "lowercase")]
 pub enum SortType {
     /// 曲名
     TrackName,
