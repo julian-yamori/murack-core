@@ -4,7 +4,7 @@ mod tests;
 use sqlx::PgTransaction;
 
 use crate::{
-    NonEmptyString, SortType,
+    NonEmptyString, SortTypeWithPlaylist,
     playlist::{
         Playlist, PlaylistRow, PlaylistType,
         playlist_error::{PlaylistError, PlaylistNoParentsDetectedItem},
@@ -23,7 +23,7 @@ pub async fn get_whole_tree<'c>(
 ) -> Result<Vec<PlaylistTree>, PlaylistError> {
     let remain_pool = sqlx::query_as!(
             PlaylistRow,
-            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortTypeWithPlaylist", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists ORDER BY in_folder_order"#
         )
         .fetch_all(&mut **tx)
         .await?;

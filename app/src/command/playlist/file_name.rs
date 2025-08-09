@@ -107,7 +107,7 @@ mod tests {
                 },
                 in_folder_order: 99,
                 filter: None,
-                sort_type: SortType::Artist,
+                sort_type: SortType::Artist.into(),
                 sort_desc: false,
                 save_dap: true,
                 listuped_flag: true,

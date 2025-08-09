@@ -15,7 +15,7 @@ pub mod path;
 pub mod playlist;
 
 pub mod sort_type;
-pub use sort_type::{SortType, SortTypeWithoutPlaylist};
+pub use sort_type::{SortType, SortTypeWithPlaylist};
 
 pub mod string_order_cnv;
 pub mod track;

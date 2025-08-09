@@ -1,7 +1,7 @@
 use sqlx::PgTransaction;
 
 use crate::{
-    NonEmptyString, SortType,
+    NonEmptyString, SortTypeWithPlaylist,
     filter::RootFilter,
     playlist::{PlaylistRow, PlaylistType, playlist_error::PlaylistError},
 };
@@ -36,7 +36,7 @@ pub struct Playlist {
     pub filter: Option<RootFilter>,
 
     /// ソート対象
-    pub sort_type: SortType,
+    pub sort_type: SortTypeWithPlaylist,
 
     /// ソートが降順か
     pub sort_desc: bool,
@@ -63,7 +63,7 @@ pub async fn get_playlist<'c>(
 ) -> Result<Option<Playlist>, PlaylistError> {
     let opt = sqlx::query_as!(
             PlaylistRow,
-            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortTypeWithPlaylist", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE id = $1"#,
             playlist_id
         )
         .fetch_optional(&mut **tx)

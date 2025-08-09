@@ -5,7 +5,7 @@ use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
 use crate::{
-    NonEmptyString, SortType,
+    NonEmptyString, SortTypeWithPlaylist,
     path::LibraryTrackPath,
     playlist::{
         Playlist, PlaylistRow, PlaylistType, playlist_error::PlaylistError, playlist_tracks_sqls,
@@ -30,7 +30,7 @@ pub async fn get_track_path_list<'c>(
     let mut clms_query = "tracks.path".to_owned();
 
     //プレイリスト順なら、取得カラムを一つ追加
-    if plist.sort_type == SortType::Playlist {
+    if plist.sort_type == SortTypeWithPlaylist::Playlist {
         clms_query =
             format!("{clms_query}, playlist_tracks.order_index AS {PLIST_TRACK_IDX_COLUMN}");
     }
@@ -146,7 +146,7 @@ async fn search_plist_tracks_folder<'c>(
 ) -> Result<Vec<i32>, TrackQueryError> {
     let children = sqlx::query_as!(
             PlaylistRow,
-            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortType", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE parent_id IS NOT DISTINCT FROM $1 ORDER BY in_folder_order"#,
+            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortTypeWithPlaylist", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE parent_id IS NOT DISTINCT FROM $1 ORDER BY in_folder_order"#,
             Some(plist.id)
         )
             .map(Playlist::try_from)

@@ -1,5 +1,5 @@
 use crate::{
-    NonEmptyString, SortType,
+    NonEmptyString, SortTypeWithPlaylist,
     playlist::{Playlist, PlaylistType, playlist_error::PlaylistError},
 };
 
@@ -27,7 +27,7 @@ pub struct PlaylistRow {
     pub filter_json: Option<serde_json::Value>,
 
     /// ソート対象
-    pub sort_type: SortType,
+    pub sort_type: SortTypeWithPlaylist,
 
     /// ソートが降順か
     pub sort_desc: bool,
