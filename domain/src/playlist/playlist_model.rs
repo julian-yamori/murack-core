@@ -1,12 +1,10 @@
 use sqlx::PgTransaction;
 
 use crate::{
-    NonEmptyString,
+    NonEmptyString, SortType,
     filter::RootFilter,
-    playlist::{PlaylistRow, playlist_error::PlaylistError},
+    playlist::{PlaylistRow, PlaylistType, playlist_error::PlaylistError},
 };
-
-use super::{PlaylistType, SortType};
 
 /// プレイリスト情報
 /// # todo

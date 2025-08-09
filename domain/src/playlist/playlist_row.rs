@@ -1,6 +1,6 @@
 use crate::{
-    NonEmptyString,
-    playlist::{Playlist, PlaylistType, SortType, playlist_error::PlaylistError},
+    NonEmptyString, SortType,
+    playlist::{Playlist, PlaylistType, playlist_error::PlaylistError},
 };
 
 /// playlistテーブルのレコード

@@ -66,7 +66,10 @@ pub fn build_file_name(tree: &PlaylistTree, context: &FileNameContext) -> String
 
 #[cfg(test)]
 mod tests {
-    use murack_core_domain::playlist::{Playlist, PlaylistType, SortType};
+    use murack_core_domain::{
+        SortType,
+        playlist::{Playlist, PlaylistType},
+    };
     use test_case::test_case;
 
     use super::*;

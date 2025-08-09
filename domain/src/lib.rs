@@ -13,6 +13,10 @@ pub use non_empty_string::{EmptyStringError, NonEmptyString};
 
 pub mod path;
 pub mod playlist;
+
+pub mod sort_type;
+pub use sort_type::{SortType, SortTypeWithoutPlaylist};
+
 pub mod string_order_cnv;
 pub mod track;
 pub mod track_query;

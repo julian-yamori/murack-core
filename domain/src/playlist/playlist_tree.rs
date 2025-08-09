@@ -4,9 +4,9 @@ mod tests;
 use sqlx::PgTransaction;
 
 use crate::{
-    NonEmptyString,
+    NonEmptyString, SortType,
     playlist::{
-        Playlist, PlaylistRow, PlaylistType, SortType,
+        Playlist, PlaylistRow, PlaylistType,
         playlist_error::{PlaylistError, PlaylistNoParentsDetectedItem},
     },
 };

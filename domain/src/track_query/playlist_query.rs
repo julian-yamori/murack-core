@@ -5,11 +5,10 @@ use sqlx::PgTransaction;
 use sqlx::{Row, postgres::PgRow};
 
 use crate::{
-    NonEmptyString,
+    NonEmptyString, SortType,
     path::LibraryTrackPath,
     playlist::{
-        Playlist, PlaylistRow, PlaylistType, SortType, playlist_error::PlaylistError,
-        playlist_tracks_sqls,
+        Playlist, PlaylistRow, PlaylistType, playlist_error::PlaylistError, playlist_tracks_sqls,
     },
     track_query::{TrackQueryError, filter_query},
 };
@@ -36,13 +35,12 @@ pub async fn get_track_path_list<'c>(
             format!("{clms_query}, playlist_tracks.order_index AS {PLIST_TRACK_IDX_COLUMN}");
     }
 
+    let order_query = plist
+        .sort_type
+        .order_query(plist.sort_desc, PLIST_TRACK_IDX_COLUMN);
+
     //select句とorder byを結合
-    let query = format!(
-        "SELECT {}{}{}",
-        clms_query,
-        fjw_query,
-        get_order_query(plist.sort_type, plist.sort_desc)
-    );
+    let query = format!("SELECT {clms_query}{fjw_query} ORDER BY {order_query}",);
 
     let list: Vec<LibraryTrackPath> = sqlx::query(&query)
         .map(|row: PgRow| row.get::<LibraryTrackPath, _>(0))
@@ -192,44 +190,4 @@ async fn search_plist_tracks_filter<'c>(
         .ok_or(PlaylistError::FilterPlaylistHasNoFilter { plist_id: plist.id })?;
 
     filter_query::get_track_ids(tx, filter).await
-}
-
-/// ORDER BYクエリを取得
-/// # Arguments
-/// - sort_type ソート対象
-/// - is_desc ソートが降順か
-/// # Return
-/// order by句
-fn get_order_query(sort_type: SortType, is_desc: bool) -> String {
-    let order = get_sort_column_query(sort_type);
-
-    //降順ならASC → DESC
-    if is_desc {
-        format!(" ORDER BY {}", order.replace("ASC", "DESC"))
-    } else {
-        format!(" ORDER BY {order}")
-    }
-}
-
-/// カラムのソート順のクエリを取得
-/// # Arguments
-/// - sort_type: ソート対象
-/// # Returns
-/// order byに繋がる文字列。全ての列にasc付き
-fn get_sort_column_query(sort_type: SortType) -> String {
-    match sort_type {
-	SortType::TrackName => "title_order ASC, tracks.id ASC".to_owned(),
-	SortType::Artist => "artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
-	SortType::Album => "album_order ASC, artist_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
-	SortType::Genre => "genre ASC, artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, trakcs.id ASC".to_owned(),
-	SortType::Playlist => format!("[{PLIST_TRACK_IDX_COLUMN}] ASC"),
-	SortType::Composer => "composer_order ASC, artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
-	SortType::Duration => "duration ASC, title_order ASC, tracks.id ASC".to_owned(),
-	SortType::TrackIndex => "track_number ASC, artist_order ASC, album_order ASC, disc_number ASC, title_order ASC, tracks.id ASC".to_owned(),
-	SortType::DiscIndex => "disc_number ASC, artist_order ASC, album_order ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
-	SortType::ReleaseDate => "release_date ASC, artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
-	SortType::Rating => "rating ASC, artist_order ASC, album_order ASC, disc_number ASC, track_number ASC, title_order ASC, tracks.id ASC".to_owned(),
-	SortType::EntryDate => "created_at ASC, path ASC".to_owned(),
-	SortType::Path => "path ASC".to_owned(),
-	}
 }

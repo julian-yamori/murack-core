@@ -17,6 +17,3 @@ pub use playlist_tree::PlaylistTree;
 
 mod playlist_type;
 pub use playlist_type::PlaylistType;
-
-mod sort_type;
-pub use sort_type::SortType;
