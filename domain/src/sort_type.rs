@@ -1,8 +1,12 @@
 pub mod with_playlist;
-use thiserror::Error;
-pub use with_playlist::SortTypeWithPlaylist;
+
+#[cfg(test)]
+mod tests;
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+pub use with_playlist::SortTypeWithPlaylist;
 
 /// 曲のソートの種類
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
@@ -53,7 +57,7 @@ impl SortType {
                 "album_order {dir}, artist_order {dir}, disc_number {dir}, track_number {dir}, title_order {dir}, tracks.id {dir}"
             ),
             Self::Genre => format!(
-                "genre {dir}, artist_order {dir}, album_order {dir}, disc_number {dir}, track_number {dir}, title_order {dir}, trakcs.id {dir}"
+                "genre {dir}, artist_order {dir}, album_order {dir}, disc_number {dir}, track_number {dir}, title_order {dir}, tracks.id {dir}"
             ),
             Self::Composer => format!(
                 "composer_order {dir}, artist_order {dir}, album_order {dir}, disc_number {dir}, track_number {dir}, title_order {dir}, tracks.id {dir}"
