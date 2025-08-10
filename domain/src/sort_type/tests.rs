@@ -1,7 +1,7 @@
 use anyhow::Result;
 use sqlx::PgPool;
 
-use crate::SortType;
+use crate::{SortType, SortTypeWithPlaylist};
 
 /// SortType::order_query() のテスト
 mod test_order_query {
@@ -196,6 +196,104 @@ mod test_order_query {
         // path ASC でソート
         // /music/album1/01.mp3(1), /music/album1/04.mp3(4), /music/album2/02.mp3(2), /music/album2/05.mp3(5), /music/album3/03.mp3(3)
         assert_eq!(actual, vec![1, 4, 2, 5, 3]);
+
+        Ok(())
+    }
+}
+
+/// SortTypeWithPlaylist::order_query() のテスト
+mod test_order_query_with_playlist {
+    use sqlx::{Row, postgres::PgRow};
+
+    use super::*;
+
+    const PLAYLIST_ORDER_COLUMN: &str = "pt.order_index";
+
+    /// プレイリストの曲を指定されたカラムでソートし、id を取得
+    async fn select_track_ids(pool: &PgPool, order_query: &str) -> anyhow::Result<Vec<i32>> {
+        let sql = format!(
+            "
+            SELECT tracks.id, {PLAYLIST_ORDER_COLUMN}
+            FROM playlist_tracks AS pt
+            LEFT JOIN tracks ON pt.track_id = tracks.id
+            WHERE pt.playlist_id = 1
+            ORDER BY {order_query}
+            "
+        );
+
+        let ids = sqlx::query(&sql)
+            .map(|row: PgRow| row.get::<i32, _>("id"))
+            .fetch_all(pool)
+            .await?;
+
+        Ok(ids)
+    }
+
+    /// Artistソートのテスト（昇順）
+    #[sqlx::test(
+        migrator = "crate::MIGRATOR",
+        fixtures("test_sort_order_with_playlist")
+    )]
+    async fn test_artist(pool: PgPool) -> Result<()> {
+        let sort_type = SortTypeWithPlaylist::General(SortType::Artist);
+        let order_query = sort_type.order_query(false, PLAYLIST_ORDER_COLUMN);
+
+        let actual = select_track_ids(&pool, &order_query).await?;
+
+        // プレイリストに含まれる曲を artist_order ASC, album_order ASC, disc_number ASC, track_number ASC でソート
+        // Artist A: Album A(2, 4), Artist B: Album B(5), Album Z(1)
+        assert_eq!(actual, vec![2, 4, 5, 1]);
+
+        Ok(())
+    }
+
+    /// Artistソートのテスト（降順）
+    #[sqlx::test(
+        migrator = "crate::MIGRATOR",
+        fixtures("test_sort_order_with_playlist")
+    )]
+    async fn test_artist_desc(pool: PgPool) -> Result<()> {
+        let sort_type = SortTypeWithPlaylist::General(SortType::Artist);
+        let order_query = sort_type.order_query(true, PLAYLIST_ORDER_COLUMN);
+
+        let actual = select_track_ids(&pool, &order_query).await?;
+
+        // プレイリストに含まれる曲を artist_order DESC, album_order DESC, disc_number DESC, track_number DESC でソート
+        assert_eq!(actual, vec![1, 5, 4, 2]);
+
+        Ok(())
+    }
+
+    /// Playlistソートのテスト（昇順）
+    #[sqlx::test(
+        migrator = "crate::MIGRATOR",
+        fixtures("test_sort_order_with_playlist")
+    )]
+    async fn test_playlist_asc(pool: PgPool) -> Result<()> {
+        let sort_type = SortTypeWithPlaylist::Playlist;
+        let order_query = sort_type.order_query(false, PLAYLIST_ORDER_COLUMN);
+
+        let actual = select_track_ids(&pool, &order_query).await?;
+
+        // プレイリストに含まれる曲を、プレイリストの並び順でソート
+        assert_eq!(actual, vec![1, 5, 2, 4]);
+
+        Ok(())
+    }
+
+    /// Playlistソートのテスト（降順）
+    #[sqlx::test(
+        migrator = "crate::MIGRATOR",
+        fixtures("test_sort_order_with_playlist")
+    )]
+    async fn test_playlist_desc(pool: PgPool) -> Result<()> {
+        let sort_type = SortTypeWithPlaylist::Playlist;
+        let order_query = sort_type.order_query(true, PLAYLIST_ORDER_COLUMN);
+
+        let actual = select_track_ids(&pool, &order_query).await?;
+
+        // プレイリストに含まれる曲を、プレイリストの並び順でソート
+        assert_eq!(actual, vec![4, 2, 5, 1]);
 
         Ok(())
     }
