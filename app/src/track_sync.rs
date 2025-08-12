@@ -4,7 +4,7 @@ mod db_track_sync;
 pub use db_track_sync::DbTrackSync;
 
 mod track_sync_model;
-pub use track_sync_model::TrackSync;
+pub use track_sync_model::{AudioMetadataAndLyrics, TrackSync};
 
 pub mod track_sync_repository;
 

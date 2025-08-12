@@ -128,7 +128,7 @@ where
 
                 //PCのデータを上書き
                 self.overwrite_track_editable(&db_track.track_sync, pc_track);
-                self.overwrite_pc_track_file(track_path, pc_track)?;
+                self.overwrite_pc_track_file(track_path, pc_track.clone())?;
 
                 //DAPのデータをPCのデータで上書き
                 data_file::overwrite_track_over_lib(
@@ -220,7 +220,7 @@ where
                 conflict.copy_each_sync(db_sync, pc_track);
 
                 let track_path = &db_track.path;
-                self.overwrite_pc_track_file(track_path, pc_track)?;
+                self.overwrite_pc_track_file(track_path, pc_track.clone())?;
 
                 //DAPのデータをPCのデータで上書き
                 data_file::overwrite_track_over_lib(
@@ -302,7 +302,7 @@ where
 
                 //PCに保存
                 let track_path = &db_track.path;
-                self.overwrite_pc_track_file(track_path, &pc_track)?;
+                self.overwrite_pc_track_file(track_path, pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
                 data_file::overwrite_track_over_lib(
@@ -411,7 +411,7 @@ where
     fn overwrite_pc_track_file(
         &self,
         track_path: &LibraryTrackPath,
-        pc_track: &TrackSync,
+        pc_track: TrackSync,
     ) -> Result<()> {
         data_file::overwrite_track_sync(&self.config.pc_lib, track_path, pc_track)?;
 

@@ -14,7 +14,7 @@ use murack_core_domain::{
 
 use crate::{
     data_file::{LibraryFsError, utils},
-    track_sync::TrackSync,
+    track_sync::{AudioMetadataAndLyrics, TrackSync},
 };
 
 /// 曲のオーディオメタデータを読み込み
@@ -79,19 +79,19 @@ pub fn read_track_sync(lib_root: &Path, track_path: &LibraryTrackPath) -> Result
 pub fn overwrite_track_sync(
     lib_root: &Path,
     track_path: &LibraryTrackPath,
-    track_sync: &TrackSync,
+    track_sync: TrackSync,
 ) -> Result<()> {
     let track_abs = track_path.abs(lib_root);
 
-    let (audio, artworks) = track_sync.get_audio_metadata_entry();
+    let AudioMetadataAndLyrics { metadata, lyrics } = track_sync.into();
 
     match FormatType::from_path(&track_abs)? {
-        FormatType::Mp3 => formats::mp3::overwrite(&track_abs, &audio, &artworks)?,
-        FormatType::Flac => formats::flac::overwrite(&track_abs, &audio, &artworks)?,
-        FormatType::M4a => formats::m4a::overwrite(&track_abs, &audio, &artworks)?,
+        FormatType::Mp3 => formats::mp3::overwrite(&track_abs, metadata)?,
+        FormatType::Flac => formats::flac::overwrite(&track_abs, metadata)?,
+        FormatType::M4a => formats::m4a::overwrite(&track_abs, metadata)?,
     };
 
-    write_lyrics(&track_abs, &track_sync.lyrics)?;
+    write_lyrics(&track_abs, &lyrics)?;
 
     Ok(())
 }

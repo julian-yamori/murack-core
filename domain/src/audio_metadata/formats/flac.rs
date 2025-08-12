@@ -9,8 +9,8 @@ use metaflac::{
 };
 
 use crate::{
-    artwork::{Picture as MurackPicture, TrackArtwork, TrackArtworkEntry},
-    audio_metadata::{AudioMetaData, AudioMetaDataEntry},
+    artwork::{Picture as MurackPicture, TrackArtwork},
+    audio_metadata::AudioMetaData,
 };
 
 const KEY_COMPOSER: &str = "COMPOSER";
@@ -61,12 +61,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, FlacError> {
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
 /// - track: 書き込む曲の情報
-/// - artworks: 曲に書き込むアートワークの情報
-pub fn overwrite(
-    path: &Path,
-    track: &AudioMetaDataEntry,
-    artworks: &[TrackArtworkEntry],
-) -> Result<(), FlacError> {
+pub fn overwrite(path: &Path, track: AudioMetaData) -> Result<(), FlacError> {
     let mut tag = Tag::read_from_path(path)?;
     let v = tag.vorbis_comments_mut();
 
@@ -94,7 +89,7 @@ pub fn overwrite(
     //v.set_lyrics(str_to_vec(&track.lyrics));
 
     tag.remove_blocks(BlockType::Picture);
-    for artwork in artworks {
+    for artwork in track.artworks {
         /* こちらだとdescriptionが書き込めない
         tag.add_picture(
             artwork.mime_type.to_owned(),
@@ -103,10 +98,10 @@ pub fn overwrite(
         );
         */
         let mut picture = metaflac::block::Picture::new();
-        picture.mime_type = artwork.mime_type.to_owned();
+        picture.mime_type = artwork.picture.mime_type;
         picture.picture_type = picture_type_from_u8(artwork.picture_type);
-        picture.description = artwork.description.to_owned();
-        picture.data = artwork.bytes.to_owned();
+        picture.description = artwork.description;
+        picture.data = artwork.picture.bytes;
         //TODO サイズ等の情報が書き込まれない。add_pictureでも同様。
         tag.push_block(Block::Picture(picture));
     }
@@ -230,7 +225,7 @@ fn picture_type_from_u8(i: u8) -> PictureType {
     }
 }
 /// 文字列値をVecに変換（metadata書き込み用）
-fn str_to_vec(s: Option<&str>) -> Vec<&str> {
+fn str_to_vec(s: Option<String>) -> Vec<String> {
     match s {
         Some(s) => vec![s],
         None => vec![],

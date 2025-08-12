@@ -12,8 +12,8 @@ use id3::{Tag, TagLike};
 use mp3_duration::MP3DurationError;
 
 use crate::{
-    artwork::{Picture as MurackPicture, TrackArtwork, TrackArtworkEntry},
-    audio_metadata::{AudioMetaData, AudioMetaDataEntry},
+    artwork::{Picture as MurackPicture, TrackArtwork},
+    audio_metadata::AudioMetaData,
 };
 
 const KEY_COMPOSER: &str = "TCOM";
@@ -67,11 +67,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
 /// - track: 書き込む曲の情報
-pub fn overwrite(
-    path: &Path,
-    track: &AudioMetaDataEntry,
-    artworks: &[TrackArtworkEntry],
-) -> Result<(), MP3Error> {
+pub fn overwrite(path: &Path, track: AudioMetaData) -> Result<(), MP3Error> {
     let mut tag = Tag::read_from_path(path)?;
 
     match track.title {
@@ -138,7 +134,7 @@ pub fn overwrite(
     }
     */
 
-    id3_set_artworks(&mut tag, artworks)?;
+    id3_set_artworks(&mut tag, track.artworks)?;
 
     tag.write_to_path(path, id3::Version::Id3v23)?;
     Ok(())
@@ -271,7 +267,7 @@ fn id3_set_release_date(tag: &mut Tag, date: &Option<NaiveDate>) {
 }
 
 /// ID3タグにアートワークを設定
-fn id3_set_artworks(tag: &mut Tag, artworks: &[TrackArtworkEntry]) -> Result<(), MP3Error> {
+fn id3_set_artworks(tag: &mut Tag, artworks: Vec<TrackArtwork>) -> Result<(), MP3Error> {
     use id3::frame::{Picture, PictureType};
 
     //一旦全削除
@@ -289,10 +285,10 @@ fn id3_set_artworks(tag: &mut Tag, artworks: &[TrackArtworkEntry]) -> Result<(),
         }
 
         tag.add_frame(Picture {
-            mime_type: artwork.mime_type.to_owned(),
+            mime_type: artwork.picture.mime_type,
             picture_type: PictureType::Undefined(artwork.picture_type),
-            description: artwork.description.to_owned(),
-            data: artwork.bytes.to_owned(),
+            description: artwork.description,
+            data: artwork.picture.bytes,
         });
     }
 

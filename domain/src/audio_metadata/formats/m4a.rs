@@ -6,8 +6,8 @@ use chrono::NaiveDate;
 use mp4ameta::{ImgFmt, Tag};
 
 use crate::{
-    artwork::{Picture as MurackPicture, TrackArtwork, TrackArtworkEntry},
-    audio_metadata::{AudioMetaData, AudioMetaDataEntry},
+    artwork::{Picture as MurackPicture, TrackArtwork},
+    audio_metadata::AudioMetaData,
 };
 
 /// ファイルからメタデータを読み込み
@@ -43,11 +43,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, M4AError> {
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
 /// - track: 書き込む曲の情報
-pub fn overwrite(
-    path: &Path,
-    track: &AudioMetaDataEntry,
-    artworks: &[TrackArtworkEntry],
-) -> Result<(), M4AError> {
+pub fn overwrite(path: &Path, track: AudioMetaData) -> Result<(), M4AError> {
     let mut tag = Tag::read_from_path(path)?;
 
     match track.title {
@@ -141,21 +137,22 @@ pub fn overwrite(
     */
 
     tag.set_artworks(
-        artworks
-            .iter()
+        track
+            .artworks
+            .into_iter()
             .map(|art| {
                 Ok(mp4ameta::Img {
-                    fmt: match art.mime_type {
+                    fmt: match art.picture.mime_type.as_str() {
                         "image/jpeg" => ImgFmt::Jpeg,
                         "image/bmp" => ImgFmt::Bmp,
                         "image/png" => ImgFmt::Png,
-                        s => {
+                        _ => {
                             return Err(M4AError::UnsupportedArtworkFormat {
-                                mime_type: s.to_owned(),
+                                mime_type: art.picture.mime_type,
                             });
                         }
                     },
-                    data: art.bytes.to_vec(),
+                    data: art.picture.bytes,
                 })
             })
             .collect::<Result<Vec<_>, _>>()?,

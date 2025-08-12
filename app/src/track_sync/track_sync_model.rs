@@ -1,12 +1,8 @@
 use chrono::NaiveDate;
-use murack_core_domain::{
-    artwork::{TrackArtwork, TrackArtworkEntry},
-    audio_metadata::AudioMetaDataEntry,
-    string_order_cnv,
-};
+use murack_core_domain::{artwork::TrackArtwork, audio_metadata::AudioMetaData, string_order_cnv};
 
 /// PC・DB間で同期するべき曲の情報
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TrackSync {
     /// 曲の再生時間
     pub duration: u32,
@@ -80,29 +76,35 @@ impl TrackSync {
     }
 }
 
-impl TrackSync {
-    /// AudioMetaDataの登録用データに変換
-    pub fn get_audio_metadata_entry(&self) -> (AudioMetaDataEntry, Vec<TrackArtworkEntry>) {
-        (
-            AudioMetaDataEntry {
-                title: none_if_empty(&self.title),
-                artist: none_if_empty(&self.artist),
-                album: none_if_empty(&self.album),
-                genre: none_if_empty(&self.genre),
-                album_artist: none_if_empty(&self.album_artist),
-                composer: none_if_empty(&self.composer),
-                track_number: self.track_number,
-                track_max: self.track_max,
-                disc_number: self.disc_number,
-                disc_max: self.disc_max,
-                release_date: self.release_date,
-                memo: none_if_empty(&self.memo),
+pub struct AudioMetadataAndLyrics {
+    pub metadata: AudioMetaData,
+    pub lyrics: String,
+}
+
+impl From<TrackSync> for AudioMetadataAndLyrics {
+    fn from(value: TrackSync) -> Self {
+        AudioMetadataAndLyrics {
+            metadata: AudioMetaData {
+                duration: value.duration,
+                title: none_if_empty(value.title),
+                artist: none_if_empty(value.artist),
+                album: none_if_empty(value.album),
+                genre: none_if_empty(value.genre),
+                album_artist: none_if_empty(value.album_artist),
+                composer: none_if_empty(value.composer),
+                track_number: value.track_number,
+                track_max: value.track_max,
+                disc_number: value.disc_number,
+                disc_max: value.disc_max,
+                release_date: value.release_date,
+                memo: none_if_empty(value.memo),
+                artworks: value.artworks,
             },
-            self.artworks.iter().map(TrackArtworkEntry::from).collect(),
-        )
+            lyrics: value.lyrics,
+        }
     }
 }
 
-fn none_if_empty(s: &str) -> Option<&str> {
+fn none_if_empty(s: String) -> Option<String> {
     if s.is_empty() { None } else { Some(s) }
 }
