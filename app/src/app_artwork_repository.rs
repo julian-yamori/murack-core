@@ -24,7 +24,7 @@ static ARTWORK_CACHE: Lazy<Arc<Mutex<ArtworkCache>>> =
 /// - picture: アートワークの画像データ
 /// # Return
 /// 新規登録されたアートワーク、もしくは既存の同一データのID
-async fn register_artwork(tx: &mut PgTransaction<'_>, picture: &Arc<Picture>) -> Result<i32> {
+async fn register_artwork(tx: &mut PgTransaction<'_>, picture: Picture) -> Result<i32> {
     //対象データのMD5ハッシュを取得
     let hash = picture.hash();
 
@@ -58,13 +58,12 @@ async fn register_artwork(tx: &mut PgTransaction<'_>, picture: &Arc<Picture>) ->
         }
     }
 
-    let new_pk = artwork_repository::add_artwork(tx, picture).await?;
+    let new_pk = artwork_repository::add_artwork(tx, &picture).await?;
 
     //すぐに使う可能性が高いので、キャッシュに保存
     lock_cache()?.cache = Some(ArtworkCachedData {
         artwork_id: new_pk,
-        //Arc Clone
-        picture: picture.clone(),
+        picture: Arc::new(picture),
     });
 
     Ok(new_pk)
@@ -86,14 +85,14 @@ fn lock_cache() -> Result<MutexGuard<'static, ArtworkCache>> {
 pub async fn register_track_artworks<'c>(
     tx: &mut PgTransaction<'c>,
     track_id: i32,
-    track_artworks: &[TrackArtwork],
+    track_artworks: Vec<TrackArtwork>,
 ) -> Result<()> {
     //一旦、現在の紐付きを全て解除
     unregister_track_artworks(tx, track_id).await?;
 
-    for (artwork_idx, artwork) in track_artworks.iter().enumerate() {
+    for (artwork_idx, artwork) in track_artworks.into_iter().enumerate() {
         //アートワーク画像情報を新規登録し、ID情報を取得
-        let artwork_id = register_artwork(tx, &artwork.picture).await?;
+        let artwork_id = register_artwork(tx, artwork.picture).await?;
 
         //紐付き情報を登録
         sqlx::query!(
@@ -125,10 +124,10 @@ pub async fn get_track_artworks<'c>(
     )
     .map(|row| -> anyhow::Result<TrackArtwork> {
         Ok(TrackArtwork {
-            picture: Arc::new(Picture {
+            picture: Picture {
                 bytes: row.image,
                 mime_type: row.mime_type,
-            }),
+            },
             picture_type: row.picture_type.try_into()?,
             description: row.description,
         })

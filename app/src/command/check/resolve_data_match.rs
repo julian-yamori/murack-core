@@ -56,16 +56,13 @@ where
         }
 
         if !self
-            .resolve_artwork(db_pool, &mut pc_data, &mut db_data)
+            .resolve_duration(db_pool, &mut pc_data, &mut db_data)
             .await?
         {
             return Ok(false);
         }
 
-        if !self
-            .resolve_duration(db_pool, &mut pc_data, &mut db_data)
-            .await?
-        {
+        if !self.resolve_artwork(db_pool, pc_data, &mut db_data).await? {
             return Ok(false);
         }
 
@@ -248,11 +245,11 @@ where
     async fn resolve_artwork(
         &self,
         db_pool: &PgPool,
-        pc_track: &mut TrackSync,
+        mut pc_track: TrackSync,
         db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //アートワークが一致したらスキップ
-        if check_usecase::check_artwork(pc_track, &db_track.track_sync) {
+        if check_usecase::check_artwork(&pc_track, &db_track.track_sync) {
             return Ok(true);
         }
 
@@ -288,7 +285,7 @@ where
                 app_artwork_repository::register_track_artworks(
                     &mut tx,
                     track_id,
-                    &pc_track.artworks,
+                    pc_track.artworks,
                 )
                 .await?;
 
@@ -306,7 +303,7 @@ where
 
                 //PCに保存
                 let track_path = &db_track.path;
-                self.overwrite_pc_track_file(track_path, pc_track)?;
+                self.overwrite_pc_track_file(track_path, &pc_track)?;
 
                 //DAPのデータをPCのデータで上書き
                 data_file::overwrite_track_over_lib(

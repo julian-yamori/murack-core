@@ -93,10 +93,10 @@ where
         let result = if pc_exists && db_exists && !dap_exists {
             self.resolve_not_exists_dap(track_path)?
         } else if pc_exists && !db_exists && dap_exists {
-            self.resolve_not_exists_db(db_pool, track_path, &mut pc_data_opt.unwrap())
+            self.resolve_not_exists_db(db_pool, track_path, pc_data_opt.unwrap())
                 .await?
         } else if pc_exists && !db_exists && !dap_exists {
-            self.resolve_not_exists_db_dap(db_pool, track_path, &mut pc_data_opt.unwrap())
+            self.resolve_not_exists_db_dap(db_pool, track_path, pc_data_opt.unwrap())
                 .await?
         } else if !pc_exists && db_exists && dap_exists {
             self.resolve_not_exists_pc(db_pool, track_path).await?
@@ -186,7 +186,7 @@ where
         &self,
         db_pool: &PgPool,
         track_path: &LibraryTrackPath,
-        pc_track: &mut TrackSync,
+        pc_track: TrackSync,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -227,7 +227,7 @@ where
         &self,
         db_pool: &PgPool,
         track_path: &LibraryTrackPath,
-        pc_track: &mut TrackSync,
+        pc_track: TrackSync,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -384,8 +384,7 @@ where
                 )?;
 
                 //DAPからコピーしたPCデータを読み込む
-                let mut pc_track = match data_file::read_track_sync(&self.config.pc_lib, track_path)
-                {
+                let pc_track = match data_file::read_track_sync(&self.config.pc_lib, track_path) {
                     Ok(d) => d,
                     Err(e) => {
                         cui_outln!(cui, "曲ファイルのデータの読み込みに失敗しました。\n{}", e)?;
@@ -394,7 +393,7 @@ where
                 };
 
                 //DBに追加
-                db_common::add_track_to_db(db_pool, track_path, &mut pc_track).await?;
+                db_common::add_track_to_db(db_pool, track_path, pc_track).await?;
                 Ok(ResolveFileExistanceResult::Resolved)
             }
             //DAPからファイルを削除

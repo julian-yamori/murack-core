@@ -49,8 +49,7 @@ mod test_register_db {
 
         let mut tx = pool.begin().await?;
 
-        let s = track_sync();
-        super::register_db(&mut tx, &track_path(), &s).await?;
+        super::register_db(&mut tx, &track_path(), track_sync()).await?;
 
         // 曲がRoot直下（folder_id = NULL）に登録されたことを確認
         let track_count = sqlx::query_scalar!(
@@ -104,8 +103,7 @@ mod test_register_db {
 
         let mut tx = pool.begin().await?;
 
-        let s = track_sync();
-        super::register_db(&mut tx, &track_path(), &s).await?;
+        super::register_db(&mut tx, &track_path(), track_sync()).await?;
 
         // フォルダが作成されたことを確認
         let test_folder_id =

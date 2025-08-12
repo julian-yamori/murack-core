@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use murack_core_domain::artwork::{Picture, TrackArtwork as DomainTrackArtwork, TrackArtworkEntry};
 
 /// 曲に紐付いたアートワーク1つの情報
 #[derive(Debug, PartialEq, Clone)]
 pub struct TrackArtwork {
     /// 画像データ
-    pub picture: Arc<Picture>,
+    pub picture: Picture,
 
     /// 画像タイプ
     ///
@@ -20,10 +18,10 @@ pub struct TrackArtwork {
 impl From<DomainTrackArtwork> for TrackArtwork {
     fn from(p: DomainTrackArtwork) -> Self {
         Self {
-            picture: Arc::new(Picture {
+            picture: Picture {
                 bytes: p.bytes,
                 mime_type: p.mime_type,
-            }),
+            },
             picture_type: p.picture_type,
             description: p.description,
         }

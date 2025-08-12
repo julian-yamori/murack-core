@@ -54,7 +54,7 @@ pub async fn track_paths_by_path_str<'c>(
 pub async fn add_track_to_db(
     db_pool: &PgPool,
     track_path: &LibraryTrackPath,
-    track_sync: &mut TrackSync,
+    mut track_sync: TrackSync,
 ) -> anyhow::Result<()> {
     //曲名が空なら、ファイル名から取得
     if track_sync.title.is_empty() {

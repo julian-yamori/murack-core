@@ -67,7 +67,7 @@ pub async fn get_by_path<'c>(
 pub async fn register_db<'c>(
     tx: &mut PgTransaction<'c>,
     track_path: &LibraryTrackPath,
-    track_sync: &TrackSync,
+    track_sync: TrackSync,
 ) -> Result<()> {
     //DBに既に存在しないか確認
     if db_common::exists_path(tx, track_path).await? {
@@ -116,7 +116,7 @@ pub async fn register_db<'c>(
     ).fetch_one(&mut **tx).await?;
 
     //アートワークを登録
-    app_artwork_repository::register_track_artworks(tx, track_id, &track_sync.artworks).await?;
+    app_artwork_repository::register_track_artworks(tx, track_id, track_sync.artworks).await?;
 
     //プレイリストのリストアップ済みフラグを解除
     playlist_sqls::reset_listuped_flag(tx).await?;

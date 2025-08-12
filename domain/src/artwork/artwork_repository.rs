@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sqlx::PgTransaction;
 
 use crate::artwork::{ArtworkError, Picture};
@@ -7,7 +5,7 @@ use crate::artwork::{ArtworkError, Picture};
 /// アートワークを DB に追加
 pub async fn add_artwork(
     tx: &mut PgTransaction<'_>,
-    picture: &Arc<Picture>,
+    picture: &Picture,
 ) -> Result<i32, ArtworkError> {
     //対象データのMD5ハッシュを取得
     let hash = picture.hash();
