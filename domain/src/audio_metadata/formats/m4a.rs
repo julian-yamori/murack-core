@@ -6,7 +6,7 @@ use chrono::NaiveDate;
 use mp4ameta::{ImgFmt, Tag};
 
 use crate::{
-    artwork::{TrackArtwork, TrackArtworkEntry},
+    artwork::{Picture as MurackPicture, TrackArtwork, TrackArtworkEntry},
     audio_metadata::{AudioMetaData, AudioMetaDataEntry},
 };
 
@@ -193,11 +193,13 @@ fn get_release_date(tag: &Tag) -> Result<Option<NaiveDate>, M4AError> {
 fn get_artworks(tag: &Tag) -> Vec<TrackArtwork> {
     tag.artworks()
         .map(|img| TrackArtwork {
-            bytes: img.data.to_vec(),
-            mime_type: match img.fmt {
-                ImgFmt::Bmp => "image/bmp".to_owned(),
-                ImgFmt::Jpeg => "image/jpeg".to_owned(),
-                ImgFmt::Png => "image/png".to_owned(),
+            picture: MurackPicture {
+                bytes: img.data.to_vec(),
+                mime_type: match img.fmt {
+                    ImgFmt::Bmp => "image/bmp".to_owned(),
+                    ImgFmt::Jpeg => "image/jpeg".to_owned(),
+                    ImgFmt::Png => "image/png".to_owned(),
+                },
             },
             picture_type: 3, //とりあえずCoverFrontとして扱う
             description: String::new(),

@@ -12,7 +12,7 @@ use id3::{Tag, TagLike};
 use mp3_duration::MP3DurationError;
 
 use crate::{
-    artwork::{TrackArtwork, TrackArtworkEntry},
+    artwork::{Picture as MurackPicture, TrackArtwork, TrackArtworkEntry},
     audio_metadata::{AudioMetaData, AudioMetaDataEntry},
 };
 
@@ -51,8 +51,10 @@ pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
         artworks: tag
             .pictures()
             .map(|picture| TrackArtwork {
-                bytes: picture.data.clone(),
-                mime_type: picture.mime_type.clone(),
+                picture: MurackPicture {
+                    bytes: picture.data.clone(),
+                    mime_type: picture.mime_type.clone(),
+                },
                 picture_type: picture.picture_type.into(),
                 description: picture.description.clone(),
             })

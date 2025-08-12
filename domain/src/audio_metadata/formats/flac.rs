@@ -9,7 +9,7 @@ use metaflac::{
 };
 
 use crate::{
-    artwork::{TrackArtwork, TrackArtworkEntry},
+    artwork::{Picture as MurackPicture, TrackArtwork, TrackArtworkEntry},
     audio_metadata::{AudioMetaData, AudioMetaDataEntry},
 };
 
@@ -167,8 +167,10 @@ fn get_release_date(vc: &VorbisComment) -> Result<Option<NaiveDate>, FlacError> 
 fn get_artworks(tag: &Tag) -> Vec<TrackArtwork> {
     tag.pictures()
         .map(|tag_pic| TrackArtwork {
-            bytes: tag_pic.data.clone(),
-            mime_type: tag_pic.mime_type.clone(),
+            picture: MurackPicture {
+                bytes: tag_pic.data.clone(),
+                mime_type: tag_pic.mime_type.clone(),
+            },
             picture_type: u8_from_picture_type(tag_pic.picture_type),
             description: tag_pic.description.clone(),
         })

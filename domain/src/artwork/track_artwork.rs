@@ -1,11 +1,9 @@
+use crate::artwork::Picture;
+
 /// 曲へ紐付けるアートワークの情報
 #[derive(Debug, PartialEq, Clone)]
 pub struct TrackArtwork {
-    /// 画像データ
-    pub bytes: Vec<u8>,
-
-    /// 画像データのMIMEタイプ
-    pub mime_type: String,
+    pub picture: Picture,
 
     /// 画像タイプ
     ///
@@ -37,8 +35,8 @@ pub struct TrackArtworkEntry<'a> {
 impl<'a> From<&'a TrackArtwork> for TrackArtworkEntry<'a> {
     fn from(d: &'a TrackArtwork) -> Self {
         Self {
-            bytes: &d.bytes,
-            mime_type: &d.mime_type,
+            bytes: &d.picture.bytes,
+            mime_type: &d.picture.mime_type,
             picture_type: d.picture_type,
             description: &d.description,
         }

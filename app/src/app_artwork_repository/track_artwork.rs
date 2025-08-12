@@ -18,10 +18,7 @@ pub struct TrackArtwork {
 impl From<DomainTrackArtwork> for TrackArtwork {
     fn from(p: DomainTrackArtwork) -> Self {
         Self {
-            picture: Picture {
-                bytes: p.bytes,
-                mime_type: p.mime_type,
-            },
+            picture: p.picture,
             picture_type: p.picture_type,
             description: p.description,
         }
