@@ -1,5 +1,6 @@
-use super::{AudioPicture, AudioPictureEntry};
 use chrono::NaiveDate;
+
+use crate::artwork::{TrackArtwork, TrackArtworkEntry};
 
 /// オーディオファイルのメタデータのうち、Murack が利用する部分
 #[derive(Debug, PartialEq)]
@@ -38,7 +39,7 @@ pub struct AudioMetaData {
     pub memo: Option<String>,
 
     /// アートワーク
-    pub artworks: Vec<AudioPicture>,
+    pub artworks: Vec<TrackArtwork>,
 }
 
 /// オーディオファイルのメタデータの登録用データ
@@ -79,7 +80,7 @@ pub struct AudioMetaDataEntry<'a> {
 
 impl AudioMetaData {
     /// 登録用データに変換
-    pub fn get_entry(&self) -> (AudioMetaDataEntry, Vec<AudioPictureEntry>) {
+    pub fn get_entry(&self) -> (AudioMetaDataEntry, Vec<TrackArtworkEntry>) {
         (
             AudioMetaDataEntry {
                 title: self.title.as_deref(),
@@ -95,7 +96,7 @@ impl AudioMetaData {
                 release_date: self.release_date,
                 memo: self.memo.as_deref(),
             },
-            self.artworks.iter().map(AudioPictureEntry::from).collect(),
+            self.artworks.iter().map(TrackArtworkEntry::from).collect(),
         )
     }
 }

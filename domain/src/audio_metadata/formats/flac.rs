@@ -8,7 +8,10 @@ use metaflac::{
     block::{Block, BlockType, PictureType, StreamInfo, VorbisComment},
 };
 
-use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
+use crate::{
+    artwork::{TrackArtwork, TrackArtworkEntry},
+    audio_metadata::{AudioMetaData, AudioMetaDataEntry},
+};
 
 const KEY_COMPOSER: &str = "COMPOSER";
 const KEY_TRACK_NUMBER: &str = "TRACKNUMBER";
@@ -62,7 +65,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, FlacError> {
 pub fn overwrite(
     path: &Path,
     track: &AudioMetaDataEntry,
-    artworks: &[AudioPictureEntry],
+    artworks: &[TrackArtworkEntry],
 ) -> Result<(), FlacError> {
     let mut tag = Tag::read_from_path(path)?;
     let v = tag.vorbis_comments_mut();
@@ -161,9 +164,9 @@ fn get_release_date(vc: &VorbisComment) -> Result<Option<NaiveDate>, FlacError> 
     }
 }
 /// アートワークリストを取得
-fn get_artworks(tag: &Tag) -> Vec<AudioPicture> {
+fn get_artworks(tag: &Tag) -> Vec<TrackArtwork> {
     tag.pictures()
-        .map(|tag_pic| AudioPicture {
+        .map(|tag_pic| TrackArtwork {
             bytes: tag_pic.data.clone(),
             mime_type: tag_pic.mime_type.clone(),
             picture_type: u8_from_picture_type(tag_pic.picture_type),

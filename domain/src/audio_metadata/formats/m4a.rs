@@ -5,7 +5,10 @@ use std::path::Path;
 use chrono::NaiveDate;
 use mp4ameta::{ImgFmt, Tag};
 
-use super::super::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
+use crate::{
+    artwork::{TrackArtwork, TrackArtworkEntry},
+    audio_metadata::{AudioMetaData, AudioMetaDataEntry},
+};
 
 /// ファイルからメタデータを読み込み
 ///
@@ -43,7 +46,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, M4AError> {
 pub fn overwrite(
     path: &Path,
     track: &AudioMetaDataEntry,
-    artworks: &[AudioPictureEntry],
+    artworks: &[TrackArtworkEntry],
 ) -> Result<(), M4AError> {
     let mut tag = Tag::read_from_path(path)?;
 
@@ -187,9 +190,9 @@ fn get_release_date(tag: &Tag) -> Result<Option<NaiveDate>, M4AError> {
 }
 
 /// Tagからアートワークを取得
-fn get_artworks(tag: &Tag) -> Vec<AudioPicture> {
+fn get_artworks(tag: &Tag) -> Vec<TrackArtwork> {
     tag.artworks()
-        .map(|img| AudioPicture {
+        .map(|img| TrackArtwork {
             bytes: img.data.to_vec(),
             mime_type: match img.fmt {
                 ImgFmt::Bmp => "image/bmp".to_owned(),

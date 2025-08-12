@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use murack_core_domain::{
-    artwork::Picture,
-    audio_metadata::{AudioPicture, AudioPictureEntry},
-};
+use murack_core_domain::artwork::{Picture, TrackArtwork as DomainTrackArtwork, TrackArtworkEntry};
 
 /// 曲に紐付いたアートワーク1つの情報
 #[derive(Debug, PartialEq, Clone)]
@@ -20,8 +17,8 @@ pub struct TrackArtwork {
     pub description: String,
 }
 
-impl From<AudioPicture> for TrackArtwork {
-    fn from(p: AudioPicture) -> Self {
+impl From<DomainTrackArtwork> for TrackArtwork {
+    fn from(p: DomainTrackArtwork) -> Self {
         Self {
             picture: Arc::new(Picture {
                 bytes: p.bytes,
@@ -33,7 +30,7 @@ impl From<AudioPicture> for TrackArtwork {
     }
 }
 
-impl<'a> From<&'a TrackArtwork> for AudioPictureEntry<'a> {
+impl<'a> From<&'a TrackArtwork> for TrackArtworkEntry<'a> {
     fn from(d: &'a TrackArtwork) -> Self {
         Self {
             bytes: &d.picture.bytes,

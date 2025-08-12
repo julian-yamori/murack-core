@@ -11,7 +11,10 @@ use chrono::{Datelike, NaiveDate};
 use id3::{Tag, TagLike};
 use mp3_duration::MP3DurationError;
 
-use crate::audio_metadata::{AudioMetaData, AudioMetaDataEntry, AudioPicture, AudioPictureEntry};
+use crate::{
+    artwork::{TrackArtwork, TrackArtworkEntry},
+    audio_metadata::{AudioMetaData, AudioMetaDataEntry},
+};
 
 const KEY_COMPOSER: &str = "TCOM";
 const KEY_DATE: &str = "TDAT";
@@ -47,7 +50,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
         //lyrics: id3_get_lyrics(&tag),
         artworks: tag
             .pictures()
-            .map(|picture| AudioPicture {
+            .map(|picture| TrackArtwork {
                 bytes: picture.data.clone(),
                 mime_type: picture.mime_type.clone(),
                 picture_type: picture.picture_type.into(),
@@ -65,7 +68,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
 pub fn overwrite(
     path: &Path,
     track: &AudioMetaDataEntry,
-    artworks: &[AudioPictureEntry],
+    artworks: &[TrackArtworkEntry],
 ) -> Result<(), MP3Error> {
     let mut tag = Tag::read_from_path(path)?;
 
@@ -266,7 +269,7 @@ fn id3_set_release_date(tag: &mut Tag, date: &Option<NaiveDate>) {
 }
 
 /// ID3タグにアートワークを設定
-fn id3_set_artworks(tag: &mut Tag, artworks: &[AudioPictureEntry]) -> Result<(), MP3Error> {
+fn id3_set_artworks(tag: &mut Tag, artworks: &[TrackArtworkEntry]) -> Result<(), MP3Error> {
     use id3::frame::{Picture, PictureType};
 
     //一旦全削除

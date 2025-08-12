@@ -1,6 +1,6 @@
-/// オーディオファイルに埋め込まれた画像データのうち、Murack が利用する部分
+/// 曲へ紐付けるアートワークの情報
 #[derive(Debug, PartialEq, Clone)]
-pub struct AudioPicture {
+pub struct TrackArtwork {
     /// 画像データ
     pub bytes: Vec<u8>,
 
@@ -16,9 +16,9 @@ pub struct AudioPicture {
     pub description: String,
 }
 
-/// オーディオファイル画像データの登録用データ
+/// 曲へ紐付けるアートワークの、登録用データ
 #[derive(Debug, PartialEq)]
-pub struct AudioPictureEntry<'a> {
+pub struct TrackArtworkEntry<'a> {
     /// 画像データ
     pub bytes: &'a [u8],
 
@@ -34,8 +34,8 @@ pub struct AudioPictureEntry<'a> {
     pub description: &'a str,
 }
 
-impl<'a> From<&'a AudioPicture> for AudioPictureEntry<'a> {
-    fn from(d: &'a AudioPicture) -> Self {
+impl<'a> From<&'a TrackArtwork> for TrackArtworkEntry<'a> {
+    fn from(d: &'a TrackArtwork) -> Self {
         Self {
             bytes: &d.bytes,
             mime_type: &d.mime_type,

@@ -1,7 +1,6 @@
 use chrono::NaiveDate;
 use murack_core_domain::{
-    audio_metadata::{AudioMetaDataEntry, AudioPictureEntry},
-    string_order_cnv,
+    artwork::TrackArtworkEntry, audio_metadata::AudioMetaDataEntry, string_order_cnv,
 };
 
 use crate::app_artwork_repository::TrackArtwork;
@@ -83,7 +82,7 @@ impl TrackSync {
 
 impl TrackSync {
     /// AudioMetaDataの登録用データに変換
-    pub fn get_audio_metadata_entry(&self) -> (AudioMetaDataEntry, Vec<AudioPictureEntry>) {
+    pub fn get_audio_metadata_entry(&self) -> (AudioMetaDataEntry, Vec<TrackArtworkEntry>) {
         (
             AudioMetaDataEntry {
                 title: none_if_empty(&self.title),
@@ -99,7 +98,7 @@ impl TrackSync {
                 release_date: self.release_date,
                 memo: none_if_empty(&self.memo),
             },
-            self.artworks.iter().map(AudioPictureEntry::from).collect(),
+            self.artworks.iter().map(TrackArtworkEntry::from).collect(),
         )
     }
 }
