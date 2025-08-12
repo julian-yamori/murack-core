@@ -13,7 +13,6 @@ use murack_core_domain::{
 };
 
 use crate::{
-    app_artwork_repository::TrackArtwork,
     data_file::{LibraryFsError, utils},
     track_sync::TrackSync,
 };
@@ -66,7 +65,7 @@ pub fn read_track_sync(lib_root: &Path, track_path: &LibraryTrackPath) -> Result
         disc_max: meta.disc_max,
         release_date: meta.release_date,
         memo: meta.memo.unwrap_or_default(),
-        artworks: meta.artworks.into_iter().map(TrackArtwork::from).collect(),
+        artworks: meta.artworks,
         lyrics: read_lyrics(&track_abs)?,
     })
 }
