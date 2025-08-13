@@ -2,9 +2,9 @@ use murack_core_domain::path::LibraryTrackPath;
 
 use crate::track_data::AudioMetadata;
 
-/// DBに保存されている、PC・DB間で同期するべき曲の情報
+/// DBに保存されている、AudioMetadata のエンティティ
 #[derive(Debug, PartialEq)]
-pub struct DbTrackSync {
+pub struct DbTrackEntity {
     /// 曲のID
     pub id: i32,
 

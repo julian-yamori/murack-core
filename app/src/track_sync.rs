@@ -1,8 +1,5 @@
 //! PC・DB間の同期関係の機能
 
-mod db_track_sync;
-pub use db_track_sync::DbTrackSync;
-
 pub mod track_sync_repository;
 
 mod track_sync_row;

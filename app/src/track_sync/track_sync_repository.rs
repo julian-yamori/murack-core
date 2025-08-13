@@ -11,8 +11,8 @@ use sqlx::PgTransaction;
 
 use crate::{
     DbTrackError, app_artwork_repository, db_common,
-    track_data::AudioMetadata,
-    track_sync::{DbTrackSync, TrackSyncRow},
+    track_data::{AudioMetadata, DbTrackEntity},
+    track_sync::TrackSyncRow,
 };
 
 /// パスを指定して曲情報を取得
@@ -24,7 +24,7 @@ use crate::{
 pub async fn get_by_path<'c>(
     tx: &mut PgTransaction<'c>,
     path: &LibraryTrackPath,
-) -> Result<Option<DbTrackSync>> {
+) -> Result<Option<DbTrackEntity>> {
     //一旦trackテーブルから検索
     let track_row = match sqlx::query_as!(
         TrackSyncRow,
@@ -35,7 +35,7 @@ pub async fn get_by_path<'c>(
         None => return Ok(None),
     };
 
-    Ok(Some(DbTrackSync {
+    Ok(Some(DbTrackEntity {
         id: track_row.id,
         path: path.clone(),
         metadata: AudioMetadata {
@@ -131,7 +131,7 @@ pub async fn register_db<'c>(
 /// ArtworkRepositoryの保存処理を直接呼び出すこと。
 pub async fn save_exclude_artwork<'c>(
     tx: &mut PgTransaction<'c>,
-    track: &DbTrackSync,
+    track: &DbTrackEntity,
 ) -> Result<()> {
     let sync = &track.metadata;
 

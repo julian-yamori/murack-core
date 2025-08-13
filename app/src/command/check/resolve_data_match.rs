@@ -10,8 +10,8 @@ use crate::{
     command::check::domain::{TrackItemKind, check_usecase},
     cui::Cui,
     data_file,
-    track_data::{AudioMetadata, TrackArtwork, file_io},
-    track_sync::{DbTrackSync, track_sync_repository},
+    track_data::{AudioMetadata, DbTrackEntity, TrackArtwork, file_io},
+    track_sync::track_sync_repository,
 };
 
 /// データ内容同一性についての解決処理
@@ -86,7 +86,7 @@ where
         &self,
         db_pool: &PgPool,
         pc_track: &mut AudioMetadata,
-        db_track: &mut DbTrackSync,
+        db_track: &mut DbTrackEntity,
     ) -> Result<bool> {
         //全体を比較して齟齬リストを取得
         let conflict_items = check_usecase::check_editable(pc_track, &db_track.metadata);
@@ -167,7 +167,7 @@ where
         &self,
         db_pool: &PgPool,
         pc_track: &mut AudioMetadata,
-        db_track: &mut DbTrackSync,
+        db_track: &mut DbTrackEntity,
         conflict: &TrackItemConflict,
     ) -> Result<bool> {
         let db_sync = &mut db_track.metadata;
@@ -246,7 +246,7 @@ where
         &self,
         db_pool: &PgPool,
         mut pc_track: AudioMetadata,
-        db_track: &mut DbTrackSync,
+        db_track: &mut DbTrackEntity,
     ) -> Result<bool> {
         //アートワークが一致したらスキップ
         if check_usecase::check_artwork(&pc_track, &db_track.metadata) {
@@ -328,7 +328,7 @@ where
         &self,
         db_pool: &PgPool,
         pc_track: &mut AudioMetadata,
-        db_track: &mut DbTrackSync,
+        db_track: &mut DbTrackEntity,
     ) -> Result<bool> {
         //再生時間が一致したらスキップ
         if check_usecase::check_duration(pc_track, &db_track.metadata) {
@@ -386,7 +386,7 @@ where
         &self,
         db_pool: &PgPool,
         track_path: &LibraryTrackPath,
-    ) -> Result<DbTrackSync> {
+    ) -> Result<DbTrackEntity> {
         let mut tx = db_pool.begin().await?;
 
         track_sync_repository::get_by_path(&mut tx, track_path)
@@ -398,7 +398,7 @@ where
     async fn save_db_exclude_artwork(
         &self,
         db_pool: &PgPool,
-        db_track: &DbTrackSync,
+        db_track: &DbTrackEntity,
     ) -> Result<()> {
         let mut tx = db_pool.begin().await?;
 

@@ -1,5 +1,8 @@
 //! 曲データ (特に `AudioMetadata` の管理)
 
+mod db_track_entity;
+pub use db_track_entity::DbTrackEntity;
+
 pub mod file_io;
 
 mod file_mid_metadata;
