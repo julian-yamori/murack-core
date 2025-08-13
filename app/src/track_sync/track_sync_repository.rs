@@ -10,8 +10,10 @@ use murack_core_domain::{
 use sqlx::PgTransaction;
 
 use crate::{
-    DbTrackError, app_artwork_repository, db_common,
-    track_sync::{DbTrackSync, TrackSync, TrackSyncRow},
+    DbTrackError, app_artwork_repository,
+    audio_metadata::AudioMetadata,
+    db_common,
+    track_sync::{DbTrackSync, TrackSyncRow},
 };
 
 /// パスを指定して曲情報を取得
@@ -37,7 +39,7 @@ pub async fn get_by_path<'c>(
     Ok(Some(DbTrackSync {
         id: track_row.id,
         path: path.clone(),
-        track_sync: TrackSync {
+        metadata: AudioMetadata {
             duration: track_row.duration.try_into()?,
             title: track_row.title,
             artist: track_row.artist,
@@ -63,11 +65,11 @@ pub async fn get_by_path<'c>(
 /// # Arguments
 /// - db: DB接続
 /// - track_path: 登録する曲のライブラリ内パス
-/// - track_sync: 登録する曲のデータ
+/// - metadata: 登録する曲のデータ
 pub async fn register_db<'c>(
     tx: &mut PgTransaction<'c>,
     track_path: &LibraryTrackPath,
-    track_sync: TrackSync,
+    metadata: AudioMetadata,
 ) -> Result<()> {
     //DBに既に存在しないか確認
     if db_common::exists_path(tx, track_path).await? {
@@ -87,36 +89,36 @@ pub async fn register_db<'c>(
     // tracks テーブルに書き込み
     let track_id = sqlx::query_scalar!(
         "INSERT INTO tracks (duration, path, folder_id, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, rating, original_track, suggest_target, memo, memo_manage, lyrics, title_order, artist_order, album_order, album_artist_order, composer_order, genre_order) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id",
-        i32::try_from(track_sync.duration)?,
+        i32::try_from(metadata.duration)?,
         track_path.as_ref() as &str,
         folder_id.into_db(),
-        &track_sync.title,
-        &track_sync.artist,
-        &track_sync.album,
-        &track_sync.genre,
-        &track_sync.album_artist,
-        &track_sync.composer,
-        track_sync.track_number,
-        track_sync.track_max,
-        track_sync.disc_number,
-        track_sync.disc_max,
-        track_sync.release_date,
+        &metadata.title,
+        &metadata.artist,
+        &metadata.album,
+        &metadata.genre,
+        &metadata.album_artist,
+        &metadata.composer,
+        metadata.track_number,
+        metadata.track_max,
+        metadata.disc_number,
+        metadata.disc_max,
+        metadata.release_date,
         0, // rating
         "", // original_track
         true, // suggest_target
-        &track_sync.memo,
+        &metadata.memo,
         "", // memo_manage,
-        &track_sync.lyrics,
-        track_sync.title_order(),
-        track_sync.artist_order(),
-        track_sync.album_order(),
-        track_sync.album_artist_order(),
-        track_sync.composer_order(),
-        track_sync.genre_order(),
+        &metadata.lyrics,
+        metadata.title_order(),
+        metadata.artist_order(),
+        metadata.album_order(),
+        metadata.album_artist_order(),
+        metadata.composer_order(),
+        metadata.genre_order(),
     ).fetch_one(&mut **tx).await?;
 
     //アートワークを登録
-    app_artwork_repository::register_track_artworks(tx, track_id, track_sync.artworks).await?;
+    app_artwork_repository::register_track_artworks(tx, track_id, metadata.artworks).await?;
 
     //プレイリストのリストアップ済みフラグを解除
     playlist_sqls::reset_listuped_flag(tx).await?;
@@ -132,7 +134,7 @@ pub async fn save_exclude_artwork<'c>(
     tx: &mut PgTransaction<'c>,
     track: &DbTrackSync,
 ) -> Result<()> {
-    let sync = &track.track_sync;
+    let sync = &track.metadata;
 
     // duration を i32 に変換
     let duration: i32 = sync.duration.try_into()?;

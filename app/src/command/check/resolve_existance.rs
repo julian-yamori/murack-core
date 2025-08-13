@@ -7,12 +7,12 @@ use sqlx::PgPool;
 use super::{ResolveFileExistanceResult, messages};
 use crate::{
     Config,
-    audio_metadata::file_io,
+    audio_metadata::{AudioMetadata, file_io},
     command::check::domain::CheckIssueSummary,
     cui::Cui,
     data_file::{self, LibraryFsError},
     db_common,
-    track_sync::{TrackSync, track_sync_repository},
+    track_sync::track_sync_repository,
 };
 
 /// データ存在系の解決処理
@@ -60,7 +60,7 @@ where
         track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         //PCデータ読み込み
-        let pc_read_result = file_io::read_track_sync(&self.config.pc_lib, track_path);
+        let pc_read_result = file_io::read_audio_metadata(&self.config.pc_lib, track_path);
         let pc_data_opt = match pc_read_result {
             Ok(d) => Some(d),
             Err(e) => match e.downcast_ref() {
@@ -187,7 +187,7 @@ where
         &self,
         db_pool: &PgPool,
         track_path: &LibraryTrackPath,
-        pc_track: TrackSync,
+        pc_track: AudioMetadata,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -228,7 +228,7 @@ where
         &self,
         db_pool: &PgPool,
         track_path: &LibraryTrackPath,
-        pc_track: TrackSync,
+        pc_track: AudioMetadata,
     ) -> Result<ResolveFileExistanceResult> {
         let input = {
             let cui = &self.cui;
@@ -385,7 +385,7 @@ where
                 )?;
 
                 //DAPからコピーしたPCデータを読み込む
-                let pc_track = match file_io::read_track_sync(&self.config.pc_lib, track_path) {
+                let pc_track = match file_io::read_audio_metadata(&self.config.pc_lib, track_path) {
                     Ok(d) => d,
                     Err(e) => {
                         cui_outln!(cui, "曲ファイルのデータの読み込みに失敗しました。\n{}", e)?;

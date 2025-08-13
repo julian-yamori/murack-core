@@ -10,9 +10,8 @@ use anyhow::{Context, Result};
 use murack_core_domain::path::LibraryTrackPath;
 
 use crate::{
-    audio_metadata::{FileMidMetadata, FormatType, formats},
+    audio_metadata::{AudioMetadata, FileMidMetadata, FormatType, formats},
     data_file::LibraryFsError,
-    track_sync::TrackSync,
 };
 
 /// 曲のオーディオメタデータを読み込み
@@ -44,26 +43,29 @@ fn read_metadata(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<FileM
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - track_path: 取得対象の曲のライブラリ内パス
-pub fn read_track_sync(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<TrackSync> {
-    let meta = read_metadata(lib_root, track_path)?;
+pub fn read_audio_metadata(
+    lib_root: &Path,
+    track_path: &LibraryTrackPath,
+) -> Result<AudioMetadata> {
+    let mid = read_metadata(lib_root, track_path)?;
 
     let track_abs = track_path.abs(lib_root);
 
-    Ok(TrackSync {
-        duration: meta.duration,
-        title: meta.title.unwrap_or_default(),
-        artist: meta.artist.unwrap_or_default(),
-        album: meta.album.unwrap_or_default(),
-        genre: meta.genre.unwrap_or_default(),
-        album_artist: meta.album_artist.unwrap_or_default(),
-        composer: meta.composer.unwrap_or_default(),
-        track_number: meta.track_number,
-        track_max: meta.track_max,
-        disc_number: meta.disc_number,
-        disc_max: meta.disc_max,
-        release_date: meta.release_date,
-        memo: meta.memo.unwrap_or_default(),
-        artworks: meta.artworks,
+    Ok(AudioMetadata {
+        duration: mid.duration,
+        title: mid.title.unwrap_or_default(),
+        artist: mid.artist.unwrap_or_default(),
+        album: mid.album.unwrap_or_default(),
+        genre: mid.genre.unwrap_or_default(),
+        album_artist: mid.album_artist.unwrap_or_default(),
+        composer: mid.composer.unwrap_or_default(),
+        track_number: mid.track_number,
+        track_max: mid.track_max,
+        disc_number: mid.disc_number,
+        disc_max: mid.disc_max,
+        release_date: mid.release_date,
+        memo: mid.memo.unwrap_or_default(),
+        artworks: mid.artworks,
         lyrics: read_lyrics(&track_abs)?,
     })
 }
@@ -73,15 +75,15 @@ pub fn read_track_sync(lib_root: &Path, track_path: &LibraryTrackPath) -> Result
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - track_path: 保存対象の曲のライブラリ内パス
-/// - track_sync: 保存する曲データ
-pub fn overwrite_track_sync(
+/// - metadata: 保存する曲データ
+pub fn overwrite_audio_metadata(
     lib_root: &Path,
     track_path: &LibraryTrackPath,
-    track_sync: TrackSync,
+    metadata: AudioMetadata,
 ) -> Result<()> {
     let track_abs = track_path.abs(lib_root);
 
-    let (metadata, lyrics) = FileMidMetadata::from_track_sync(track_sync);
+    let (metadata, lyrics) = FileMidMetadata::from_audio_metadata(metadata);
 
     match FormatType::from_path(&track_abs)? {
         FormatType::Mp3 => formats::mp3::overwrite(&track_abs, metadata)?,

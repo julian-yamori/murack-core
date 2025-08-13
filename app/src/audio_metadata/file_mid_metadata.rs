@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use crate::{audio_metadata::TrackArtwork, track_sync::TrackSync};
+use crate::audio_metadata::{AudioMetadata, TrackArtwork};
 
 /// ファイルと相互変換しやすい形式の曲データ
 ///
@@ -46,8 +46,8 @@ pub struct FileMidMetadata {
 }
 
 impl FileMidMetadata {
-    /// TrackSync から、FileMidMetadata と歌詞に変換
-    pub fn from_track_sync(value: TrackSync) -> (Self, String) {
+    /// AudioMetadata から、FileMidMetadata と歌詞に変換
+    pub fn from_audio_metadata(value: AudioMetadata) -> (Self, String) {
         (
             FileMidMetadata {
                 duration: value.duration,

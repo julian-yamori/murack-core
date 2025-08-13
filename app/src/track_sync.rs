@@ -3,9 +3,6 @@
 mod db_track_sync;
 pub use db_track_sync::DbTrackSync;
 
-mod track_sync_model;
-pub use track_sync_model::TrackSync;
-
 pub mod track_sync_repository;
 
 mod track_sync_row;

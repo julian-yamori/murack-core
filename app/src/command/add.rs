@@ -64,7 +64,7 @@ where
     /// - entry_date: 登録日
     async fn unit_add(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<()> {
         //PCファイル情報読み込み
-        let pc_track = file_io::read_track_sync(&self.config.pc_lib, track_path)?;
+        let pc_track = file_io::read_audio_metadata(&self.config.pc_lib, track_path)?;
 
         //DBに登録
         db_common::add_track_to_db(db_pool, track_path, pc_track).await?;

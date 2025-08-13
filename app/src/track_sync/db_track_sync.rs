@@ -1,6 +1,6 @@
 use murack_core_domain::path::LibraryTrackPath;
 
-use super::TrackSync;
+use crate::audio_metadata::AudioMetadata;
 
 /// DBに保存されている、PC・DB間で同期するべき曲の情報
 #[derive(Debug, PartialEq)]
@@ -12,5 +12,5 @@ pub struct DbTrackSync {
     pub path: LibraryTrackPath,
 
     /// 曲の情報本体
-    pub track_sync: TrackSync,
+    pub metadata: AudioMetadata,
 }

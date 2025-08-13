@@ -7,11 +7,11 @@ use sqlx::PgPool;
 use super::{TrackItemConflict, messages};
 use crate::{
     Config, DbTrackError, app_artwork_repository,
-    audio_metadata::{TrackArtwork, file_io},
+    audio_metadata::{AudioMetadata, TrackArtwork, file_io},
     command::check::domain::{TrackItemKind, check_usecase},
     cui::Cui,
     data_file,
-    track_sync::{DbTrackSync, TrackSync, track_sync_repository},
+    track_sync::{DbTrackSync, track_sync_repository},
 };
 
 /// データ内容同一性についての解決処理
@@ -45,7 +45,7 @@ where
     /// 次の解決処理へ継続するか
     async fn resolve(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<bool> {
         //データ読み込み
-        let mut pc_data = file_io::read_track_sync(&self.config.pc_lib, track_path)?;
+        let mut pc_data = file_io::read_audio_metadata(&self.config.pc_lib, track_path)?;
         let mut db_data = self.load_db_track(db_pool, track_path).await?;
 
         if !self
@@ -85,11 +85,11 @@ where
     async fn resolve_editable(
         &self,
         db_pool: &PgPool,
-        pc_track: &mut TrackSync,
+        pc_track: &mut AudioMetadata,
         db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //全体を比較して齟齬リストを取得
-        let conflict_items = check_usecase::check_editable(pc_track, &db_track.track_sync);
+        let conflict_items = check_usecase::check_editable(pc_track, &db_track.metadata);
         //齟齬がなければ次の処理へ
         if conflict_items.is_empty() {
             return Ok(true);
@@ -104,7 +104,7 @@ where
 
         //結果表示
         cui_outln!(cui, "----")?;
-        self.display_all_conflicts(&conflicts, pc_track, &db_track.track_sync)?;
+        self.display_all_conflicts(&conflicts, pc_track, &db_track.metadata)?;
 
         cui_outln!(cui, "1: PCからDBへ上書き")?;
         cui_outln!(cui, "2: DBからPCへ上書きし、DAPも更新")?;
@@ -118,7 +118,7 @@ where
         match input {
             //PCからDBへ上書き
             '1' => {
-                self.overwrite_track_editable(pc_track, &mut db_track.track_sync);
+                self.overwrite_track_editable(pc_track, &mut db_track.metadata);
                 self.save_db_exclude_artwork(db_pool, db_track).await?;
 
                 Ok(true)
@@ -128,7 +128,7 @@ where
                 let track_path = &db_track.path;
 
                 //PCのデータを上書き
-                self.overwrite_track_editable(&db_track.track_sync, pc_track);
+                self.overwrite_track_editable(&db_track.metadata, pc_track);
                 self.overwrite_pc_track_file(track_path, pc_track.clone())?;
 
                 //DAPのデータをPCのデータで上書き
@@ -166,11 +166,11 @@ where
     async fn resolve_each_property(
         &self,
         db_pool: &PgPool,
-        pc_track: &mut TrackSync,
+        pc_track: &mut AudioMetadata,
         db_track: &mut DbTrackSync,
         conflict: &TrackItemConflict,
     ) -> Result<bool> {
-        let db_sync = &mut db_track.track_sync;
+        let db_sync = &mut db_track.metadata;
 
         let input = {
             let cui = &self.cui;
@@ -245,11 +245,11 @@ where
     async fn resolve_artwork(
         &self,
         db_pool: &PgPool,
-        mut pc_track: TrackSync,
+        mut pc_track: AudioMetadata,
         db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //アートワークが一致したらスキップ
-        if check_usecase::check_artwork(&pc_track, &db_track.track_sync) {
+        if check_usecase::check_artwork(&pc_track, &db_track.metadata) {
             return Ok(true);
         }
 
@@ -263,7 +263,7 @@ where
 
         //DBのアートワーク情報を表示
         cui_outln!(cui, "[DB]")?;
-        self.display_artwork(&db_track.track_sync.artworks)?;
+        self.display_artwork(&db_track.metadata.artworks)?;
         cui_outln!(cui)?;
 
         cui_outln!(cui, "1: PCからDBへ上書き")?;
@@ -290,7 +290,7 @@ where
                 .await?;
 
                 //念の為、保存した値で変数値を上書きしておく
-                db_track.track_sync.artworks =
+                db_track.metadata.artworks =
                     app_artwork_repository::get_track_artworks(&mut tx, track_id).await?;
 
                 tx.commit().await?;
@@ -299,7 +299,7 @@ where
             //DBからPCへ上書きし、DAPも更新
             '2' => {
                 //PCのデータを上書き
-                pc_track.artworks = db_track.track_sync.artworks.clone();
+                pc_track.artworks = db_track.metadata.artworks.clone();
 
                 //PCに保存
                 let track_path = &db_track.path;
@@ -327,11 +327,11 @@ where
     async fn resolve_duration(
         &self,
         db_pool: &PgPool,
-        pc_track: &mut TrackSync,
+        pc_track: &mut AudioMetadata,
         db_track: &mut DbTrackSync,
     ) -> Result<bool> {
         //再生時間が一致したらスキップ
-        if check_usecase::check_duration(pc_track, &db_track.track_sync) {
+        if check_usecase::check_duration(pc_track, &db_track.metadata) {
             return Ok(true);
         }
 
@@ -344,7 +344,7 @@ where
                 cui,
                 "* 再生時間: {}ms | {}ms",
                 pc_track.duration,
-                db_track.track_sync.duration
+                db_track.metadata.duration
             )?;
             cui_outln!(cui, "PC vs DB")?;
             cui_outln!(cui)?;
@@ -361,7 +361,7 @@ where
             //PCからDBへ上書き
             '1' => {
                 //DB側の再生時間を上書きして保存
-                db_track.track_sync.duration = pc_track.duration;
+                db_track.metadata.duration = pc_track.duration;
                 self.save_db_exclude_artwork(db_pool, db_track).await?;
 
                 // 再生時間だけ書き換える方がいいかも……？
@@ -412,9 +412,9 @@ where
     fn overwrite_pc_track_file(
         &self,
         track_path: &LibraryTrackPath,
-        pc_track: TrackSync,
+        pc_track: AudioMetadata,
     ) -> Result<()> {
-        file_io::overwrite_track_sync(&self.config.pc_lib, track_path, pc_track)?;
+        file_io::overwrite_audio_metadata(&self.config.pc_lib, track_path, pc_track)?;
 
         Ok(())
     }
@@ -423,7 +423,7 @@ where
     ///
     /// # todo
     /// domainに移動
-    fn overwrite_track_editable(&self, src_track: &TrackSync, dest_track: &mut TrackSync) {
+    fn overwrite_track_editable(&self, src_track: &AudioMetadata, dest_track: &mut AudioMetadata) {
         dest_track.title = src_track.title.clone();
         dest_track.artist = src_track.artist.clone();
         dest_track.album = src_track.album.clone();
@@ -443,8 +443,8 @@ where
     fn display_all_conflicts(
         &self,
         conflicts: &[TrackItemConflict],
-        pc_track: &TrackSync,
-        db_track: &TrackSync,
+        pc_track: &AudioMetadata,
+        db_track: &AudioMetadata,
     ) -> anyhow::Result<()> {
         let cui = &self.cui;
 

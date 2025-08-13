@@ -13,8 +13,8 @@ use murack_core_domain::{
 use sqlx::{PgPool, PgTransaction};
 
 use crate::{
-    DbTrackError, app_artwork_repository,
-    track_sync::{TrackSync, track_sync_repository},
+    DbTrackError, app_artwork_repository, audio_metadata::AudioMetadata,
+    track_sync::track_sync_repository,
 };
 
 /// 指定されたpathのレコードが存在するか確認
@@ -54,16 +54,16 @@ pub async fn track_paths_by_path_str<'c>(
 pub async fn add_track_to_db(
     db_pool: &PgPool,
     track_path: &LibraryTrackPath,
-    mut track_sync: TrackSync,
+    mut metadata: AudioMetadata,
 ) -> anyhow::Result<()> {
     //曲名が空なら、ファイル名から取得
-    if track_sync.title.is_empty() {
-        track_sync.title = track_path.file_stem().to_owned();
+    if metadata.title.is_empty() {
+        metadata.title = track_path.file_stem().to_owned();
     };
 
     let mut tx = db_pool.begin().await?;
 
-    track_sync_repository::register_db(&mut tx, track_path, track_sync).await?;
+    track_sync_repository::register_db(&mut tx, track_path, metadata).await?;
 
     tx.commit().await?;
     Ok(())

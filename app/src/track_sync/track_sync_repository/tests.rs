@@ -11,8 +11,8 @@ mod test_register_db {
     use super::*;
 
     // DB に追加する曲のデータを作成
-    fn track_sync() -> TrackSync {
-        TrackSync {
+    fn metadata() -> AudioMetadata {
+        AudioMetadata {
             duration: 120000,
             title: "曲名".to_owned(),
             artist: "アーティスト".to_owned(),
@@ -49,7 +49,7 @@ mod test_register_db {
 
         let mut tx = pool.begin().await?;
 
-        super::register_db(&mut tx, &track_path(), track_sync()).await?;
+        super::register_db(&mut tx, &track_path(), metadata()).await?;
 
         // 曲がRoot直下（folder_id = NULL）に登録されたことを確認
         let track_count = sqlx::query_scalar!(
@@ -103,7 +103,7 @@ mod test_register_db {
 
         let mut tx = pool.begin().await?;
 
-        super::register_db(&mut tx, &track_path(), track_sync()).await?;
+        super::register_db(&mut tx, &track_path(), metadata()).await?;
 
         // フォルダが作成されたことを確認
         let test_folder_id =

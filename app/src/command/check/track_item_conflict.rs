@@ -1,4 +1,4 @@
-use crate::{command::check::domain::TrackItemKind, track_sync::TrackSync};
+use crate::{audio_metadata::AudioMetadata, command::check::domain::TrackItemKind};
 
 /// 曲の項目一つの競合についての機能
 pub struct TrackItemConflict {
@@ -26,29 +26,29 @@ impl TrackItemConflict {
         }
     }
 
-    /// TrackSyncの該当する値を表示
+    /// AudioMetadata の該当する値を表示
     /// # todo
     /// とりあえずString cloneする
-    pub fn display_value(&self, track_sync: &TrackSync) -> Option<String> {
+    pub fn display_value(&self, metadata: &AudioMetadata) -> Option<String> {
         match self.item_kind {
-            TrackItemKind::Title => Some(track_sync.title.clone()),
-            TrackItemKind::Artist => Some(track_sync.artist.clone()),
-            TrackItemKind::Album => Some(track_sync.album.clone()),
-            TrackItemKind::Genre => Some(track_sync.genre.clone()),
-            TrackItemKind::AlbumArtist => Some(track_sync.album_artist.clone()),
-            TrackItemKind::Composer => Some(track_sync.composer.clone()),
-            TrackItemKind::TrackNumber => track_sync.track_number.map(|n| n.to_string()),
-            TrackItemKind::TrackMax => track_sync.track_max.map(|n| n.to_string()),
-            TrackItemKind::DiscNumber => track_sync.disc_number.map(|n| n.to_string()),
-            TrackItemKind::DiscMax => track_sync.disc_max.map(|n| n.to_string()),
-            TrackItemKind::ReleaseDate => track_sync.release_date.map(|n| n.to_string()),
-            TrackItemKind::Memo => Some(track_sync.memo.clone()),
-            TrackItemKind::Lyrics => Some(track_sync.lyrics.clone()),
+            TrackItemKind::Title => Some(metadata.title.clone()),
+            TrackItemKind::Artist => Some(metadata.artist.clone()),
+            TrackItemKind::Album => Some(metadata.album.clone()),
+            TrackItemKind::Genre => Some(metadata.genre.clone()),
+            TrackItemKind::AlbumArtist => Some(metadata.album_artist.clone()),
+            TrackItemKind::Composer => Some(metadata.composer.clone()),
+            TrackItemKind::TrackNumber => metadata.track_number.map(|n| n.to_string()),
+            TrackItemKind::TrackMax => metadata.track_max.map(|n| n.to_string()),
+            TrackItemKind::DiscNumber => metadata.disc_number.map(|n| n.to_string()),
+            TrackItemKind::DiscMax => metadata.disc_max.map(|n| n.to_string()),
+            TrackItemKind::ReleaseDate => metadata.release_date.map(|n| n.to_string()),
+            TrackItemKind::Memo => Some(metadata.memo.clone()),
+            TrackItemKind::Lyrics => Some(metadata.lyrics.clone()),
         }
     }
 
-    /// TrackSyncから別のTrackSyncに、該当する値をコピー
-    pub fn copy_each_sync(&self, src_sync: &TrackSync, dest_sync: &mut TrackSync) {
+    /// AudioMetadata (旧 TrackSync) から別の AudioMetadata に、該当する値をコピー
+    pub fn copy_each_sync(&self, src_sync: &AudioMetadata, dest_sync: &mut AudioMetadata) {
         match self.item_kind {
             TrackItemKind::Title => dest_sync.title = src_sync.title.clone(),
             TrackItemKind::Artist => dest_sync.artist = src_sync.artist.clone(),

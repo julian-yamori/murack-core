@@ -9,10 +9,10 @@ use murack_core_domain::path::LibraryTrackPath;
 use sqlx::PgPool;
 
 use crate::{
-    audio_metadata::file_io,
+    audio_metadata::{AudioMetadata, file_io},
     command::check::domain::TrackItemKind,
     data_file::LibraryFsError,
-    track_sync::{TrackSync, track_sync_repository},
+    track_sync::track_sync_repository,
 };
 
 use super::CheckIssueSummary;
@@ -35,7 +35,7 @@ pub async fn listup_issue_summary(
     let mut issue_list = Vec::new();
 
     //PCデータ読み込み
-    let pc_data_opt = match file_io::read_track_sync(pc_lib, track_path) {
+    let pc_data_opt = match file_io::read_audio_metadata(pc_lib, track_path) {
         Ok(d) => Some(d),
         Err(e) => match e.downcast_ref() {
             Some(LibraryFsError::FileTrackNotFound { .. }) => {
@@ -74,13 +74,13 @@ pub async fn listup_issue_summary(
     };
 
     //PCとDBのデータ比較比較
-    if !check_editable(&pc_data, &db_data.track_sync).is_empty() {
+    if !check_editable(&pc_data, &db_data.metadata).is_empty() {
         issue_list.push(CheckIssueSummary::PcDbNotEqualsEditable);
     }
-    if !check_duration(&pc_data, &db_data.track_sync) {
+    if !check_duration(&pc_data, &db_data.metadata) {
         issue_list.push(CheckIssueSummary::PcDbNotEqualsDuration);
     }
-    if !check_artwork(&pc_data, &db_data.track_sync) {
+    if !check_artwork(&pc_data, &db_data.metadata) {
         issue_list.push(CheckIssueSummary::PcDbNotEqualsArtwork);
     }
 
@@ -96,7 +96,7 @@ pub async fn listup_issue_summary(
 /// # Returns
 /// 不一致の項目のリスト
 /// 全て一致したら空Vec。
-pub fn check_editable(pc_data: &TrackSync, db_data: &TrackSync) -> Vec<TrackItemKind> {
+pub fn check_editable(pc_data: &AudioMetadata, db_data: &AudioMetadata) -> Vec<TrackItemKind> {
     let mut conflicts = Vec::new();
 
     if pc_data.title != db_data.title {
@@ -145,14 +145,14 @@ pub fn check_editable(pc_data: &TrackSync, db_data: &TrackSync) -> Vec<TrackItem
 /// PCとDBの再生時間を比較
 /// #Returns
 /// 一致したらtrue
-pub fn check_duration(pc_data: &TrackSync, db_data: &TrackSync) -> bool {
+pub fn check_duration(pc_data: &AudioMetadata, db_data: &AudioMetadata) -> bool {
     pc_data.duration == db_data.duration
 }
 
 /// PCとDBのアートワークを比較
 /// #Returns
 /// 一致したらtrue
-pub fn check_artwork(pc_data: &TrackSync, db_data: &TrackSync) -> bool {
+pub fn check_artwork(pc_data: &AudioMetadata, db_data: &AudioMetadata) -> bool {
     pc_data.artworks == db_data.artworks
 }
 
