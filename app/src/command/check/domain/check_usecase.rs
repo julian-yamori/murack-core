@@ -5,10 +5,11 @@
 use std::{fs::File, io::prelude::*, path::Path};
 
 use anyhow::{Context, Result};
-use murack_core_domain::{path::LibraryTrackPath, track::TrackItemKind};
+use murack_core_domain::path::LibraryTrackPath;
 use sqlx::PgPool;
 
 use crate::{
+    command::check::domain::TrackItemKind,
     data_file::{self, LibraryFsError},
     track_sync::{TrackSync, track_sync_repository},
 };
