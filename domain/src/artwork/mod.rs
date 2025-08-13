@@ -3,6 +3,9 @@
 pub mod artwork_error;
 pub use artwork_error::ArtworkError;
 
+pub mod artwork_hash;
+pub use artwork_hash::ArtworkHash;
+
 pub mod artwork_repository;
 
 pub mod picture;

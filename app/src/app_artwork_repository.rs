@@ -5,7 +5,7 @@ mod artwork_cache;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Result, anyhow};
-use murack_core_domain::artwork::{Picture, TrackArtwork, artwork_repository};
+use murack_core_domain::artwork::{ArtworkHash, Picture, TrackArtwork, artwork_repository};
 use once_cell::sync::Lazy;
 use sqlx::PgTransaction;
 
@@ -23,9 +23,6 @@ static ARTWORK_CACHE: Lazy<Arc<Mutex<ArtworkCache>>> =
 /// # Return
 /// 新規登録されたアートワーク、もしくは既存の同一データのID
 async fn register_artwork(tx: &mut PgTransaction<'_>, picture: Picture) -> Result<i32> {
-    //対象データのMD5ハッシュを取得
-    let hash = picture.hash();
-
     //追加用キャッシュと比較
     if let Some(ref c) = lock_cache()?.cache {
         if c.picture.bytes == picture.bytes {
@@ -34,9 +31,10 @@ async fn register_artwork(tx: &mut PgTransaction<'_>, picture: Picture) -> Resul
     }
 
     //同じハッシュのデータをDBから検索
+    let hash = ArtworkHash::from_image(&picture.bytes);
     let same_hash_list = sqlx::query!(
         "SELECT id, image, mime_type FROM artworks WHERE hash = $1",
-        &hash[..]
+        hash.as_ref()
     )
     .fetch_all(&mut **tx)
     .await?;

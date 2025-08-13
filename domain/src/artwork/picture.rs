@@ -20,11 +20,6 @@ pub struct Picture {
 }
 
 impl Picture {
-    /// 画像のMD5ハッシュ値を取得
-    pub fn hash(&self) -> Vec<u8> {
-        md5::compute(&self.bytes).0.to_vec()
-    }
-
     /// アートワークの縮小版画像データを作成
     pub fn artwork_mini_image(&self) -> Result<Vec<u8>, ArtworkError> {
         make_mini_image(&self.bytes).map_err(ArtworkError::FailedToBuildMiniArtwork)
