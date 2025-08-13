@@ -1,6 +1,6 @@
 use sqlx::PgTransaction;
 
-use crate::artwork::{ArtworkError, ArtworkHash, Picture};
+use crate::artwork::{ArtworkError, ArtworkHash, MiniImage, Picture};
 
 /// アートワークを DB に追加
 pub async fn add_artwork(
@@ -11,12 +11,12 @@ pub async fn add_artwork(
     let hash = ArtworkHash::from_image(&picture.bytes);
 
     //縮小画像を作成
-    let image_mini = picture.artwork_mini_image()?;
+    let image_mini = MiniImage::from_original_image(&picture.bytes)?;
 
     //新規追加を実行
     let artwork_id = sqlx::query_scalar!(
             "INSERT INTO artworks (hash, image, image_mini, mime_type) values($1,$2,$3,$4) RETURNING id",
-            hash.as_ref(), &picture.bytes, &image_mini[..], &picture.mime_type
+            hash.as_ref(), &picture.bytes, image_mini.as_ref(), &picture.mime_type
         ).fetch_one(&mut **tx).await?;
 
     Ok(artwork_id)
