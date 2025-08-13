@@ -11,7 +11,7 @@ use chrono::{Datelike, NaiveDate};
 use id3::{Tag, TagLike};
 use mp3_duration::MP3DurationError;
 
-use crate::audio_metadata::{AudioMetaData, TrackArtwork};
+use crate::audio_metadata::{FileMidMetadata, TrackArtwork};
 
 const KEY_COMPOSER: &str = "TCOM";
 const KEY_DATE: &str = "TDAT";
@@ -22,7 +22,7 @@ const KEY_DATE: &str = "TDAT";
 /// - path: オーディオファイルの絶対パス
 /// # Returns
 /// オーディオファイルのメタデータ
-pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
+pub fn read(path: &Path) -> Result<FileMidMetadata, MP3Error> {
     let file = File::open(path).map_err(|e| MP3Error::FileIoError(path.to_owned(), e))?;
     let mut reader = BufReader::new(file);
 
@@ -30,7 +30,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
 
     let duration = read_duration(&mut reader, path)?;
 
-    Ok(AudioMetaData {
+    Ok(FileMidMetadata {
         duration,
         title: opt_str_to_owned(tag.title()),
         artist: opt_str_to_owned(tag.artist()),
@@ -62,7 +62,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
 /// - track: 書き込む曲の情報
-pub fn overwrite(path: &Path, track: AudioMetaData) -> Result<(), MP3Error> {
+pub fn overwrite(path: &Path, track: FileMidMetadata) -> Result<(), MP3Error> {
     let mut tag = Tag::read_from_path(path)?;
 
     match track.title {

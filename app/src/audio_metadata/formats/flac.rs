@@ -8,7 +8,7 @@ use metaflac::{
     block::{Block, BlockType, PictureType, StreamInfo, VorbisComment},
 };
 
-use crate::audio_metadata::{AudioMetaData, TrackArtwork};
+use crate::audio_metadata::{FileMidMetadata, TrackArtwork};
 
 const KEY_COMPOSER: &str = "COMPOSER";
 const KEY_TRACK_NUMBER: &str = "TRACKNUMBER";
@@ -24,7 +24,7 @@ const KEY_MEMO: &str = "DESCRIPTION";
 /// - path: オーディオファイルの絶対パス
 /// # Returns
 /// オーディオファイルのメタデータ
-pub fn read(path: &Path) -> Result<AudioMetaData, FlacError> {
+pub fn read(path: &Path) -> Result<FileMidMetadata, FlacError> {
     let tag = Tag::read_from_path(path)?;
 
     let si = tag
@@ -34,7 +34,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, FlacError> {
         .vorbis_comments()
         .ok_or(FlacError::VorbisCommentBlockNotFound)?;
 
-    Ok(AudioMetaData {
+    Ok(FileMidMetadata {
         duration: get_duration(si),
         title: vorbis_get_str(v.title()),
         artist: vorbis_get_str(v.artist()),
@@ -58,7 +58,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, FlacError> {
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
 /// - track: 書き込む曲の情報
-pub fn overwrite(path: &Path, track: AudioMetaData) -> Result<(), FlacError> {
+pub fn overwrite(path: &Path, track: FileMidMetadata) -> Result<(), FlacError> {
     let mut tag = Tag::read_from_path(path)?;
     let v = tag.vorbis_comments_mut();
 

@@ -5,7 +5,7 @@ use std::path::Path;
 use chrono::NaiveDate;
 use mp4ameta::{ImgFmt, Tag};
 
-use crate::audio_metadata::{AudioMetaData, TrackArtwork};
+use crate::audio_metadata::{FileMidMetadata, TrackArtwork};
 
 /// ファイルからメタデータを読み込み
 ///
@@ -13,10 +13,10 @@ use crate::audio_metadata::{AudioMetaData, TrackArtwork};
 /// - path: オーディオファイルの絶対パス
 /// # Returns
 /// オーディオファイルのメタデータ
-pub fn read(path: &Path) -> Result<AudioMetaData, M4AError> {
+pub fn read(path: &Path) -> Result<FileMidMetadata, M4AError> {
     let tag = Tag::read_from_path(path)?;
 
-    Ok(AudioMetaData {
+    Ok(FileMidMetadata {
         duration: get_duration(&tag),
         title: opt_str_to_owned(tag.title()),
         artist: opt_str_to_owned(tag.artist()),
@@ -40,7 +40,7 @@ pub fn read(path: &Path) -> Result<AudioMetaData, M4AError> {
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
 /// - track: 書き込む曲の情報
-pub fn overwrite(path: &Path, track: AudioMetaData) -> Result<(), M4AError> {
+pub fn overwrite(path: &Path, track: FileMidMetadata) -> Result<(), M4AError> {
     let mut tag = Tag::read_from_path(path)?;
 
     match track.title {

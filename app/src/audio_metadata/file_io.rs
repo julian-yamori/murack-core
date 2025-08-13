@@ -10,9 +10,9 @@ use anyhow::{Context, Result};
 use murack_core_domain::path::LibraryTrackPath;
 
 use crate::{
-    audio_metadata::{AudioMetaData, FormatType, formats},
+    audio_metadata::{FileMidMetadata, FormatType, formats},
     data_file::LibraryFsError,
-    track_sync::{AudioMetadataAndLyrics, TrackSync},
+    track_sync::TrackSync,
 };
 
 /// 曲のオーディオメタデータを読み込み
@@ -20,7 +20,7 @@ use crate::{
 /// # Arguments
 /// - lib_root: ライブラリルートの絶対パス
 /// - track_path: 取得対象の曲のライブラリ内パス
-pub fn read_metadata(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<AudioMetaData> {
+fn read_metadata(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<FileMidMetadata> {
     let track_abs = track_path.abs(lib_root);
 
     //ファイルがない場合に判別したいので個別エラー
@@ -81,7 +81,7 @@ pub fn overwrite_track_sync(
 ) -> Result<()> {
     let track_abs = track_path.abs(lib_root);
 
-    let AudioMetadataAndLyrics { metadata, lyrics } = track_sync.into();
+    let (metadata, lyrics) = FileMidMetadata::from_track_sync(track_sync);
 
     match FormatType::from_path(&track_abs)? {
         FormatType::Mp3 => formats::mp3::overwrite(&track_abs, metadata)?,

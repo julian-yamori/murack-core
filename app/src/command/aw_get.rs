@@ -40,7 +40,7 @@ where
         };
 
         //指定された曲ファイルを解析
-        let audio_meta = file_io::read_metadata(&self.config.pc_lib, &self.args.track_path)?;
+        let audio_meta = file_io::read_track_sync(&self.config.pc_lib, &self.args.track_path)?;
 
         //各アートワークを出力
         let artworks_len = audio_meta.artworks.len();

@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use murack_core_domain::string_order_cnv;
 
-use crate::audio_metadata::{AudioMetaData, TrackArtwork};
+use crate::audio_metadata::TrackArtwork;
 
 /// PC・DB間で同期するべき曲の情報
 #[derive(Debug, PartialEq, Clone)]
@@ -76,37 +76,4 @@ impl TrackSync {
     pub fn composer_order(&self) -> String {
         string_order_cnv::cnv(&self.composer)
     }
-}
-
-pub struct AudioMetadataAndLyrics {
-    pub metadata: AudioMetaData,
-    pub lyrics: String,
-}
-
-impl From<TrackSync> for AudioMetadataAndLyrics {
-    fn from(value: TrackSync) -> Self {
-        AudioMetadataAndLyrics {
-            metadata: AudioMetaData {
-                duration: value.duration,
-                title: none_if_empty(value.title),
-                artist: none_if_empty(value.artist),
-                album: none_if_empty(value.album),
-                genre: none_if_empty(value.genre),
-                album_artist: none_if_empty(value.album_artist),
-                composer: none_if_empty(value.composer),
-                track_number: value.track_number,
-                track_max: value.track_max,
-                disc_number: value.disc_number,
-                disc_max: value.disc_max,
-                release_date: value.release_date,
-                memo: none_if_empty(value.memo),
-                artworks: value.artworks,
-            },
-            lyrics: value.lyrics,
-        }
-    }
-}
-
-fn none_if_empty(s: String) -> Option<String> {
-    if s.is_empty() { None } else { Some(s) }
 }
