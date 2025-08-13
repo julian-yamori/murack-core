@@ -6,4 +6,4 @@ pub use format_type::FormatType;
 pub mod formats;
 
 mod audio_metadata_model;
-pub use audio_metadata_model::AudioMetaData;
+pub use audio_metadata_model::{AudioMetaData, TrackArtwork};

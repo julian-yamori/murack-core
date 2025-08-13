@@ -1,7 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
-use murack_core_domain::{artwork::TrackArtwork, path::LibraryTrackPath, track::TrackItemKind};
+use murack_core_domain::{
+    audio_metadata::TrackArtwork, path::LibraryTrackPath, track::TrackItemKind,
+};
 use sqlx::PgPool;
 
 use super::{TrackItemConflict, messages};

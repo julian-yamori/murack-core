@@ -5,7 +5,7 @@ use std::path::Path;
 use chrono::NaiveDate;
 use mp4ameta::{ImgFmt, Tag};
 
-use crate::{artwork::TrackArtwork, audio_metadata::AudioMetaData};
+use crate::audio_metadata::{AudioMetaData, TrackArtwork};
 
 /// ファイルからメタデータを読み込み
 ///

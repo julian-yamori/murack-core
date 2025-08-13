@@ -5,7 +5,10 @@ mod artwork_cache;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Result, anyhow};
-use murack_core_domain::artwork::{ArtworkHash, TrackArtwork, artwork_repository};
+use murack_core_domain::{
+    artwork::{ArtworkHash, artwork_repository},
+    audio_metadata::TrackArtwork,
+};
 use once_cell::sync::Lazy;
 use sqlx::PgTransaction;
 

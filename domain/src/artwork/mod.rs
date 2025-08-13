@@ -10,6 +10,3 @@ pub mod artwork_repository;
 
 pub mod mini_image;
 pub use mini_image::MiniImage;
-
-mod track_artwork;
-pub use track_artwork::TrackArtwork;
