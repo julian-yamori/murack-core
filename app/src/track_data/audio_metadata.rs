@@ -4,7 +4,7 @@ use murack_core_domain::string_order_cnv;
 /// PC・DB間で同期する、曲のメタデータ
 #[derive(Debug, PartialEq, Clone)]
 pub struct AudioMetadata {
-    /// 曲の再生時間
+    /// 曲の再生時間 (ミリ秒)
     pub duration: u32,
 
     /// 曲名

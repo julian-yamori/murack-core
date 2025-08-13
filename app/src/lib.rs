@@ -19,7 +19,5 @@ pub use db_track_error::DbTrackError;
 
 pub mod track_data;
 
-pub mod track_sync;
-
 #[cfg(test)]
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../migrations");

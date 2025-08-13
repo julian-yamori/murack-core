@@ -12,7 +12,6 @@ use sqlx::PgTransaction;
 use crate::{
     DbTrackError, app_artwork_repository, db_common,
     track_data::{AudioMetadata, DbTrackEntity},
-    track_sync::TrackSyncRow,
 };
 
 /// パスを指定して曲情報を取得
@@ -26,8 +25,7 @@ pub async fn get_by_path<'c>(
     path: &LibraryTrackPath,
 ) -> Result<Option<DbTrackEntity>> {
     //一旦trackテーブルから検索
-    let track_row = match sqlx::query_as!(
-        TrackSyncRow,
+    let track_row = match sqlx::query!(
         "SELECT id, duration, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, memo, lyrics FROM tracks WHERE path = $1",
         path.as_ref() as &str
     ).fetch_optional(&mut **tx).await? {
