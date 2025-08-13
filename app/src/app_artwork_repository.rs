@@ -11,7 +11,7 @@ use sqlx::PgTransaction;
 
 use crate::{
     app_artwork_repository::artwork_cache::{ArtworkCache, ArtworkCachedData},
-    audio_metadata::TrackArtwork,
+    track_data::TrackArtwork,
 };
 
 static ARTWORK_CACHE: Lazy<Arc<Mutex<ArtworkCache>>> =

@@ -11,7 +11,7 @@ use chrono::{Datelike, NaiveDate};
 use id3::{Tag, TagLike};
 use mp3_duration::MP3DurationError;
 
-use crate::audio_metadata::{FileMidMetadata, TrackArtwork};
+use crate::track_data::{FileMidMetadata, TrackArtwork};
 
 const KEY_COMPOSER: &str = "TCOM";
 const KEY_DATE: &str = "TDAT";

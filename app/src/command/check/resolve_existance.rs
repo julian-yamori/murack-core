@@ -7,11 +7,11 @@ use sqlx::PgPool;
 use super::{ResolveFileExistanceResult, messages};
 use crate::{
     Config,
-    audio_metadata::{AudioMetadata, file_io},
     command::check::domain::CheckIssueSummary,
     cui::Cui,
     data_file::{self, LibraryFsError},
     db_common,
+    track_data::{AudioMetadata, file_io},
     track_sync::track_sync_repository,
 };
 

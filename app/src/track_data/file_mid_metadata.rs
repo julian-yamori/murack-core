@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use crate::audio_metadata::{AudioMetadata, TrackArtwork};
+use crate::track_data::{AudioMetadata, TrackArtwork};
 
 /// ファイルと相互変換しやすい形式の曲データ
 ///

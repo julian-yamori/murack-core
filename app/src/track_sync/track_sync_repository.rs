@@ -10,9 +10,8 @@ use murack_core_domain::{
 use sqlx::PgTransaction;
 
 use crate::{
-    DbTrackError, app_artwork_repository,
-    audio_metadata::AudioMetadata,
-    db_common,
+    DbTrackError, app_artwork_repository, db_common,
+    track_data::AudioMetadata,
     track_sync::{DbTrackSync, TrackSyncRow},
 };
 

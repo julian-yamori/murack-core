@@ -1,4 +1,4 @@
-use crate::{audio_metadata::AudioMetadata, command::check::domain::TrackItemKind};
+use crate::{command::check::domain::TrackItemKind, track_data::AudioMetadata};
 
 /// 曲の項目一つの競合についての機能
 pub struct TrackItemConflict {

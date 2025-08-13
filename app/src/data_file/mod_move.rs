@@ -6,7 +6,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use murack_core_domain::NonEmptyString;
 
-use crate::{audio_metadata::file_io::get_lrc_path, data_file::LibraryFsError};
+use crate::{data_file::LibraryFsError, track_data::file_io::get_lrc_path};
 
 /// パス文字列を指定してライブラリ内のファイル/フォルダを移動
 ///

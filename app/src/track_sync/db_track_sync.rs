@@ -1,6 +1,6 @@
 use murack_core_domain::path::LibraryTrackPath;
 
-use crate::audio_metadata::AudioMetadata;
+use crate::track_data::AudioMetadata;
 
 /// DBに保存されている、PC・DB間で同期するべき曲の情報
 #[derive(Debug, PartialEq)]

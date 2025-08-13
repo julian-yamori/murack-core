@@ -13,7 +13,7 @@ use murack_core_domain::{
 use sqlx::{PgPool, PgTransaction};
 
 use crate::{
-    DbTrackError, app_artwork_repository, audio_metadata::AudioMetadata,
+    DbTrackError, app_artwork_repository, track_data::AudioMetadata,
     track_sync::track_sync_repository,
 };
 

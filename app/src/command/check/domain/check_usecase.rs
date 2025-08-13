@@ -9,9 +9,9 @@ use murack_core_domain::path::LibraryTrackPath;
 use sqlx::PgPool;
 
 use crate::{
-    audio_metadata::{AudioMetadata, file_io},
     command::check::domain::TrackItemKind,
     data_file::LibraryFsError,
+    track_data::{AudioMetadata, file_io},
     track_sync::track_sync_repository,
 };
 

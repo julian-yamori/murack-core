@@ -6,7 +6,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use murack_core_domain::{NonEmptyString, path::LibraryTrackPath};
 
-use crate::{audio_metadata::file_io::get_lrc_path, data_file::LibraryFsError};
+use crate::{data_file::LibraryFsError, track_data::file_io::get_lrc_path};
 
 /// ライブラリから曲を削除
 ///

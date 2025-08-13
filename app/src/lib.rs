@@ -4,8 +4,6 @@
 
 pub mod app_artwork_repository;
 
-pub mod audio_metadata;
-
 #[macro_use]
 pub mod cui;
 
@@ -18,6 +16,8 @@ pub mod db_common;
 
 pub mod db_track_error;
 pub use db_track_error::DbTrackError;
+
+pub mod track_data;
 
 pub mod track_sync;
 

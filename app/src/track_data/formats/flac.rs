@@ -8,7 +8,7 @@ use metaflac::{
     block::{Block, BlockType, PictureType, StreamInfo, VorbisComment},
 };
 
-use crate::audio_metadata::{FileMidMetadata, TrackArtwork};
+use crate::track_data::{FileMidMetadata, TrackArtwork};
 
 const KEY_COMPOSER: &str = "COMPOSER";
 const KEY_TRACK_NUMBER: &str = "TRACKNUMBER";

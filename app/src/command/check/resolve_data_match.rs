@@ -7,10 +7,10 @@ use sqlx::PgPool;
 use super::{TrackItemConflict, messages};
 use crate::{
     Config, DbTrackError, app_artwork_repository,
-    audio_metadata::{AudioMetadata, TrackArtwork, file_io},
     command::check::domain::{TrackItemKind, check_usecase},
     cui::Cui,
     data_file,
+    track_data::{AudioMetadata, TrackArtwork, file_io},
     track_sync::{DbTrackSync, track_sync_repository},
 };
 
