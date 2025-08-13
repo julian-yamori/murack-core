@@ -1,4 +1,4 @@
-use crate::{Config, cui::Cui, data_file};
+use crate::{Config, audio_metadata::file_io, cui::Cui};
 
 use anyhow::{Context, Result, anyhow};
 use murack_core_domain::path::LibraryTrackPath;
@@ -40,7 +40,7 @@ where
         };
 
         //指定された曲ファイルを解析
-        let audio_meta = data_file::read_metadata(&self.config.pc_lib, &self.args.track_path)?;
+        let audio_meta = file_io::read_metadata(&self.config.pc_lib, &self.args.track_path)?;
 
         //各アートワークを出力
         let artworks_len = audio_meta.artworks.len();

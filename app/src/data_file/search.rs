@@ -8,7 +8,7 @@ use std::{
 use anyhow::{Context, Result};
 use murack_core_domain::{NonEmptyString, path::LibraryTrackPath};
 
-use crate::data_file::utils;
+use crate::audio_metadata::file_io::is_audio_ext;
 
 /// ライブラリのフォルダ内の全ての曲のパスを列挙
 pub fn search_all(lib_root: &Path) -> Result<Vec<LibraryTrackPath>> {
@@ -118,7 +118,7 @@ fn search_dir_rec(dest: &mut Vec<PathBuf>, path: &Path) -> Result<()> {
             continue;
         }
         //音声ファイルの拡張子なら、絶対パスを追加
-        else if utils::is_audio_ext(&entry_path) {
+        else if is_audio_ext(&entry_path) {
             dest.push(entry_path);
         }
     }

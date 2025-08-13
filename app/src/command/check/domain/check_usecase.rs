@@ -9,8 +9,9 @@ use murack_core_domain::path::LibraryTrackPath;
 use sqlx::PgPool;
 
 use crate::{
+    audio_metadata::file_io,
     command::check::domain::TrackItemKind,
-    data_file::{self, LibraryFsError},
+    data_file::LibraryFsError,
     track_sync::{TrackSync, track_sync_repository},
 };
 
@@ -34,7 +35,7 @@ pub async fn listup_issue_summary(
     let mut issue_list = Vec::new();
 
     //PCデータ読み込み
-    let pc_data_opt = match data_file::read_track_sync(pc_lib, track_path) {
+    let pc_data_opt = match file_io::read_track_sync(pc_lib, track_path) {
         Ok(d) => Some(d),
         Err(e) => match e.downcast_ref() {
             Some(LibraryFsError::FileTrackNotFound { .. }) => {

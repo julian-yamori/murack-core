@@ -6,7 +6,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use murack_core_domain::NonEmptyString;
 
-use crate::data_file::{LibraryFsError, utils};
+use crate::{audio_metadata::file_io::get_lrc_path, data_file::LibraryFsError};
 
 /// パス文字列を指定してライブラリ内のファイル/フォルダを移動
 ///
@@ -43,9 +43,9 @@ pub fn move_path_str(lib_root: &Path, src: &NonEmptyString, dest: &NonEmptyStrin
 
     //扱ったものがファイルで、歌詞ファイルがあれば移動
     if dest_abs.is_file() {
-        let src_lrc = utils::get_lrc_path(&src_abs);
+        let src_lrc = get_lrc_path(&src_abs);
         if src_lrc.exists() {
-            let dest_lrc = utils::get_lrc_path(&dest_abs);
+            let dest_lrc = get_lrc_path(&dest_abs);
             fn_move(&src_lrc, &dest_lrc)?;
         }
     }

@@ -1,9 +1,9 @@
-//! DBとの連携データの読み書き機能
+//! 曲のメタデータの、ファイルとの読み書き機能
 
 use std::{
     fs::{self, File},
     io::prelude::*,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
@@ -11,7 +11,7 @@ use murack_core_domain::path::LibraryTrackPath;
 
 use crate::{
     audio_metadata::{AudioMetaData, FormatType, formats},
-    data_file::{LibraryFsError, utils},
+    data_file::LibraryFsError,
     track_sync::{AudioMetadataAndLyrics, TrackSync},
 };
 
@@ -23,7 +23,7 @@ use crate::{
 pub fn read_metadata(lib_root: &Path, track_path: &LibraryTrackPath) -> Result<AudioMetaData> {
     let track_abs = track_path.abs(lib_root);
 
-    //ファイルがない場合はdomain側で判別したいので個別エラー
+    //ファイルがない場合に判別したいので個別エラー
     if !track_abs.exists() {
         return Err(LibraryFsError::FileTrackNotFound {
             lib_root: lib_root.to_owned(),
@@ -99,7 +99,7 @@ pub fn overwrite_track_sync(
 /// # Arguments
 /// - path: オーディオファイルの絶対パス
 fn read_lyrics(path: &Path) -> Result<String> {
-    let lrc_path = utils::get_lrc_path(path);
+    let lrc_path = get_lrc_path(path);
 
     let mut f = match File::open(&lrc_path) {
         Ok(f) => f,
@@ -125,7 +125,7 @@ fn read_lyrics(path: &Path) -> Result<String> {
 /// - path: オーディオファイルの絶対パス
 /// - lyrics: 保存する歌詞
 fn write_lyrics(path: &Path, lyrics: &str) -> Result<()> {
-    let lrc_path = utils::get_lrc_path(path);
+    let lrc_path = get_lrc_path(path);
 
     if lyrics.is_empty() {
         // 歌詞が空の場合、.lrc ファイルがあれば削除
@@ -140,4 +140,25 @@ fn write_lyrics(path: &Path, lyrics: &str) -> Result<()> {
 
         Ok(())
     }
+}
+
+/// パスの拡張子が音声ファイルのものか確認
+pub fn is_audio_ext(path: &Path) -> bool {
+    const AUDIO_FILE_EXTS: [&str; 7] = ["flac", "mp3", "m4a", "aac", "ogg", "wma", "wav"];
+
+    let ext_os = match path.extension() {
+        Some(e) => e,
+        None => return false,
+    };
+    let ext = match ext_os.to_str() {
+        Some(s) => s,
+        None => return false,
+    };
+
+    AUDIO_FILE_EXTS.contains(&ext)
+}
+
+/// オーディオファイルに対応する.lrcファイルのパスを取得
+pub fn get_lrc_path(audio: &Path) -> PathBuf {
+    audio.with_extension("lrc")
 }

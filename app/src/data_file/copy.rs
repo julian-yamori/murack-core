@@ -5,7 +5,7 @@ use std::{fs, path::Path};
 use anyhow::{Context, Result};
 use murack_core_domain::path::LibraryTrackPath;
 
-use crate::data_file::{LibraryFsError, utils};
+use crate::{audio_metadata::file_io::get_lrc_path, data_file::LibraryFsError};
 
 /// ライブラリからライブラリへ、曲データをコピー
 ///
@@ -48,11 +48,11 @@ pub fn copy_track_over_lib(
     //コピーを実行
     copy(&src_track, &dest_track)?;
 
-    let src_lrc = utils::get_lrc_path(&src_track);
+    let src_lrc = get_lrc_path(&src_track);
 
     //コピー元に歌詞ファイルがある場合、コピー
     if src_lrc.exists() {
-        let dest_lrc = utils::get_lrc_path(&dest_track);
+        let dest_lrc = get_lrc_path(&dest_track);
         copy(&src_lrc, &dest_lrc)?;
     }
 
@@ -84,8 +84,8 @@ pub fn overwrite_track_over_lib(
     let dest_track = target.abs(dest_lib);
     copy(&src_track, &dest_track)?;
 
-    let src_lrc = utils::get_lrc_path(&src_track);
-    let dest_lrc = utils::get_lrc_path(&dest_track);
+    let src_lrc = get_lrc_path(&src_track);
+    let dest_lrc = get_lrc_path(&dest_track);
 
     if src_lrc.exists() {
         //コピー元に歌詞ファイルがある場合、コピー

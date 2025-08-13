@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use super::{TrackItemConflict, messages};
 use crate::{
     Config, DbTrackError, app_artwork_repository,
-    audio_metadata::TrackArtwork,
+    audio_metadata::{TrackArtwork, file_io},
     command::check::domain::{TrackItemKind, check_usecase},
     cui::Cui,
     data_file,
@@ -45,7 +45,7 @@ where
     /// 次の解決処理へ継続するか
     async fn resolve(&self, db_pool: &PgPool, track_path: &LibraryTrackPath) -> Result<bool> {
         //データ読み込み
-        let mut pc_data = data_file::read_track_sync(&self.config.pc_lib, track_path)?;
+        let mut pc_data = file_io::read_track_sync(&self.config.pc_lib, track_path)?;
         let mut db_data = self.load_db_track(db_pool, track_path).await?;
 
         if !self
@@ -414,7 +414,7 @@ where
         track_path: &LibraryTrackPath,
         pc_track: TrackSync,
     ) -> Result<()> {
-        data_file::overwrite_track_sync(&self.config.pc_lib, track_path, pc_track)?;
+        file_io::overwrite_track_sync(&self.config.pc_lib, track_path, pc_track)?;
 
         Ok(())
     }

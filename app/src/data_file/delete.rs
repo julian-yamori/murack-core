@@ -6,7 +6,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use murack_core_domain::{NonEmptyString, path::LibraryTrackPath};
 
-use crate::data_file::{LibraryFsError, utils};
+use crate::{audio_metadata::file_io::get_lrc_path, data_file::LibraryFsError};
 
 /// ライブラリから曲を削除
 ///
@@ -64,7 +64,7 @@ pub fn delete_path_str(lib_root: &Path, target: &NonEmptyString) -> Result<()> {
 fn delete_track_checked(abs_path: &Path) -> Result<()> {
     fs::remove_file(abs_path).with_context(|| abs_path.display().to_string())?;
 
-    let lrc_path = utils::get_lrc_path(abs_path);
+    let lrc_path = get_lrc_path(abs_path);
 
     //歌詞ファイルもあれば削除
     if lrc_path.exists() {
@@ -130,7 +130,7 @@ pub fn trash_path_str(lib_root: &Path, target: &NonEmptyString) -> Result<()> {
 fn trash_track_checked(abs_path: &Path) -> Result<()> {
     trash::delete(abs_path)?;
 
-    let lrc_path = utils::get_lrc_path(abs_path);
+    let lrc_path = get_lrc_path(abs_path);
 
     //歌詞ファイルもあれば削除
     if lrc_path.exists() {

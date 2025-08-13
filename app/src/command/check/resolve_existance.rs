@@ -7,6 +7,7 @@ use sqlx::PgPool;
 use super::{ResolveFileExistanceResult, messages};
 use crate::{
     Config,
+    audio_metadata::file_io,
     command::check::domain::CheckIssueSummary,
     cui::Cui,
     data_file::{self, LibraryFsError},
@@ -59,7 +60,7 @@ where
         track_path: &LibraryTrackPath,
     ) -> Result<ResolveFileExistanceResult> {
         //PCデータ読み込み
-        let pc_read_result = data_file::read_track_sync(&self.config.pc_lib, track_path);
+        let pc_read_result = file_io::read_track_sync(&self.config.pc_lib, track_path);
         let pc_data_opt = match pc_read_result {
             Ok(d) => Some(d),
             Err(e) => match e.downcast_ref() {
@@ -384,7 +385,7 @@ where
                 )?;
 
                 //DAPからコピーしたPCデータを読み込む
-                let pc_track = match data_file::read_track_sync(&self.config.pc_lib, track_path) {
+                let pc_track = match file_io::read_track_sync(&self.config.pc_lib, track_path) {
                     Ok(d) => d,
                     Err(e) => {
                         cui_outln!(cui, "曲ファイルのデータの読み込みに失敗しました。\n{}", e)?;
