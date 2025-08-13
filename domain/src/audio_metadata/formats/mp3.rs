@@ -11,10 +11,7 @@ use chrono::{Datelike, NaiveDate};
 use id3::{Tag, TagLike};
 use mp3_duration::MP3DurationError;
 
-use crate::{
-    artwork::{Picture as MurackPicture, TrackArtwork},
-    audio_metadata::AudioMetaData,
-};
+use crate::{artwork::TrackArtwork, audio_metadata::AudioMetaData};
 
 const KEY_COMPOSER: &str = "TCOM";
 const KEY_DATE: &str = "TDAT";
@@ -51,10 +48,8 @@ pub fn read(path: &Path) -> Result<AudioMetaData, MP3Error> {
         artworks: tag
             .pictures()
             .map(|picture| TrackArtwork {
-                picture: MurackPicture {
-                    bytes: picture.data.clone(),
-                    mime_type: picture.mime_type.clone(),
-                },
+                image: picture.data.clone(),
+                mime_type: picture.mime_type.clone(),
                 picture_type: picture.picture_type.into(),
                 description: picture.description.clone(),
             })
@@ -285,10 +280,10 @@ fn id3_set_artworks(tag: &mut Tag, artworks: Vec<TrackArtwork>) -> Result<(), MP
         }
 
         tag.add_frame(Picture {
-            mime_type: artwork.picture.mime_type,
+            mime_type: artwork.mime_type,
             picture_type: PictureType::Undefined(artwork.picture_type),
             description: artwork.description,
-            data: artwork.picture.bytes,
+            data: artwork.image,
         });
     }
 

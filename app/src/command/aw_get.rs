@@ -46,8 +46,7 @@ where
         let artworks_len = audio_meta.artworks.len();
         for (idx, artwork) in audio_meta.artworks.iter().enumerate() {
             //出力先ファイル名を作成
-            let out_path =
-                make_output_path(&artwork_path, &artwork.picture.mime_type, idx, artworks_len)?;
+            let out_path = make_output_path(&artwork_path, &artwork.mime_type, idx, artworks_len)?;
 
             //既にファイルが存在するなら失敗
             if out_path.exists() {
@@ -57,7 +56,7 @@ where
                 ));
             }
 
-            fs::write(&out_path, &artwork.picture.bytes)
+            fs::write(&out_path, &artwork.image)
                 .with_context(|| format!("ファイルの書き込みに失敗: {}", out_path.display()))?;
 
             cui_outln!(self.cui, "=> {}", out_path.display())?;

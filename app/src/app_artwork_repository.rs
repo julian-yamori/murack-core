@@ -5,7 +5,7 @@ mod artwork_cache;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Result, anyhow};
-use murack_core_domain::artwork::{ArtworkHash, Picture, TrackArtwork, artwork_repository};
+use murack_core_domain::artwork::{ArtworkHash, TrackArtwork, artwork_repository};
 use once_cell::sync::Lazy;
 use sqlx::PgTransaction;
 
@@ -18,22 +18,24 @@ static ARTWORK_CACHE: Lazy<Arc<Mutex<ArtworkCache>>> =
 ///
 /// 既に登録されていた場合は、新規登録せずに既存データのIDを返す
 ///
-/// # Arguments
-/// - picture: アートワークの画像データ
 /// # Return
 /// 新規登録されたアートワーク、もしくは既存の同一データのID
-async fn register_artwork(tx: &mut PgTransaction<'_>, picture: Picture) -> Result<i32> {
+async fn register_artwork(
+    tx: &mut PgTransaction<'_>,
+    image: Vec<u8>,
+    mime_type: &str,
+) -> Result<i32> {
     //追加用キャッシュと比較
     if let Some(ref c) = lock_cache()?.cache {
-        if c.picture.bytes == picture.bytes {
+        if c.image == image {
             return Ok(c.artwork_id);
         }
     }
 
     //同じハッシュのデータをDBから検索
-    let hash = ArtworkHash::from_image(&picture.bytes);
+    let hash = ArtworkHash::from_image(&image);
     let same_hash_list = sqlx::query!(
-        "SELECT id, image, mime_type FROM artworks WHERE hash = $1",
+        "SELECT id, image FROM artworks WHERE hash = $1",
         hash.as_ref()
     )
     .fetch_all(&mut **tx)
@@ -41,25 +43,22 @@ async fn register_artwork(tx: &mut PgTransaction<'_>, picture: Picture) -> Resul
     //見つかった各データを走査
     for existing in same_hash_list {
         //データ本体の比較を行い、これも一致したら新規作成しない
-        if picture.bytes == existing.image {
+        if image == existing.image {
             //キャッシュにも保存
             lock_cache()?.cache = Some(ArtworkCachedData {
                 artwork_id: existing.id,
-                picture: Arc::new(Picture {
-                    bytes: existing.image,
-                    mime_type: existing.mime_type,
-                }),
+                image: existing.image,
             });
             return Ok(existing.id);
         }
     }
 
-    let new_pk = artwork_repository::add_artwork(tx, &picture).await?;
+    let new_pk = artwork_repository::add_artwork(tx, &image, mime_type).await?;
 
     //すぐに使う可能性が高いので、キャッシュに保存
     lock_cache()?.cache = Some(ArtworkCachedData {
         artwork_id: new_pk,
-        picture: Arc::new(picture),
+        image,
     });
 
     Ok(new_pk)
@@ -88,7 +87,7 @@ pub async fn register_track_artworks<'c>(
 
     for (artwork_idx, artwork) in track_artworks.into_iter().enumerate() {
         //アートワーク画像情報を新規登録し、ID情報を取得
-        let artwork_id = register_artwork(tx, artwork.picture).await?;
+        let artwork_id = register_artwork(tx, artwork.image, &artwork.mime_type).await?;
 
         //紐付き情報を登録
         sqlx::query!(
@@ -120,10 +119,8 @@ pub async fn get_track_artworks<'c>(
     )
     .map(|row| -> anyhow::Result<TrackArtwork> {
         Ok(TrackArtwork {
-            picture: Picture {
-                bytes: row.image,
-                mime_type: row.mime_type,
-            },
+            image: row.image,
+            mime_type: row.mime_type,
             picture_type: row.picture_type.try_into()?,
             description: row.description,
         })

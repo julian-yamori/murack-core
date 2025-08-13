@@ -1,9 +1,11 @@
-use crate::artwork::Picture;
-
 /// 曲へ紐付けるアートワークの情報
 #[derive(Debug, PartialEq, Clone)]
 pub struct TrackArtwork {
-    pub picture: Picture,
+    /// 画像のバイトデータ
+    pub image: Vec<u8>,
+
+    /// 画像データのMIMEタイプ
+    pub mime_type: String,
 
     /// 画像タイプ
     ///

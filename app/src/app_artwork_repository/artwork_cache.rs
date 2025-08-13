@@ -1,14 +1,10 @@
-use std::sync::Arc;
-
-use murack_core_domain::artwork::Picture;
-
 /// キャッシュされるアートワークのデータ
 pub struct ArtworkCachedData {
     /// アートワークID
     pub artwork_id: i32,
 
-    /// アートワーク画像データ
-    pub picture: Arc<Picture>,
+    /// 画像のバイトデータ
+    pub image: Vec<u8>,
 }
 
 /// アートワークのキャッシュ管理

@@ -8,10 +8,7 @@ use metaflac::{
     block::{Block, BlockType, PictureType, StreamInfo, VorbisComment},
 };
 
-use crate::{
-    artwork::{Picture as MurackPicture, TrackArtwork},
-    audio_metadata::AudioMetaData,
-};
+use crate::{artwork::TrackArtwork, audio_metadata::AudioMetaData};
 
 const KEY_COMPOSER: &str = "COMPOSER";
 const KEY_TRACK_NUMBER: &str = "TRACKNUMBER";
@@ -98,10 +95,10 @@ pub fn overwrite(path: &Path, track: AudioMetaData) -> Result<(), FlacError> {
         );
         */
         let mut picture = metaflac::block::Picture::new();
-        picture.mime_type = artwork.picture.mime_type;
+        picture.mime_type = artwork.mime_type;
         picture.picture_type = picture_type_from_u8(artwork.picture_type);
         picture.description = artwork.description;
-        picture.data = artwork.picture.bytes;
+        picture.data = artwork.image;
         //TODO サイズ等の情報が書き込まれない。add_pictureでも同様。
         tag.push_block(Block::Picture(picture));
     }
@@ -162,10 +159,8 @@ fn get_release_date(vc: &VorbisComment) -> Result<Option<NaiveDate>, FlacError> 
 fn get_artworks(tag: &Tag) -> Vec<TrackArtwork> {
     tag.pictures()
         .map(|tag_pic| TrackArtwork {
-            picture: MurackPicture {
-                bytes: tag_pic.data.clone(),
-                mime_type: tag_pic.mime_type.clone(),
-            },
+            image: tag_pic.data.clone(),
+            mime_type: tag_pic.mime_type.clone(),
             picture_type: u8_from_picture_type(tag_pic.picture_type),
             description: tag_pic.description.clone(),
         })

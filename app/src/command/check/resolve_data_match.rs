@@ -511,7 +511,7 @@ where
             };
 
             cui_outln!(cui, "- アートワーク {}", idx)?;
-            cui_outln!(cui, "    MIME type: {}", artwork.picture.mime_type)?;
+            cui_outln!(cui, "    MIME type: {}", artwork.mime_type)?;
             cui_outln!(
                 cui,
                 "    Picture type: {} ({})",

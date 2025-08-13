@@ -5,10 +5,7 @@ use std::path::Path;
 use chrono::NaiveDate;
 use mp4ameta::{ImgFmt, Tag};
 
-use crate::{
-    artwork::{Picture as MurackPicture, TrackArtwork},
-    audio_metadata::AudioMetaData,
-};
+use crate::{artwork::TrackArtwork, audio_metadata::AudioMetaData};
 
 /// ファイルからメタデータを読み込み
 ///
@@ -142,17 +139,17 @@ pub fn overwrite(path: &Path, track: AudioMetaData) -> Result<(), M4AError> {
             .into_iter()
             .map(|art| {
                 Ok(mp4ameta::Img {
-                    fmt: match art.picture.mime_type.as_str() {
+                    fmt: match art.mime_type.as_str() {
                         "image/jpeg" => ImgFmt::Jpeg,
                         "image/bmp" => ImgFmt::Bmp,
                         "image/png" => ImgFmt::Png,
                         _ => {
                             return Err(M4AError::UnsupportedArtworkFormat {
-                                mime_type: art.picture.mime_type,
+                                mime_type: art.mime_type,
                             });
                         }
                     },
-                    data: art.picture.bytes,
+                    data: art.image,
                 })
             })
             .collect::<Result<Vec<_>, _>>()?,
@@ -190,13 +187,11 @@ fn get_release_date(tag: &Tag) -> Result<Option<NaiveDate>, M4AError> {
 fn get_artworks(tag: &Tag) -> Vec<TrackArtwork> {
     tag.artworks()
         .map(|img| TrackArtwork {
-            picture: MurackPicture {
-                bytes: img.data.to_vec(),
-                mime_type: match img.fmt {
-                    ImgFmt::Bmp => "image/bmp".to_owned(),
-                    ImgFmt::Jpeg => "image/jpeg".to_owned(),
-                    ImgFmt::Png => "image/png".to_owned(),
-                },
+            image: img.data.to_vec(),
+            mime_type: match img.fmt {
+                ImgFmt::Bmp => "image/bmp".to_owned(),
+                ImgFmt::Jpeg => "image/jpeg".to_owned(),
+                ImgFmt::Png => "image/png".to_owned(),
             },
             picture_type: 3, //とりあえずCoverFrontとして扱う
             description: String::new(),
