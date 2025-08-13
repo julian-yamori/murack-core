@@ -7,12 +7,10 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use murack_core_domain::{
-    audio_metadata::{AudioMetaData, FormatType, formats},
-    path::LibraryTrackPath,
-};
+use murack_core_domain::path::LibraryTrackPath;
 
 use crate::{
+    audio_metadata::{AudioMetaData, FormatType, formats},
     data_file::{LibraryFsError, utils},
     track_sync::{AudioMetadataAndLyrics, TrackSync},
 };

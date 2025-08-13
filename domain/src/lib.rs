@@ -2,8 +2,6 @@
 
 pub mod artwork;
 
-pub mod audio_metadata;
-
 pub mod db_utils;
 pub mod filter;
 pub mod folder;

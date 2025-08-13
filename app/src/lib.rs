@@ -1,8 +1,10 @@
 //! application層
 //!
-//! domainを操作する、CUIアプリケーションのロジック
+//! Murack Sync に以降予定のコード群
 
 pub mod app_artwork_repository;
+
+pub mod audio_metadata;
 
 #[macro_use]
 pub mod cui;

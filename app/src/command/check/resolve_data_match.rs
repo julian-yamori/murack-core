@@ -1,14 +1,13 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::automock;
-use murack_core_domain::{
-    audio_metadata::TrackArtwork, path::LibraryTrackPath, track::TrackItemKind,
-};
+use murack_core_domain::{path::LibraryTrackPath, track::TrackItemKind};
 use sqlx::PgPool;
 
 use super::{TrackItemConflict, messages};
 use crate::{
     Config, DbTrackError, app_artwork_repository,
+    audio_metadata::TrackArtwork,
     command::check::domain::check_usecase,
     cui::Cui,
     data_file,

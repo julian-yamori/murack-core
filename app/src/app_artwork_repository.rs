@@ -5,14 +5,14 @@ mod artwork_cache;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Result, anyhow};
-use murack_core_domain::{
-    artwork::{ArtworkHash, artwork_repository},
-    audio_metadata::TrackArtwork,
-};
+use murack_core_domain::artwork::{ArtworkHash, artwork_repository};
 use once_cell::sync::Lazy;
 use sqlx::PgTransaction;
 
-use crate::app_artwork_repository::artwork_cache::{ArtworkCache, ArtworkCachedData};
+use crate::{
+    app_artwork_repository::artwork_cache::{ArtworkCache, ArtworkCachedData},
+    audio_metadata::TrackArtwork,
+};
 
 static ARTWORK_CACHE: Lazy<Arc<Mutex<ArtworkCache>>> =
     Lazy::new(|| Arc::new(Mutex::new(ArtworkCache::new())));

@@ -1,8 +1,7 @@
 use chrono::NaiveDate;
-use murack_core_domain::{
-    audio_metadata::{AudioMetaData, TrackArtwork},
-    string_order_cnv,
-};
+use murack_core_domain::string_order_cnv;
+
+use crate::audio_metadata::{AudioMetaData, TrackArtwork};
 
 /// PC・DB間で同期するべき曲の情報
 #[derive(Debug, PartialEq, Clone)]
