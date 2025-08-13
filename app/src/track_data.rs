@@ -3,6 +3,8 @@
 mod db_track_entity;
 pub use db_track_entity::DbTrackEntity;
 
+pub mod db_io;
+
 pub mod file_io;
 
 mod file_mid_metadata;

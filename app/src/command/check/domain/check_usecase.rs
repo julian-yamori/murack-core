@@ -11,8 +11,7 @@ use sqlx::PgPool;
 use crate::{
     command::check::domain::TrackItemKind,
     data_file::LibraryFsError,
-    track_data::{AudioMetadata, file_io},
-    track_sync::track_sync_repository,
+    track_data::{AudioMetadata, db_io, file_io},
 };
 
 use super::CheckIssueSummary;
@@ -51,7 +50,7 @@ pub async fn listup_issue_summary(
 
     //DBデータ読み込み
     let mut tx = db_pool.begin().await?;
-    let db_data_opt = track_sync_repository::get_by_path(&mut tx, track_path).await?;
+    let db_data_opt = db_io::get_by_path(&mut tx, track_path).await?;
     tx.commit().await?;
 
     if db_data_opt.is_none() {

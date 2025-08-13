@@ -13,8 +13,8 @@ use murack_core_domain::{
 use sqlx::{PgPool, PgTransaction};
 
 use crate::{
-    DbTrackError, app_artwork_repository, track_data::AudioMetadata,
-    track_sync::track_sync_repository,
+    DbTrackError, app_artwork_repository,
+    track_data::{AudioMetadata, db_io},
 };
 
 /// 指定されたpathのレコードが存在するか確認
@@ -63,7 +63,7 @@ pub async fn add_track_to_db(
 
     let mut tx = db_pool.begin().await?;
 
-    track_sync_repository::register_db(&mut tx, track_path, metadata).await?;
+    db_io::register_db(&mut tx, track_path, metadata).await?;
 
     tx.commit().await?;
     Ok(())

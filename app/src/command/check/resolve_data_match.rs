@@ -10,8 +10,7 @@ use crate::{
     command::check::domain::{TrackItemKind, check_usecase},
     cui::Cui,
     data_file,
-    track_data::{AudioMetadata, DbTrackEntity, TrackArtwork, file_io},
-    track_sync::track_sync_repository,
+    track_data::{AudioMetadata, DbTrackEntity, TrackArtwork, db_io, file_io},
 };
 
 /// データ内容同一性についての解決処理
@@ -389,7 +388,7 @@ where
     ) -> Result<DbTrackEntity> {
         let mut tx = db_pool.begin().await?;
 
-        track_sync_repository::get_by_path(&mut tx, track_path)
+        db_io::get_by_path(&mut tx, track_path)
             .await?
             .ok_or_else(|| DbTrackError::DbTrackNotFound(track_path.clone()).into())
     }
@@ -402,7 +401,7 @@ where
     ) -> Result<()> {
         let mut tx = db_pool.begin().await?;
 
-        track_sync_repository::save_exclude_artwork(&mut tx, db_track).await?;
+        db_io::save_exclude_artwork(&mut tx, db_track).await?;
 
         tx.commit().await?;
         Ok(())

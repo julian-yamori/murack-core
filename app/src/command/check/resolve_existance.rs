@@ -11,8 +11,7 @@ use crate::{
     cui::Cui,
     data_file::{self, LibraryFsError},
     db_common,
-    track_data::{AudioMetadata, file_io},
-    track_sync::track_sync_repository,
+    track_data::{AudioMetadata, db_io, file_io},
 };
 
 /// データ存在系の解決処理
@@ -82,7 +81,7 @@ where
         let db_data_opt = {
             let mut tx = db_pool.begin().await?;
 
-            track_sync_repository::get_by_path(&mut tx, track_path).await?
+            db_io::get_by_path(&mut tx, track_path).await?
         };
 
         //DAP存在確認
