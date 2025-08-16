@@ -9,6 +9,9 @@ use thiserror::Error;
 pub use with_playlist::SortTypeWithPlaylist;
 
 /// 曲のソートの種類
+///
+/// SortTypeWithPlaylist では SortType 定義を流用しているが、ToSchema 実装では文字列の配列を直接指定している。
+/// SortType の種類を増やす際は注意！
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]

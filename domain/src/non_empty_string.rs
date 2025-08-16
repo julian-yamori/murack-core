@@ -9,6 +9,7 @@ use sqlx::{
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct NonEmptyString(String);
 
 impl NonEmptyString {

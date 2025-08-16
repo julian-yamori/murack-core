@@ -135,3 +135,30 @@ impl<'q> sqlx::Encode<'q, Postgres> for SortTypeWithPlaylist {
         <&str as sqlx::Encode<Postgres>>::encode_by_ref(&self.as_str(), buf)
     }
 }
+
+#[cfg(feature = "openapi")]
+impl utoipa::ToSchema for SortTypeWithPlaylist {}
+
+#[cfg(feature = "openapi")]
+impl utoipa::PartialSchema for SortTypeWithPlaylist {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        utoipa::openapi::ObjectBuilder::new()
+            .description(Some("曲のソートの種類 (プレイリスト順付き)"))
+            .enum_values(Some([
+                "playlist",
+                "track_name",
+                "artist",
+                "album",
+                "genre",
+                "composer",
+                "duration",
+                "track_index",
+                "disc_index",
+                "release_date",
+                "rating",
+                "entry_date",
+                "path",
+            ]))
+            .into()
+    }
+}
