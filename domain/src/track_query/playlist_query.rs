@@ -2,73 +2,68 @@ use std::collections::{BTreeSet, HashSet};
 
 use async_recursion::async_recursion;
 use sqlx::PgTransaction;
-use sqlx::{Row, postgres::PgRow};
+use sqlx::postgres::PgRow;
 
+use crate::track_query::SelectColumn;
 use crate::{
     NonEmptyString, SortTypeWithPlaylist,
-    path::LibraryTrackPath,
     playlist::{
         Playlist, PlaylistRow, PlaylistType, playlist_error::PlaylistError, playlist_tracks_sqls,
     },
     track_query::{TrackQueryError, filter_query},
 };
 
-/// playlist_track.orderカラムに付ける別名
-const PLIST_TRACK_IDX_COLUMN: &str = "playlist_index";
-
-/// プレイリストに含まれる曲のパスリストを取得
-/// # Arguments
-/// - plist 取得対象のプレイリスト情報(※childrenは不要)
-pub async fn get_track_path_list<'c>(
+/// カラムを指定し、プレイリストに含まれる曲を検索
+pub async fn select_tracks<'c>(
     tx: &mut PgTransaction<'c>,
     plist: &Playlist,
-) -> Result<Vec<LibraryTrackPath>, TrackQueryError> {
-    //対象プレイリストのクエリ(from,join,where句)を取得
-    let fjw_query = get_query_by_playlist(tx, plist).await?;
-
-    //取得するカラム
-    let mut clms_query = "tracks.path".to_owned();
-
-    //プレイリスト順なら、取得カラムを一つ追加
-    if plist.sort_type == SortTypeWithPlaylist::Playlist {
-        clms_query =
-            format!("{clms_query}, playlist_tracks.order_index AS {PLIST_TRACK_IDX_COLUMN}");
-    }
-
-    let order_query = plist
-        .sort_type
-        .order_query(plist.sort_desc, PLIST_TRACK_IDX_COLUMN);
-
-    //select句とorder byを結合
-    let query = format!("SELECT {clms_query}{fjw_query} ORDER BY {order_query}",);
-
-    let list: Vec<LibraryTrackPath> = sqlx::query(&query)
-        .map(|row: PgRow| row.get::<LibraryTrackPath, _>(0))
-        .fetch_all(&mut **tx)
-        .await?;
-
-    Ok(list)
-}
-
-/// プレイリストに含まれる曲を検索するクエリを作成
-/// # Arguments
-/// - plist: 対象プレイリスト情報
-/// # Result
-/// from,join,where句のクエリ
-async fn get_query_by_playlist<'c>(
-    tx: &mut PgTransaction<'c>,
-    plist: &Playlist,
-) -> Result<String, TrackQueryError> {
+    columns: impl Iterator<Item = SelectColumn>,
+) -> Result<Vec<PgRow>, TrackQueryError> {
     //リストアップされていなければ、まずリストアップする
     if !plist.listuped_flag {
         listup_tracks(tx, plist).await?;
     }
-    //プレイリストに含まれる曲の検索クエリを返す
 
-    Ok(format!(
-        " FROM playlist_trakcs JOIN tracks ON playlist_tracks.track_id = tracks.id WHERE playlist_tracks.playlist_id = {}",
-        plist.id
-    ))
+    let columns_set: HashSet<_> = columns.collect();
+
+    let mut join_queries = vec!["JOIN tracks ON playlist_tracks.track_id = tracks.id"];
+    // アートワーク ID を取得する場合は、先頭のアートワークだけを取得できるように JOIN する
+    if columns_set.contains(&SelectColumn::ArtworkId) {
+        join_queries.push(
+            "LEFT JOIN track_artworks ON track.id = track_artworks.track_id AND track_artworks.order_index = 0"
+        )
+    }
+
+    let mut column_names: Vec<_> = columns_set
+        .iter()
+        .map(SelectColumn::sql_column_name)
+        .collect();
+    //プレイリスト順なら、取得カラムを一つ追加
+    if plist.sort_type == SortTypeWithPlaylist::Playlist {
+        column_names.push("playlist_tracks.order_index");
+    }
+
+    let order_query = plist
+        .sort_type
+        .order_query(plist.sort_desc, "playlist_tracks.order_index");
+
+    let sql = format!(
+        "
+        SELECT {}
+        FROM playlist_tracks
+        {}
+        WHERE playlist_tracks.playlist_id = $1
+        ORDER BY {order_query}
+        ",
+        column_names.join(","),
+        join_queries.join("\n")
+    );
+    let list: Vec<_> = sqlx::query(&sql)
+        .bind(plist.id)
+        .fetch_all(&mut **tx)
+        .await?;
+
+    Ok(list)
 }
 
 /// プレイリストの曲をリストアップし、playlist_trackテーブルを更新する
@@ -144,14 +139,31 @@ async fn search_plist_tracks_folder<'c>(
     tx: &mut PgTransaction<'c>,
     plist: &Playlist,
 ) -> Result<Vec<i32>, TrackQueryError> {
+    //直下の子のプレイリストを取得
     let children = sqlx::query_as!(
-            PlaylistRow,
-            r#"SELECT id, playlist_type AS "playlist_type: PlaylistType", name AS "name: NonEmptyString", parent_id, in_folder_order, filter_json, sort_type AS "sort_type: SortTypeWithPlaylist", sort_desc, save_dap ,listuped_flag ,dap_changed FROM playlists WHERE parent_id IS NOT DISTINCT FROM $1 ORDER BY in_folder_order"#,
-            Some(plist.id)
-        )
-            .map(Playlist::try_from)
-            .fetch_all(&mut **tx)
-            .await?;
+        PlaylistRow,
+        r#"
+        SELECT
+          id,
+          playlist_type AS "playlist_type: PlaylistType",
+          name AS "name: NonEmptyString",
+          parent_id,
+          in_folder_order,
+          filter_json,
+          sort_type AS "sort_type: SortTypeWithPlaylist",
+          sort_desc,
+          save_dap,
+          listuped_flag,
+          dap_changed
+        FROM playlists
+        WHERE parent_id IS NOT DISTINCT FROM $1
+        ORDER BY in_folder_order
+        "#,
+        Some(plist.id)
+    )
+    .map(Playlist::try_from)
+    .fetch_all(&mut **tx)
+    .await?;
 
     //子プレイリストの曲IDを追加していくSet
     let mut add_track_ids = HashSet::<i32>::new();
@@ -159,14 +171,24 @@ async fn search_plist_tracks_folder<'c>(
     for child in children {
         let child = child?;
 
+        //リストアップされていなければ、まずリストアップする
+        if !child.listuped_flag {
+            listup_tracks(tx, &child).await?;
+        }
+
         //子プレイリストの曲リストを取得
-        let child_query = format!(
-            "SELECT tracks.id {}",
-            get_query_by_playlist(tx, &child).await?
-        );
-        let child_tracks: Vec<i32> = sqlx::query_scalar(&child_query)
-            .fetch_all(&mut **tx)
-            .await?;
+        let child_tracks: Vec<i32> = sqlx::query_scalar!(
+            "
+            SELECT tracks.id
+            FROM playlist_tracks
+            JOIN tracks
+              ON playlist_tracks.track_id = tracks.id
+            WHERE playlist_tracks.playlist_id = $1
+            ",
+            child.id
+        )
+        .fetch_all(&mut **tx)
+        .await?;
 
         //Setに追加
         for track_id in child_tracks {

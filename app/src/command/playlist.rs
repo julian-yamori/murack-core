@@ -8,7 +8,7 @@ use async_recursion::async_recursion;
 use murack_core_domain::{
     path::LibraryTrackPath,
     playlist::{PlaylistTree, playlist_model, playlist_sqls, playlist_tree},
-    track_query::playlist_query,
+    track_query::{SelectColumn, playlist_query},
 };
 use sqlx::{PgPool, PgTransaction};
 
@@ -103,7 +103,12 @@ async fn save_plists_recursive<'c, 'p>(
             context.offset_of_whole += 1;
 
             //プレイリスト内の曲パスを取得
-            let track_paths = playlist_query::get_track_path_list(tx, &tree.playlist).await?;
+            let track_paths: Vec<LibraryTrackPath> =
+                playlist_query::select_tracks(tx, &tree.playlist, [SelectColumn::Path].into_iter())
+                    .await?
+                    .into_iter()
+                    .map(|row| SelectColumn::row_path(&row))
+                    .collect::<Result<Vec<_>, _>>()?;
 
             //プレイリストの曲データ取得後に、リストに変更があったか確認
             let new_plist_data = playlist_model::get_playlist(tx, tree.playlist.id)

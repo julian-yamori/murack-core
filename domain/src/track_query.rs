@@ -4,5 +4,8 @@ mod filter_query;
 
 pub mod playlist_query;
 
+pub mod select_column;
+pub use select_column::SelectColumn;
+
 pub mod track_query_error;
 pub use track_query_error::TrackQueryError;
