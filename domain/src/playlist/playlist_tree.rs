@@ -133,5 +133,5 @@ pub trait PlaylistTreeValue {
 
     fn parent_id(&self) -> Option<i32>;
 
-    fn in_folder_order(&self) -> u32;
+    fn in_folder_order(&self) -> i32;
 }

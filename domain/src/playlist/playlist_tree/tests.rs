@@ -20,27 +20,14 @@ mod test_from_all_playlists {
         pub parent_id: Option<i32>,
 
         /// 親プレイリスト内でのインデックス
-        pub in_folder_order: u32,
+        pub in_folder_order: i32,
     }
 
     impl Playlist {
-        async fn get_all<'c>(tx: &mut PgTransaction<'c>) -> anyhow::Result<Vec<Self>> {
-            let playlists =
-            sqlx::query!(r#"SELECT id, name AS "name: NonEmptyString", parent_id, in_folder_order FROM playlists"#)
-                .map(|record| {
-                    Ok(Self {
-                        id: record.id,
-                        name: record.name,
-                        parent_id: record.parent_id,
-                        in_folder_order: record.in_folder_order.try_into()?,
-                    })
-                })
+        async fn get_all<'c>(tx: &mut PgTransaction<'c>) -> sqlx::Result<Vec<Self>> {
+            sqlx::query_as!(Self, r#"SELECT id, name AS "name: NonEmptyString", parent_id, in_folder_order FROM playlists"#)
                 .fetch_all(&mut **tx)
-                .await?
-                .into_iter()
-                .collect::<anyhow::Result<Vec<Self>>>()?;
-
-            Ok(playlists)
+                .await
         }
     }
 
@@ -53,7 +40,7 @@ mod test_from_all_playlists {
             self.parent_id
         }
 
-        fn in_folder_order(&self) -> u32 {
+        fn in_folder_order(&self) -> i32 {
             self.in_folder_order
         }
     }
