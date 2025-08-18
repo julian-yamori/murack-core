@@ -1,5 +1,8 @@
 mod playlist_model;
 
+#[cfg(test)]
+mod tests;
+
 use std::collections::{BTreeSet, HashSet};
 
 use async_recursion::async_recursion;
@@ -47,7 +50,7 @@ impl PlaylistQuery {
         // アートワーク ID を取得する場合は、先頭のアートワークだけを取得できるように JOIN する
         if self.columns.contains(&SelectColumn::ArtworkId) {
             join_queries.push(
-            "LEFT JOIN track_artworks ON track.id = track_artworks.track_id AND track_artworks.order_index = 0"
+            "LEFT JOIN track_artworks ON tracks.id = track_artworks.track_id AND track_artworks.order_index = 0"
         )
         }
 
