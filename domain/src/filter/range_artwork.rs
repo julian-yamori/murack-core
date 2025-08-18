@@ -2,14 +2,12 @@ use serde::{Deserialize, Serialize};
 
 /// アートワークで絞り込み
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op")]
+#[serde(tag = "op", rename_all = "snake_case")]
 pub enum ArtworkFilterRange {
     /// アートワークがある
-    #[serde(rename = "has")]
     Has,
 
     /// アートワークが無い
-    #[serde(rename = "none")]
     None,
 }
 

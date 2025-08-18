@@ -5,26 +5,21 @@ use crate::db_utils::escs;
 
 /// 日付で絞り込み
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op")]
+#[serde(tag = "op", rename_all = "snake_case")]
 pub enum DateFilterRange {
     /// 日付：指定値と等しい
-    #[serde(rename = "equal")]
     Equal { value: NaiveDate },
 
     /// 日付：指定値と異なる
-    #[serde(rename = "not_equal")]
     NotEqual { value: NaiveDate },
 
     /// 日付：指定値以前
-    #[serde(rename = "before")]
     Before { value: NaiveDate },
 
     /// 日付：指定値以後
-    #[serde(rename = "after")]
     After { value: NaiveDate },
 
     /// 日付：ない
-    #[serde(rename = "none")]
     None,
 }
 

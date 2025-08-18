@@ -2,14 +2,12 @@ use serde::{Deserialize, Serialize};
 
 /// bool で絞り込み
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op")]
+#[serde(tag = "op", rename_all = "snake_case")]
 pub enum BoolFilterRange {
     /// フラグが true
-    #[serde(rename = "true")]
     True,
 
     /// フラグが false
-    #[serde(rename = "false")]
     False,
 }
 

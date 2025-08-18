@@ -4,30 +4,24 @@ use crate::db_utils::{escs, like_esc};
 
 /// 文字列で絞り込み
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op")]
+#[serde(tag = "op", rename_all = "snake_case")]
 pub enum StringFilterRange {
     /// 指定文字列と等しい
-    #[serde(rename = "equal")]
     Equal { value: String },
 
     /// 指定文字列と異なる
-    #[serde(rename = "not_equal")]
     NotEqual { value: String },
 
     /// 指定文字列を含む
-    #[serde(rename = "contain")]
     Contain { value: String },
 
     /// 指定文字列を含まない
-    #[serde(rename = "not_contain")]
     NotContain { value: String },
 
     /// 指定文字列から始まる
-    #[serde(rename = "start")]
     Start { value: String },
 
     /// 指定文字列で終わる
-    #[serde(rename = "end")]
     End { value: String },
 }
 

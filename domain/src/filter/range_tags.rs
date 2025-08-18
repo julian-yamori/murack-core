@@ -2,16 +2,13 @@ use serde::{Deserialize, Serialize};
 
 /// タグで絞り込み
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op")]
+#[serde(tag = "op", rename_all = "snake_case")]
 pub enum TagsFilterRange {
     /// 指定されたタグを含む
-    #[serde(rename = "contain")]
     Contain { value: i32 },
     /// 指定されたタグを含まない
-    #[serde(rename = "not_contain")]
     NotContain { value: i32 },
     /// タグを持たない
-    #[serde(rename = "none")]
     None,
 }
 

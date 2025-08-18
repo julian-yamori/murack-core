@@ -7,7 +7,7 @@ use crate::filter::{
 
 /// フィルタの対象の項目と、その項目に対応した条件情報
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "target")]
+#[serde(tag = "target", rename_all = "snake_case")]
 pub enum FilterTarget {
     /// 集合フィルタ
     #[serde(rename = "group")]
@@ -17,19 +17,15 @@ pub enum FilterTarget {
     },
 
     /// タグ (track_tags.tag_id)
-    #[serde(rename = "tags")]
     Tags { range: TagsFilterRange },
 
     /// レート (rating)
-    #[serde(rename = "rating")]
     Rating { range: IntFilterRange },
 
     /// ジャンル (genre)
-    #[serde(rename = "genre")]
     Genre { range: StringFilterRange },
 
     /// アーティスト (artist)
-    #[serde(rename = "artist")]
     Artist { range: StringFilterRange },
 
     /// アルバムアーティスト (album_artist)
@@ -37,19 +33,15 @@ pub enum FilterTarget {
     Albumartist { range: StringFilterRange },
 
     /// アルバム (album)
-    #[serde(rename = "album")]
     Album { range: StringFilterRange },
 
     /// 作曲者 (composer)
-    #[serde(rename = "composer")]
     Composer { range: StringFilterRange },
 
     /// 曲名 (title)
-    #[serde(rename = "title")]
     Title { range: StringFilterRange },
 
     /// アートワーク (track_artworkテーブル)
-    #[serde(rename = "artwork")]
     Artwork { range: ArtworkFilterRange },
 
     /// 再生時間 (duration)
@@ -57,47 +49,36 @@ pub enum FilterTarget {
     /// `tracks.duration` と同じく、IntFilterRange の値にはミリ秒の i32 を格納する。
     ///
     /// 画面からの入力は「分:秒」形式
-    #[serde(rename = "duration")]
     Duration { range: IntFilterRange },
 
     /// リリース日 (release_date)
-    #[serde(rename = "release_date")]
     ReleaseDate { range: DateFilterRange },
 
     /// トラック番号 (track_number)
-    #[serde(rename = "track_number")]
     TrackNumber { range: IntFilterRange },
 
     /// トラック最大数 (track_max)
-    #[serde(rename = "track_max")]
     TrackMax { range: IntFilterRange },
 
     /// ディスク番号 (disc_number)
-    #[serde(rename = "disc_number")]
     DiscNumber { range: IntFilterRange },
 
     /// ディスク最大数 (disc_max)
-    #[serde(rename = "disc_max")]
     DiscMax { range: IntFilterRange },
 
     /// メモ (memo)
-    #[serde(rename = "memo")]
     Memo { range: StringFilterRange },
 
     /// 管理メモ (memo_manage)
-    #[serde(rename = "memo_manage")]
     MemoManage { range: StringFilterRange },
 
     /// 登録日 (entry_date)
-    #[serde(rename = "entry_date")]
     EntryDate { range: DateFilterRange },
 
     /// 原曲 (original_track)
-    #[serde(rename = "original_track")]
     OriginalTrack { range: StringFilterRange },
 
     /// サジェスト対象 (suggest_target)
-    #[serde(rename = "suggest_target")]
     SuggestTarget { range: BoolFilterRange },
 }
 

@@ -2,30 +2,24 @@ use serde::{Deserialize, Serialize};
 
 /// 数値で絞り込み
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op")]
+#[serde(tag = "op", rename_all = "snake_case")]
 pub enum IntFilterRange {
     /// 指定値と等しい
-    #[serde(rename = "equal")]
     Equal { value: i32 },
 
     /// 指定値と異なる
-    #[serde(rename = "not_equal")]
     NotEqual { value: i32 },
 
     /// 指定値以上
-    #[serde(rename = "large_equal")]
     LargeEqual { value: i32 },
 
     /// 指定値以下
-    #[serde(rename = "small_equal")]
     SmallEqual { value: i32 },
 
     /// 指定範囲内
-    #[serde(rename = "range_in")]
     RangeIn { min: i32, max: i32 },
 
     /// 指定範囲外
-    #[serde(rename = "range_out")]
     RangeOut { min: i32, max: i32 },
 }
 

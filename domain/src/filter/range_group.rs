@@ -27,12 +27,11 @@ pub fn group_where_expression(op: &GroupOperand, children: &[FilterTarget]) -> O
 
 /// 集合フィルタの条件指定方法
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum GroupOperand {
     /// 全てを満たす
-    #[serde(rename = "and")]
     And,
 
     /// いずれかを満たす
-    #[serde(rename = "or")]
     Or,
 }
