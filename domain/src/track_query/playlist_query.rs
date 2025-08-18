@@ -22,6 +22,12 @@ pub struct PlaylistQuery {
 
     /// 取得するカラムの指定
     columns: Vec<SelectColumn>,
+
+    /// LIMIT (曲レコードの取得件数)
+    limit: Option<u32>,
+
+    /// OFFSET (曲レコードの取得開始位置)
+    offset: Option<u32>,
 }
 
 impl PlaylistQuery {
@@ -59,6 +65,16 @@ impl PlaylistQuery {
             .sort_type
             .order_query(plist.sort_desc, "playlist_tracks.order_index");
 
+        // LIMIT, OFFSET が指定されていれば追加
+        let limit_query = self
+            .limit
+            .map(|limit| format!("LIMIT {limit}"))
+            .unwrap_or_default();
+        let offset_query = self
+            .offset
+            .map(|offset| format!("OFFSET {offset}"))
+            .unwrap_or_default();
+
         let sql = format!(
             "
             SELECT {}
@@ -66,7 +82,7 @@ impl PlaylistQuery {
             {}
             WHERE playlist_tracks.playlist_id = $1
             ORDER BY {order_query}
-            ",
+            {limit_query} {offset_query}",
             column_names.join(","),
             join_queries.join("\n")
         );
@@ -83,6 +99,8 @@ impl PlaylistQuery {
 pub struct PlaylistQueryBuilder {
     playlist_id: i32,
     columns: Vec<SelectColumn>,
+    limit: Option<u32>,
+    offset: Option<u32>,
 }
 
 impl PlaylistQueryBuilder {
@@ -90,6 +108,8 @@ impl PlaylistQueryBuilder {
         Self {
             playlist_id,
             columns: Vec::default(),
+            limit: None,
+            offset: None,
         }
     }
 
@@ -101,12 +121,26 @@ impl PlaylistQueryBuilder {
         self
     }
 
+    /// `LIMIT` を指定 (曲レコードの取得件数)
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.limit = Some(limit);
+        self
+    }
+
+    /// `OFFSET` を指定 (曲レコードの取得開始位置)
+    pub fn offset(mut self, offset: u32) -> Self {
+        self.offset = Some(offset);
+        self
+    }
+
     pub fn build(self) -> PlaylistQuery {
         assert!(!self.columns.is_empty(), "columns cannot be empty");
 
         PlaylistQuery {
             playlist_id: self.playlist_id,
             columns: self.columns,
+            limit: self.limit,
+            offset: self.offset,
         }
     }
 }
