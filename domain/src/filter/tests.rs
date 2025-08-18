@@ -13,8 +13,7 @@ async fn get_track_ids<'c>(
     let mut query_base = "SELECT tracks.id FROM tracks".to_owned();
 
     //フィルタから条件を取得して追加
-    let query_where = filter.where_expression();
-    if !query_where.is_empty() {
+    if let Some(query_where) = filter.where_expression() {
         query_base = format!("{query_base} WHERE {query_where}");
     }
 

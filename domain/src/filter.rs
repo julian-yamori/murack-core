@@ -107,9 +107,15 @@ pub enum FilterTarget {
 
 impl FilterTarget {
     /// SQL の WHERE で使用する条件式に変換
-    pub fn where_expression(&self) -> String {
-        match self {
-            FilterTarget::FilterGroup { op, children } => group_where_expression(op, children),
+    ///
+    /// フィルタ条件が無い場合は None (空の Group しか無い場合)
+    pub fn where_expression(&self) -> Option<String> {
+        let some = match self {
+            FilterTarget::FilterGroup { op, children } => {
+                // Group の場合のみ Option を返すので early return
+                return group_where_expression(op, children);
+            }
+
             FilterTarget::Tags { range } => range.where_expression(),
             FilterTarget::Rating { range } => range.where_expression("rating"),
             FilterTarget::Genre { range } => range.where_expression("genre"),
@@ -133,7 +139,9 @@ impl FilterTarget {
 
             FilterTarget::OriginalTrack { range } => range.where_expression("original_track"),
             FilterTarget::SuggestTarget { range } => range.where_expression("suggest_target"),
-        }
+        };
+
+        Some(some)
     }
 }
 
@@ -150,25 +158,26 @@ pub enum GroupOperand {
 }
 
 /// `FilterTarget::FilterGroup` を、SQL の WHERE で使用する条件式に変換
-pub fn group_where_expression(op: &GroupOperand, children: &[FilterTarget]) -> String {
+///
+/// フィルタ条件が無い場合は None (空の Group しか無い場合)
+pub fn group_where_expression(op: &GroupOperand, children: &[FilterTarget]) -> Option<String> {
     //各フィルタのクエリを連結
+    let expressions = children
+        .iter()
+        .filter_map(FilterTarget::where_expression)
+        .collect::<Vec<String>>();
+
+    if expressions.is_empty() {
+        return None;
+    }
+
     let ope = match op {
         GroupOperand::And => " and ",
         GroupOperand::Or => " or ",
     };
 
-    let combined_query = children
-        .iter()
-        .map(FilterTarget::where_expression)
-        .collect::<Vec<String>>()
-        .join(ope);
-
-    if combined_query.is_empty() {
-        return combined_query;
-    }
-
     //クエリ文字列は()で囲む
-    format!("({combined_query})")
+    Some(format!("({})", expressions.join(ope)))
 }
 
 /// 文字列で絞り込み
