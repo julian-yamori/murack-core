@@ -32,9 +32,9 @@ impl PlaylistQuery {
     ) -> Result<Vec<PgRow>, TrackQueryError> {
         let plist = QueryPlaylistModel::from_db(tx, self.playlist_id).await?;
 
-        //リストアップされていなければ、まずリストアップする
+        //リストアップされていなければ、まず playlist_tracks テーブルを更新する
         if !plist.listuped_flag {
-            listup_tracks(tx, &plist).await?;
+            update_playlist_tracks(tx, &plist).await?;
         }
 
         let mut join_queries = vec!["JOIN tracks ON playlist_tracks.track_id = tracks.id"];
@@ -114,7 +114,7 @@ impl PlaylistQueryBuilder {
 /// プレイリストの曲をリストアップし、playlist_trackテーブルを更新する
 /// # Arguments
 /// - plist: 対象プレイリスト情報
-async fn listup_tracks<'c>(
+async fn update_playlist_tracks<'c>(
     tx: &mut PgTransaction<'c>,
     plist: &QueryPlaylistModel,
 ) -> Result<(), TrackQueryError> {
@@ -191,9 +191,9 @@ async fn search_plist_tracks_folder<'c>(
     let mut add_track_ids = HashSet::<i32>::new();
 
     for child in children {
-        //リストアップされていなければ、まずリストアップする
+        //リストアップされていなければ、まず playlist_tracks テーブルを更新する
         if !child.listuped_flag {
-            listup_tracks(tx, &child).await?;
+            update_playlist_tracks(tx, &child).await?;
         }
 
         //子プレイリストの曲リストを取得
