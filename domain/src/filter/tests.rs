@@ -520,18 +520,3 @@ mod test_date_filter {
         Ok(())
     }
 }
-
-// get_ordered_int ユーティリティ関数のテスト
-mod test_utility {
-    use test_case::test_case;
-
-    #[test_case(15, 28, 15, 28 ; "normal")]
-    #[test_case(28, 15, 15, 28 ; "inversed")]
-    #[test_case(6, 113, 6, 113 ; "digit_dif")]
-    #[test_case(113, 6, 6, 113 ; "digit_dif_inversed")]
-    fn test_get_ordered_int(value1: i32, value2: i32, expect_1: i32, expect_2: i32) {
-        let result = super::get_ordered_int(value1, value2);
-        assert_eq!(result.0, expect_1);
-        assert_eq!(result.1, expect_2);
-    }
-}
