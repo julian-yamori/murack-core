@@ -10,8 +10,7 @@ use crate::{
     SortTypeWithPlaylist,
     playlist::{PlaylistType, playlist_error::PlaylistError, playlist_tracks_sqls},
     track_query::{
-        SelectColumn, TrackQueryError, filter_query,
-        playlist_query::playlist_model::QueryPlaylistModel,
+        SelectColumn, TrackQueryError, playlist_query::playlist_model::QueryPlaylistModel,
     },
 };
 
@@ -179,8 +178,6 @@ async fn search_plist_tracks_folder<'c>(
 }
 
 /// プレイリストの設定に基づき、曲リストを取得：フィルタプレイリスト
-/// # Arguments
-/// - plist: 対象プレイリスト情報
 async fn search_plist_tracks_filter<'c>(
     tx: &mut PgTransaction<'c>,
     plist: &QueryPlaylistModel,
@@ -190,5 +187,15 @@ async fn search_plist_tracks_filter<'c>(
         .as_ref()
         .ok_or(PlaylistError::FilterPlaylistHasNoFilter { plist_id: plist.id })?;
 
-    filter_query::get_track_ids(tx, filter).await
+    let mut query_base = "SELECT tracks.id FROM tracks".to_owned();
+
+    //フィルタから条件を取得して追加
+    let query_where = filter.where_expression();
+    if !query_where.is_empty() {
+        query_base = format!("{query_base} WHERE {query_where}");
+    }
+
+    let list = sqlx::query_scalar(&query_base).fetch_all(&mut **tx).await?;
+
+    Ok(list)
 }

@@ -1,9 +1,27 @@
 //! TrackListerFilterのテスト
 
-use sqlx::PgPool;
+use sqlx::{PgPool, PgTransaction};
 
 use super::*;
 use crate::test_utils::assert_eq_not_orderd;
+
+/// フィルタを使用して曲 ID を列挙
+async fn get_track_ids<'c>(
+    tx: &mut PgTransaction<'c>,
+    filter: &RootFilter,
+) -> sqlx::Result<Vec<i32>> {
+    let mut query_base = "SELECT tracks.id FROM tracks".to_owned();
+
+    //フィルタから条件を取得して追加
+    let query_where = filter.where_expression();
+    if !query_where.is_empty() {
+        query_base = format!("{query_base} WHERE {query_where}");
+    }
+
+    let list = sqlx::query_scalar(&query_base).fetch_all(&mut **tx).await?;
+
+    Ok(list)
+}
 
 // グループフィルタ（AND/OR組み合わせ）のテスト
 mod test_group_filter {
