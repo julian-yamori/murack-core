@@ -29,8 +29,7 @@ pub enum FilterTarget {
     Artist { range: StringFilterRange },
 
     /// アルバムアーティスト (album_artist)
-    #[serde(rename = "albumartist")]
-    Albumartist { range: StringFilterRange },
+    AlbumArtist { range: StringFilterRange },
 
     /// アルバム (album)
     Album { range: StringFilterRange },
@@ -97,7 +96,7 @@ impl FilterTarget {
             FilterTarget::Rating { range } => range.where_expression("rating"),
             FilterTarget::Genre { range } => range.where_expression("genre"),
             FilterTarget::Artist { range } => range.where_expression("artist"),
-            FilterTarget::Albumartist { range } => range.where_expression("album_artist"),
+            FilterTarget::AlbumArtist { range } => range.where_expression("album_artist"),
             FilterTarget::Album { range } => range.where_expression("album"),
             FilterTarget::Composer { range } => range.where_expression("composer"),
             FilterTarget::Title { range } => range.where_expression("title"),

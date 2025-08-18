@@ -260,15 +260,15 @@ mod test_filter_target {
     }
 
     #[test]
-    fn albumartist() {
+    fn album_artist() {
         assert_serde(
-            FilterTarget::Albumartist {
+            FilterTarget::AlbumArtist {
                 range: StringFilterRange::Equal {
                     value: "Test Album Artist".to_string(),
                 },
             },
             serde_json::json!({
-                "target": "albumartist",
+                "target": "album_artist",
                 "range": {
                     "op": "equal",
                     "value": "Test Album Artist",
