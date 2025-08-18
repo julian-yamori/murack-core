@@ -8,12 +8,14 @@ use super::*;
 
 // register_db 関数のテスト
 mod test_register_db {
+    use std::time::Duration;
+
     use super::*;
 
     // DB に追加する曲のデータを作成
     fn metadata() -> AudioMetadata {
         AudioMetadata {
-            duration: 120000,
+            duration: Duration::from_millis(120000).into(),
             title: "曲名".to_owned(),
             artist: "アーティスト".to_owned(),
             album: "アルバむ".to_owned(),

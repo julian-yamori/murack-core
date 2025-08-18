@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use chrono::NaiveDate;
 
 use crate::track_data::{AudioMetadata, TrackArtwork};
@@ -9,7 +11,7 @@ use crate::track_data::{AudioMetadata, TrackArtwork};
 #[derive(Debug, PartialEq)]
 pub struct FileMidMetadata {
     /// 曲の再生時間
-    pub duration: u32,
+    pub duration: Duration,
 
     /// 曲名
     pub title: Option<String>,
@@ -50,7 +52,7 @@ impl FileMidMetadata {
     pub fn from_audio_metadata(value: AudioMetadata) -> (Self, String) {
         (
             FileMidMetadata {
-                duration: value.duration,
+                duration: value.duration.into(),
                 title: none_if_empty(value.title),
                 artist: none_if_empty(value.artist),
                 album: none_if_empty(value.album),

@@ -1,6 +1,6 @@
 //! FLACフォーマット取扱
 
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use chrono::NaiveDate;
 use metaflac::{
@@ -109,7 +109,7 @@ pub fn overwrite(path: &Path, track: FileMidMetadata) -> Result<(), FlacError> {
 }
 
 /// streaminfoからdurationを取得
-fn get_duration(si: &StreamInfo) -> u32 {
+fn get_duration(si: &StreamInfo) -> Duration {
     //桁溢れ回避のため、doubleに直して計算
 
     let sr = match si.sample_rate {
@@ -118,7 +118,7 @@ fn get_duration(si: &StreamInfo) -> u32 {
     };
     let total_samples = si.total_samples as f64;
 
-    (total_samples / sr * 1000.0) as u32
+    Duration::from_millis((total_samples / sr * 1000.0) as u64)
 }
 /// VorbisCommentから文字列値を取得
 fn vorbis_get_str(values: Option<&Vec<String>>) -> Option<String> {

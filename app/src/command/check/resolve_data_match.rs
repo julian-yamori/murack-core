@@ -342,8 +342,8 @@ where
             cui_outln!(
                 cui,
                 "* 再生時間: {}ms | {}ms",
-                pc_track.duration,
-                db_track.metadata.duration
+                pc_track.duration.as_millis(),
+                db_track.metadata.duration.as_millis()
             )?;
             cui_outln!(cui, "PC vs DB")?;
             cui_outln!(cui)?;

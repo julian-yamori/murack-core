@@ -1,11 +1,11 @@
 use chrono::NaiveDate;
-use murack_core_domain::string_order_cnv;
+use murack_core_domain::{string_order_cnv, track::TrackDuration};
 
 /// PC・DB間で同期する、曲のメタデータ
 #[derive(Debug, PartialEq, Clone)]
 pub struct AudioMetadata {
-    /// 曲の再生時間 (ミリ秒)
-    pub duration: u32,
+    /// 曲の再生時間
+    pub duration: TrackDuration,
 
     /// 曲名
     pub title: String,

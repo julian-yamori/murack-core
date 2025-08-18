@@ -52,7 +52,7 @@ pub fn read_audio_metadata(
     let track_abs = track_path.abs(lib_root);
 
     Ok(AudioMetadata {
-        duration: mid.duration,
+        duration: mid.duration.into(),
         title: mid.title.unwrap_or_default(),
         artist: mid.artist.unwrap_or_default(),
         album: mid.album.unwrap_or_default(),

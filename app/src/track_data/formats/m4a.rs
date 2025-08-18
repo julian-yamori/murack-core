@@ -17,7 +17,7 @@ pub fn read(path: &Path) -> Result<FileMidMetadata, M4AError> {
     let tag = Tag::read_from_path(path)?;
 
     Ok(FileMidMetadata {
-        duration: get_duration(&tag),
+        duration: tag.duration(),
         title: opt_str_to_owned(tag.title()),
         artist: opt_str_to_owned(tag.artist()),
         album: opt_str_to_owned(tag.album()),
@@ -158,11 +158,6 @@ pub fn overwrite(path: &Path, track: FileMidMetadata) -> Result<(), M4AError> {
     tag.write_to_path(path)?;
 
     Ok(())
-}
-
-/// Tagから再生時間を取得
-fn get_duration(tag: &Tag) -> u32 {
-    tag.duration().as_millis() as u32
 }
 
 /// Option<&str> → Option<String>

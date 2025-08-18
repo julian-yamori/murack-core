@@ -5,6 +5,7 @@ use std::{
     fs::File,
     io::{BufReader, Seek},
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use chrono::{Datelike, NaiveDate};
@@ -140,13 +141,13 @@ pub fn overwrite(path: &Path, track: FileMidMetadata) -> Result<(), MP3Error> {
 /// # Arguments
 /// - reader: 読み込み元のファイルリーダー
 /// - path: 読み込むファイルのパス（エラー情報用）
-fn read_duration(reader: &mut BufReader<File>, path: &Path) -> Result<u32, MP3Error> {
+fn read_duration(reader: &mut BufReader<File>, path: &Path) -> Result<Duration, MP3Error> {
     let offset = reader
         .stream_position()
         .map_err(|e| MP3Error::FileIoError(path.to_owned(), e))?;
 
     match mp3_duration::from_read(reader) {
-        Ok(d) => Ok(d.as_millis() as u32),
+        Ok(d) => Ok(d),
         Err(mut e) => {
             e.offset += offset as usize;
             Err(MP3Error::DurationError(e))

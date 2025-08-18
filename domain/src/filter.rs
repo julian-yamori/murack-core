@@ -53,6 +53,8 @@ pub enum FilterTarget {
 
     /// 再生時間 (duration)
     ///
+    /// `tracks.duration` と同じく、IntFilterRange の値にはミリ秒の i32 を格納する。
+    ///
     /// 画面からの入力は「分:秒」形式
     #[serde(rename = "duration")]
     Duration { range: IntFilterRange },

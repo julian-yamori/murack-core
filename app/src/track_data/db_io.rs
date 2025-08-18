@@ -6,6 +6,7 @@ use murack_core_domain::{
     folder::{FolderIdMayRoot, folder_repository},
     path::LibraryTrackPath,
     playlist::playlist_sqls,
+    track::TrackDuration,
 };
 use sqlx::PgTransaction;
 
@@ -26,7 +27,7 @@ pub async fn get_by_path<'c>(
 ) -> Result<Option<DbTrackEntity>> {
     //一旦trackテーブルから検索
     let track_row = match sqlx::query!(
-        "SELECT id, duration, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, memo, lyrics FROM tracks WHERE path = $1",
+        r#"SELECT id, duration AS "duration: TrackDuration", title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, memo, lyrics FROM tracks WHERE path = $1"#,
         path.as_ref() as &str
     ).fetch_optional(&mut **tx).await? {
         Some(t) => t,
@@ -37,7 +38,7 @@ pub async fn get_by_path<'c>(
         id: track_row.id,
         path: path.clone(),
         metadata: AudioMetadata {
-            duration: track_row.duration.try_into()?,
+            duration: track_row.duration,
             title: track_row.title,
             artist: track_row.artist,
             album: track_row.album,
@@ -86,7 +87,7 @@ pub async fn register_db<'c>(
     // tracks テーブルに書き込み
     let track_id = sqlx::query_scalar!(
         "INSERT INTO tracks (duration, path, folder_id, title, artist, album, genre, album_artist, composer, track_number, track_max, disc_number, disc_max, release_date, rating, original_track, suggest_target, memo, memo_manage, lyrics, title_order, artist_order, album_order, album_artist_order, composer_order, genre_order) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id",
-        i32::try_from(metadata.duration)?,
+        metadata.duration.as_i32_millis()?,
         track_path.as_ref() as &str,
         folder_id.into_db(),
         &metadata.title,
@@ -133,12 +134,9 @@ pub async fn save_exclude_artwork<'c>(
 ) -> Result<()> {
     let sync = &track.metadata;
 
-    // duration を i32 に変換
-    let duration: i32 = sync.duration.try_into()?;
-
     sqlx::query!(
         "UPDATE tracks SET duration = $1, title = $2, artist = $3, album = $4, genre = $5, album_artist = $6, composer = $7, track_number = $8, track_max = $9, disc_number = $10, disc_max = $11, release_date = $12, memo = $13, lyrics = $14, title_order = $15, artist_order = $16, album_order = $17, album_artist_order = $18, composer_order = $19, genre_order = $20 WHERE id = $21",
-        duration,
+        sync.duration.as_i32_millis()?,
         &sync.title,
         &sync.artist,
         &sync.album,
