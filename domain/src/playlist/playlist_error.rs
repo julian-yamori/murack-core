@@ -1,5 +1,3 @@
-use crate::NonEmptyString;
-
 /// プレイリスト関連のエラー
 #[derive(thiserror::Error, Debug)]
 pub enum PlaylistError {
@@ -19,7 +17,6 @@ pub enum PlaylistError {
 #[derive(Debug, PartialEq)]
 pub struct PlaylistNoParentsDetectedItem {
     pub playlist_id: i32,
-    pub name: NonEmptyString,
     pub parent_id: Option<i32>,
 }
 
@@ -28,9 +25,8 @@ fn diaplay_playlist_no_parents_detected(items: &[PlaylistNoParentsDetectedItem])
         .iter()
         .map(|i| {
             format!(
-                "{{id: {}, name: {}, parent_id: {}}}",
+                "{{id: {}, parent_id: {}}}",
                 i.playlist_id,
-                i.name,
                 i.parent_id
                     .map(|id| id.to_string())
                     .unwrap_or_else(|| "None".to_owned())
@@ -50,16 +46,14 @@ mod tests {
             &diaplay_playlist_no_parents_detected(&[
                 PlaylistNoParentsDetectedItem {
                     playlist_id: 4,
-                    name: "test1".to_string().try_into()?,
                     parent_id: Some(2),
                 },
                 PlaylistNoParentsDetectedItem {
                     playlist_id: 15,
-                    name: "hoge".to_string().try_into()?,
                     parent_id: None,
                 }
             ]),
-            "{id: 4, name: test1, parent_id: 2}, {id: 15, name: hoge, parent_id: None}"
+            "{id: 4, parent_id: 2}, {id: 15, parent_id: None}"
         );
 
         Ok(())

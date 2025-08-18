@@ -1,7 +1,5 @@
 //! プレイリストファイル名の生成関係
 
-use murack_core_domain::playlist::PlaylistTree;
-
 use crate::command::playlist::PLAYLIST_EXT;
 
 /// プレイリストファイル名を作るために必要な諸々の値
@@ -39,11 +37,7 @@ impl FileNameContext<'_> {
     }
 }
 
-/// プレイリスト情報から、プレイリストのファイル名を取得
-/// # Arguments
-/// - name_list: 親プレイリストから作成対象のプレイリストまでの名前のリスト
-/// - tree: パスを取得する対象のプレイリストのノード
-pub fn build_file_name(tree: &PlaylistTree, context: &FileNameContext) -> String {
+pub fn build_file_name(playlist_name: &str, context: &FileNameContext) -> String {
     let digit = context.number_digit();
 
     //番号を付ける
@@ -61,15 +55,11 @@ pub fn build_file_name(tree: &PlaylistTree, context: &FileNameContext) -> String
         buf = format!("{buf}-{joined_names}");
     }
 
-    format!("{}-{}.{}", buf, tree.playlist.name, PLAYLIST_EXT)
+    format!("{buf}-{playlist_name}.{PLAYLIST_EXT}")
 }
 
 #[cfg(test)]
 mod tests {
-    use murack_core_domain::{
-        SortType,
-        playlist::{Playlist, PlaylistType},
-    };
     use test_case::test_case;
 
     use super::*;
@@ -95,31 +85,11 @@ mod tests {
         all_count: u32,
         expect: &str,
     ) {
-        let plist = PlaylistTree {
-            playlist: Playlist {
-                id: 3,
-                playlist_type: PlaylistType::Normal,
-                name: name.to_string().try_into().unwrap(),
-                parent_id: if parent_names.is_empty() {
-                    None
-                } else {
-                    Some(34)
-                },
-                in_folder_order: 99,
-                filter: None,
-                sort_type: SortType::Artist.into(),
-                sort_desc: false,
-                save_dap: true,
-                listuped_flag: true,
-                dap_changed: true,
-            },
-            children: Vec::new(),
-        };
         let context = FileNameContext {
             offset_of_whole,
             all_count,
             parent_names: parent_names.to_vec(),
         };
-        assert_eq!(&build_file_name(&plist, &context), expect);
+        assert_eq!(&build_file_name(name, &context), expect);
     }
 }

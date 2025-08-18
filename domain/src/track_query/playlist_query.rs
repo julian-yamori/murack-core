@@ -1,27 +1,31 @@
+mod playlist_model;
+
 use std::collections::{BTreeSet, HashSet};
 
 use async_recursion::async_recursion;
 use sqlx::PgTransaction;
 use sqlx::postgres::PgRow;
 
-use crate::track_query::SelectColumn;
 use crate::{
-    NonEmptyString, SortTypeWithPlaylist,
-    playlist::{
-        Playlist, PlaylistRow, PlaylistType, playlist_error::PlaylistError, playlist_tracks_sqls,
+    SortTypeWithPlaylist,
+    playlist::{PlaylistType, playlist_error::PlaylistError, playlist_tracks_sqls},
+    track_query::{
+        SelectColumn, TrackQueryError, filter_query,
+        playlist_query::playlist_model::QueryPlaylistModel,
     },
-    track_query::{TrackQueryError, filter_query},
 };
 
 /// カラムを指定し、プレイリストに含まれる曲を検索
 pub async fn select_tracks<'c>(
     tx: &mut PgTransaction<'c>,
-    plist: &Playlist,
+    playlist_id: i32,
     columns: impl Iterator<Item = SelectColumn>,
 ) -> Result<Vec<PgRow>, TrackQueryError> {
+    let plist = QueryPlaylistModel::from_db(tx, playlist_id).await?;
+
     //リストアップされていなければ、まずリストアップする
     if !plist.listuped_flag {
-        listup_tracks(tx, plist).await?;
+        listup_tracks(tx, &plist).await?;
     }
 
     let columns_set: HashSet<_> = columns.collect();
@@ -71,7 +75,7 @@ pub async fn select_tracks<'c>(
 /// - plist: 対象プレイリスト情報
 async fn listup_tracks<'c>(
     tx: &mut PgTransaction<'c>,
-    plist: &Playlist,
+    plist: &QueryPlaylistModel,
 ) -> Result<(), TrackQueryError> {
     //通常プレイリストなら、リストアップ済みフラグを立てるのみ
     if plist.playlist_type != PlaylistType::Normal {
@@ -137,40 +141,15 @@ async fn listup_tracks<'c>(
 #[async_recursion]
 async fn search_plist_tracks_folder<'c>(
     tx: &mut PgTransaction<'c>,
-    plist: &Playlist,
+    plist: &QueryPlaylistModel,
 ) -> Result<Vec<i32>, TrackQueryError> {
     //直下の子のプレイリストを取得
-    let children = sqlx::query_as!(
-        PlaylistRow,
-        r#"
-        SELECT
-          id,
-          playlist_type AS "playlist_type: PlaylistType",
-          name AS "name: NonEmptyString",
-          parent_id,
-          in_folder_order,
-          filter_json,
-          sort_type AS "sort_type: SortTypeWithPlaylist",
-          sort_desc,
-          save_dap,
-          listuped_flag,
-          dap_changed
-        FROM playlists
-        WHERE parent_id IS NOT DISTINCT FROM $1
-        ORDER BY in_folder_order
-        "#,
-        Some(plist.id)
-    )
-    .map(Playlist::try_from)
-    .fetch_all(&mut **tx)
-    .await?;
+    let children = QueryPlaylistModel::from_db_by_parent(tx, plist.id).await?;
 
     //子プレイリストの曲IDを追加していくSet
     let mut add_track_ids = HashSet::<i32>::new();
 
     for child in children {
-        let child = child?;
-
         //リストアップされていなければ、まずリストアップする
         if !child.listuped_flag {
             listup_tracks(tx, &child).await?;
@@ -204,7 +183,7 @@ async fn search_plist_tracks_folder<'c>(
 /// - plist: 対象プレイリスト情報
 async fn search_plist_tracks_filter<'c>(
     tx: &mut PgTransaction<'c>,
-    plist: &Playlist,
+    plist: &QueryPlaylistModel,
 ) -> Result<Vec<i32>, TrackQueryError> {
     let filter = plist
         .filter

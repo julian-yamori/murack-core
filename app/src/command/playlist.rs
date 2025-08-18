@@ -1,3 +1,4 @@
+mod command_playlist_model;
 mod dap_playlist_repository;
 mod file_name;
 
@@ -7,12 +8,16 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use murack_core_domain::{
     path::LibraryTrackPath,
-    playlist::{PlaylistTree, playlist_model, playlist_sqls, playlist_tree},
+    playlist::{PlaylistTree, playlist_sqls},
     track_query::{SelectColumn, playlist_query},
 };
 use sqlx::{PgPool, PgTransaction};
 
-use crate::{Config, command::playlist::file_name::FileNameContext, cui::Cui};
+use crate::{
+    Config,
+    command::playlist::{command_playlist_model::CommandPlaylistModel, file_name::FileNameContext},
+    cui::Cui,
+};
 
 /// playlistコマンド
 ///
@@ -49,8 +54,10 @@ where
 
         cui_outln!(self.cui, "プレイリスト情報の取得中...").unwrap();
 
-        //プレイリストを全て取得
-        let plist_trees = playlist_tree::get_whole_tree(&mut tx).await?;
+        // プレイリストを全て取得
+        let all_playlists = CommandPlaylistModel::get_all_from_db(&mut tx).await?;
+
+        let plist_trees = PlaylistTree::from_all_playlists(all_playlists)?;
 
         //DAPに保存する数を数える
         let save_count = count_save_plists_recursive(&plist_trees);
@@ -89,7 +96,7 @@ where
 /// - existingFileSet:  DAPに既に存在するファイルパスのset
 #[async_recursion]
 async fn save_plists_recursive<'c, 'p>(
-    plist_trees: &'p [PlaylistTree],
+    plist_trees: &'p [PlaylistTree<CommandPlaylistModel>],
     tx: &mut PgTransaction<'c>,
     root_path: &Path,
     context: &mut FileNameContext<'p>,
@@ -97,25 +104,28 @@ async fn save_plists_recursive<'c, 'p>(
 ) -> Result<()> {
     for tree in plist_trees {
         //DAPに保存するプレイリストなら処理
-        if tree.playlist.save_dap {
+        if tree.value.save_dap {
             //プレイリストのファイル名を作成
-            let plist_file_name = file_name::build_file_name(tree, context);
+            let plist_file_name = file_name::build_file_name(&tree.value.name, context);
             context.offset_of_whole += 1;
 
             //プレイリスト内の曲パスを取得
             let track_paths: Vec<LibraryTrackPath> =
-                playlist_query::select_tracks(tx, &tree.playlist, [SelectColumn::Path].into_iter())
+                playlist_query::select_tracks(tx, tree.value.id, [SelectColumn::Path].into_iter())
                     .await?
                     .into_iter()
                     .map(|row| SelectColumn::row_path(&row))
                     .collect::<Result<Vec<_>, _>>()?;
 
             //プレイリストの曲データ取得後に、リストに変更があったか確認
-            let new_plist_data = playlist_model::get_playlist(tx, tree.playlist.id)
-                .await?
-                .expect("playlist not found");
+            let new_dap_changed = sqlx::query_scalar!(
+                "SELECT dap_changed FROM playlists WHERE id = $1",
+                tree.value.id
+            )
+            .fetch_one(&mut **tx)
+            .await?;
 
-            if new_plist_data.dap_changed {
+            if new_dap_changed {
                 //変更があった場合、保存処理へ進む。
 
                 //既存ファイルSetから削除
@@ -136,7 +146,7 @@ async fn save_plists_recursive<'c, 'p>(
             }
         }
 
-        context.parent_names.push(&tree.playlist.name);
+        context.parent_names.push(&tree.value.name);
 
         //子プレイリストの保存
         save_plists_recursive(&tree.children, tx, root_path, context, existing_file_set).await?;
@@ -158,14 +168,11 @@ const TRACK_PATH: &str = "lib/";
 const PLAYLIST_EXT: &str = "m3u";
 
 /// DAPに保存するプレイリスト数を再帰的に数える
-///
-/// # todo
-/// modelに移行できそうな処理
-fn count_save_plists_recursive(trees: &[PlaylistTree]) -> u32 {
+fn count_save_plists_recursive(trees: &[PlaylistTree<CommandPlaylistModel>]) -> u32 {
     let mut count = 0;
 
     for tree in trees {
-        if tree.playlist.save_dap {
+        if tree.value.save_dap {
             count += 1;
         }
 
