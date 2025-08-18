@@ -14,59 +14,101 @@ use crate::{
     },
 };
 
-/// カラムを指定し、プレイリストに含まれる曲を検索
-pub async fn select_tracks<'c>(
-    tx: &mut PgTransaction<'c>,
+/// プレイリストの曲の検索条件
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct PlaylistQuery {
+    /// 検索対象のプレイリストの ID
     playlist_id: i32,
-    columns: impl Iterator<Item = SelectColumn>,
-) -> Result<Vec<PgRow>, TrackQueryError> {
-    let plist = QueryPlaylistModel::from_db(tx, playlist_id).await?;
 
-    //リストアップされていなければ、まずリストアップする
-    if !plist.listuped_flag {
-        listup_tracks(tx, &plist).await?;
-    }
+    /// 取得するカラムの指定
+    columns: Vec<SelectColumn>,
+}
 
-    let columns_set: HashSet<_> = columns.collect();
+impl PlaylistQuery {
+    /// カラムを指定し、プレイリストに含まれる曲を検索
+    pub async fn fetch<'c>(
+        &self,
+        tx: &mut PgTransaction<'c>,
+    ) -> Result<Vec<PgRow>, TrackQueryError> {
+        let plist = QueryPlaylistModel::from_db(tx, self.playlist_id).await?;
 
-    let mut join_queries = vec!["JOIN tracks ON playlist_tracks.track_id = tracks.id"];
-    // アートワーク ID を取得する場合は、先頭のアートワークだけを取得できるように JOIN する
-    if columns_set.contains(&SelectColumn::ArtworkId) {
-        join_queries.push(
+        //リストアップされていなければ、まずリストアップする
+        if !plist.listuped_flag {
+            listup_tracks(tx, &plist).await?;
+        }
+
+        let mut join_queries = vec!["JOIN tracks ON playlist_tracks.track_id = tracks.id"];
+        // アートワーク ID を取得する場合は、先頭のアートワークだけを取得できるように JOIN する
+        if self.columns.contains(&SelectColumn::ArtworkId) {
+            join_queries.push(
             "LEFT JOIN track_artworks ON track.id = track_artworks.track_id AND track_artworks.order_index = 0"
         )
+        }
+
+        let mut column_names: Vec<_> = self
+            .columns
+            .iter()
+            .map(SelectColumn::sql_column_name)
+            .collect();
+        //プレイリスト順なら、取得カラムを一つ追加
+        if plist.sort_type == SortTypeWithPlaylist::Playlist {
+            column_names.push("playlist_tracks.order_index");
+        }
+
+        let order_query = plist
+            .sort_type
+            .order_query(plist.sort_desc, "playlist_tracks.order_index");
+
+        let sql = format!(
+            "
+            SELECT {}
+            FROM playlist_tracks
+            {}
+            WHERE playlist_tracks.playlist_id = $1
+            ORDER BY {order_query}
+            ",
+            column_names.join(","),
+            join_queries.join("\n")
+        );
+        let list: Vec<_> = sqlx::query(&sql)
+            .bind(plist.id)
+            .fetch_all(&mut **tx)
+            .await?;
+
+        Ok(list)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PlaylistQueryBuilder {
+    playlist_id: i32,
+    columns: Vec<SelectColumn>,
+}
+
+impl PlaylistQueryBuilder {
+    pub fn new(playlist_id: i32) -> Self {
+        Self {
+            playlist_id,
+            columns: Vec::default(),
+        }
     }
 
-    let mut column_names: Vec<_> = columns_set
-        .iter()
-        .map(SelectColumn::sql_column_name)
-        .collect();
-    //プレイリスト順なら、取得カラムを一つ追加
-    if plist.sort_type == SortTypeWithPlaylist::Playlist {
-        column_names.push("playlist_tracks.order_index");
+    /// 取得するカラムを追加
+    ///
+    /// column は一つ以上の指定が必須
+    pub fn column(mut self, column: SelectColumn) -> Self {
+        self.columns.push(column);
+        self
     }
 
-    let order_query = plist
-        .sort_type
-        .order_query(plist.sort_desc, "playlist_tracks.order_index");
+    pub fn build(self) -> PlaylistQuery {
+        assert!(!self.columns.is_empty(), "columns cannot be empty");
 
-    let sql = format!(
-        "
-        SELECT {}
-        FROM playlist_tracks
-        {}
-        WHERE playlist_tracks.playlist_id = $1
-        ORDER BY {order_query}
-        ",
-        column_names.join(","),
-        join_queries.join("\n")
-    );
-    let list: Vec<_> = sqlx::query(&sql)
-        .bind(plist.id)
-        .fetch_all(&mut **tx)
-        .await?;
-
-    Ok(list)
+        PlaylistQuery {
+            playlist_id: self.playlist_id,
+            columns: self.columns,
+        }
+    }
 }
 
 /// プレイリストの曲をリストアップし、playlist_trackテーブルを更新する
