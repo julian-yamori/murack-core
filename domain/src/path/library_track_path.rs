@@ -21,6 +21,7 @@ use crate::path::{LibraryDirectoryPath, PathError};
 ///
 /// また、DBの`track.path`に保存する値。
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct LibraryTrackPath(NonEmptyString);
 
 impl LibraryTrackPath {
